@@ -15,7 +15,7 @@ from sendTelegram import bot_sendtext
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
 device = "RPI"
-version = "2.0"
+version = "2.0.1"
 # initializations
 loop = True
 parsingMode = -1
@@ -99,93 +99,96 @@ except Exception as e:
     bot_sendtext("debug", "An unknown exception has occured in the initial IP checker subroutine.\nError: " + e)
     loop = False
 
+try:
+    while loop:
+        logger.info("Waking up from sleep and starting next while-loop.")
 
-while loop:
-    logger.info("Waking up from sleep and starting next while-loop.")
+        # test with local saved webpage when debugging
+        if debug:
+            debugLoopCounter += 1
+            if debugLoopCounter == debugLoopCounterMax:
+                websiteURL = localDebugURL
 
-    # test with local saved webpage when debugging
-    if debug:
-        debugLoopCounter += 1
-        if debugLoopCounter == debugLoopCounterMax:
-            websiteURL = localDebugURL
-
-    # subsequent IP address check
-    try:
-        current_ip = get('https://api.ipify.org').text
-        if current_ip != startup_ip:
-            logger.error("IP address has changed. New address is " + current_ip + ", while startup IP was " + startup_ip)
-            bot_sendtext("debug", "IP address has changed.\nNew address is " + current_ip + ", while startup IP was " + startup_ip)
-            break
-    except Exception as e:
-        logger.error("An unknown exception has occured in the IP checker subroutine. Error: " + e)
-        bot_sendtext("debug", "An unknown exception has occured in the IP checker subroutine.\nError: " + e)
-        break
-
-    # open website
-    driver.get(websiteURL)
-
-    # check for nodata field
-    try:
-        nodata_field = driver.find_element(By.CLASS_NAME, "nodata")
-        logger.debug("nodata text field: found. Text: " + nodata_field.text)
-        parsingMode = 0
-    except selenium.common.exceptions.NoSuchElementException:
-        logger.info("nodata text field: NOT found.")
-        parsingMode = 1
-    except Exception as e:
-        logger.error("An unknown exception has occured in the nodata-field-search subroutine. Error: " + e)
-        bot_sendtext("debug", "An unknown exception has occured in the nodata-field-search subroutine.\nError: : " + e)
-        break
-
-    # check for whgnr field
-    try:
-        rowWhgnr_field = driver.find_element_by_xpath('/html/body/div/div[4]/div[2]/div[2]/div[1]/div/div[2]/div/div/div/div/div[3]/div[2]/span[2]')
-        logger.info("whgnr text field: found. Text: " + rowWhgnr_field.text)
-        if parsingMode != 1:  # i.e. parsing mode is 0 i.e. nodata field was found
-            logger.error("Modes do not match. Mode is " + str(parsingMode) + " but expected mode 1.")
-            bot_sendtext("debug", "Modes do not match. Mode is " + str(parsingMode) + " but expected mode 1.")
-            break
-        logger.warning("Free room: " + rowWhgnr_field.text)
-        bot_sendtext("shoutout", "Free room: " + rowWhgnr_field.text + "\n" + websiteURL)
-    except selenium.common.exceptions.NoSuchElementException:
-        logger.debug("whgnr text field: NOT found.")
-        if parsingMode != 0:  # i.e. parsing mode is 1 i.e. nodata field was NOT found
-            logger.error("Modes do not match. Mode is " + str(parsingMode) + " but expected mode 0.")
-            bot_sendtext("debug", "Modes do not match. Mode is " + str(parsingMode) + " but expected mode 0.")
-            break
-    except Exception as e:
-        logger.error("An unknown exception has occured in the whgnr-field-search subroutine. Error: : " + e)
-        bot_sendtext("debug", "An unknown exception has occured in the whgnr-field-search subroutine.\nError: : " + e)
-        break
-
-    # get http response code
-    with urllib.request.urlopen(websiteURL) as url:
-        httpResponseCode = url.getcode()
-        if httpResponseCode == 200:
-            logger.debug("URL response code: " + str(httpResponseCode) + ", OK.")
-        else:
-            logger.error("Retrieve error. URL response code is " + str(httpResponseCode) + " but expected 200.")
-            bot_sendtext("debug", "Retrieve error. URL response code is " + str(httpResponseCode) + " but expected 200.")
+        # subsequent IP address check
+        try:
+            current_ip = get('https://api.ipify.org').text
+            if current_ip != startup_ip:
+                logger.error("IP address has changed. New address is " + current_ip + ", while startup IP was " + startup_ip)
+                bot_sendtext("debug", "IP address has changed.\nNew address is " + current_ip + ", while startup IP was " + startup_ip)
+                break
+        except Exception as e:
+            logger.error("An unknown exception has occured in the IP checker subroutine. Error: " + e)
+            bot_sendtext("debug", "An unknown exception has occured in the IP checker subroutine.\nError: " + e)
             break
 
-    # alive signal maintainer
-    if int(time.time()) - lastAliveSignalTime > aliveSignalThreshold:
-        logger.debug("Still alive.")
-        bot_sendtext("debug", "Still alive.")
-        lastAliveSignalTime = int(time.time())
+        # open website
+        driver.get(websiteURL)
 
-    # sleeping
-    sleepTime = randint(minSleepTime, maxSleepTime)
-    logger.debug("Sleeping for " + str(sleepTime) + " seconds.")
-    time.sleep(sleepTime)
+        # check for nodata field
+        try:
+            nodata_field = driver.find_element(By.CLASS_NAME, "nodata")
+            logger.debug("nodata text field: found. Text: " + nodata_field.text)
+            parsingMode = 0
+        except selenium.common.exceptions.NoSuchElementException:
+            logger.info("nodata text field: NOT found.")
+            parsingMode = 1
+        except Exception as e:
+            logger.error("An unknown exception has occured in the nodata-field-search subroutine. Error: " + e)
+            bot_sendtext("debug", "An unknown exception has occured in the nodata-field-search subroutine.\nError: : " + e)
+            break
+
+        # check for whgnr field
+        try:
+            rowWhgnr_field = driver.find_element_by_xpath('/html/body/div/div[4]/div[2]/div[2]/div[1]/div/div[2]/div/div/div/div/div[3]/div[2]/span[2]')
+            logger.info("whgnr text field: found. Text: " + rowWhgnr_field.text)
+            if parsingMode != 1:  # i.e. parsing mode is 0 i.e. nodata field was found
+                logger.error("Modes do not match. Mode is " + str(parsingMode) + " but expected mode 1.")
+                bot_sendtext("debug", "Modes do not match. Mode is " + str(parsingMode) + " but expected mode 1.")
+                break
+            logger.warning("Free room: " + rowWhgnr_field.text)
+            bot_sendtext("shoutout", "Free room: " + rowWhgnr_field.text + "\n" + websiteURL)
+        except selenium.common.exceptions.NoSuchElementException:
+            logger.debug("whgnr text field: NOT found.")
+            if parsingMode != 0:  # i.e. parsing mode is 1 i.e. nodata field was NOT found
+                logger.error("Modes do not match. Mode is " + str(parsingMode) + " but expected mode 0.")
+                bot_sendtext("debug", "Modes do not match. Mode is " + str(parsingMode) + " but expected mode 0.")
+                break
+        except Exception as e:
+            logger.error("An unknown exception has occured in the whgnr-field-search subroutine. Error: : " + e)
+            bot_sendtext("debug", "An unknown exception has occured in the whgnr-field-search subroutine.\nError: : " + e)
+            break
+
+        # get http response code
+        with urllib.request.urlopen(websiteURL) as url:
+            httpResponseCode = url.getcode()
+            if httpResponseCode == 200:
+                logger.debug("URL response code: " + str(httpResponseCode) + ", OK.")
+            else:
+                logger.error("Retrieve error. URL response code is " + str(httpResponseCode) + " but expected 200.")
+                bot_sendtext("debug", "Retrieve error. URL response code is " + str(httpResponseCode) + " but expected 200.")
+                break
+
+        # alive signal maintainer
+        if int(time.time()) - lastAliveSignalTime > aliveSignalThreshold:
+            logger.debug("Still alive.")
+            bot_sendtext("debug", "Still alive.")
+            lastAliveSignalTime = int(time.time())
+
+        # sleeping
+        sleepTime = randint(minSleepTime, maxSleepTime)
+        logger.debug("Sleeping for " + str(sleepTime) + " seconds.")
+        time.sleep(sleepTime)
 
 
-# cleanup
-driver.quit()
-if device == "RPI":
-    display.stop()
+    # cleanup
+    driver.quit()
+    if device == "RPI":
+        display.stop()
 
-# shutdown
-logger.info("Shutting down.")
-bot_sendtext("debug", "Shutting down.")
-sys.exit()
+    # shutdown
+    logger.info("Shutting down.")
+    bot_sendtext("debug", "Shutting down.")
+    sys.exit()
+except Exception as e:
+    logger.error("An unknown exception has occured in the main loop. Error: : " + e)
+    bot_sendtext("debug", "We catched him!!! In main loop:\nError: : " + e)
