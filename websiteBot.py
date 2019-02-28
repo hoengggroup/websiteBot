@@ -15,7 +15,7 @@ from sendTelegram import bot_sendtext
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
 device = "RPI"
-version = "2.0.1"
+version = "2.0.2"
 # initializations
 loop = True
 parsingMode = -1
@@ -99,6 +99,8 @@ except Exception as e:
     bot_sendtext("debug", "An unknown exception has occured in the initial IP checker subroutine.\nError: " + e)
     loop = False
 
+
+# main loop
 try:
     while loop:
         logger.info("Waking up from sleep and starting next while-loop.")
@@ -134,7 +136,7 @@ try:
             parsingMode = 1
         except Exception as e:
             logger.error("An unknown exception has occured in the nodata-field-search subroutine. Error: " + e)
-            bot_sendtext("debug", "An unknown exception has occured in the nodata-field-search subroutine.\nError: : " + e)
+            bot_sendtext("debug", "An unknown exception has occured in the nodata-field-search subroutine.\nError: " + e)
             break
 
         # check for whgnr field
@@ -154,8 +156,8 @@ try:
                 bot_sendtext("debug", "Modes do not match. Mode is " + str(parsingMode) + " but expected mode 0.")
                 break
         except Exception as e:
-            logger.error("An unknown exception has occured in the whgnr-field-search subroutine. Error: : " + e)
-            bot_sendtext("debug", "An unknown exception has occured in the whgnr-field-search subroutine.\nError: : " + e)
+            logger.error("An unknown exception has occured in the whgnr-field-search subroutine. Error: " + e)
+            bot_sendtext("debug", "An unknown exception has occured in the whgnr-field-search subroutine.\nError: " + e)
             break
 
         # get http response code
@@ -178,8 +180,10 @@ try:
         sleepTime = randint(minSleepTime, maxSleepTime)
         logger.debug("Sleeping for " + str(sleepTime) + " seconds.")
         time.sleep(sleepTime)
-
-
+except Exception as e:
+    logger.error("An unknown exception has occured in the main loop. Error: " + e)
+    bot_sendtext("debug", "We caught him!!!\nUnknown exception in main loop.\nError: " + e)
+finally:
     # cleanup
     driver.quit()
     if device == "RPI":
@@ -189,6 +193,3 @@ try:
     logger.info("Shutting down.")
     bot_sendtext("debug", "Shutting down.")
     sys.exit()
-except Exception as e:
-    logger.error("An unknown exception has occured in the main loop. Error: : " + e)
-    bot_sendtext("debug", "We catched him!!! In main loop:\nError: : " + e)
