@@ -117,6 +117,7 @@ dmypy.json
 .pyre/
 
 
+
 ### Windows
 # Windows thumbnail cache files
 Thumbs.db
@@ -150,8 +151,8 @@ $RECYCLE.BIN/
 .AppleDouble
 .LSOverride
 
-# Icon must end with two \r
-Icon
+# Icon file (carriage return!)
+Icon[\r]
 
 # Thumbnails
 ._*
@@ -171,6 +172,7 @@ Icon
 Network Trash Folder
 Temporary Items
 .apdisk
+
 
 
 ### Linux
