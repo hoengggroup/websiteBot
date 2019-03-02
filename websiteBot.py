@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*-
+
 import selenium
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -8,6 +11,7 @@ import time
 import logging
 import sys
 from random import randint
+from pathlib import Path
 
 from sendTelegram import bot_sendtext
 
@@ -15,7 +19,7 @@ from sendTelegram import bot_sendtext
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
 device = "RPI"
-version = "2.0.2"
+version = "2.1.0"
 # initializations
 loop = True
 parsingMode = -1
@@ -56,6 +60,10 @@ logger.addHandler(fh2)
 logger.addHandler(ch)
 
 
+# get directory of project
+parentDirectory = str(Path(__file__).resolve().parents[0])
+
+
 # specify imports and selenium drivers for various devices
 if device == "RPI":
     from pyvirtualdisplay import Display
@@ -66,17 +74,20 @@ if device == "RPI":
 
     firefoxProfile = FirefoxProfile()
     firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)
-    driver = webdriver.Firefox(firefox_profile=firefoxProfile)
-elif device == "manual_firefox":
+    driver = webdriver.Firefox(executable_path=parentDirectory+'/drivers/geckodriver_linux', firefox_profile=firefoxProfile)
+elif device == "manual_firefox_mac" or device == "manual_firefox_win":
     from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 
     firefoxProfile = FirefoxProfile()
     firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)
-    driver = webdriver.Firefox(firefox_profile=firefoxProfile)
-elif device == "manual_chrome":
+    if device == "manual_firefox_mac":
+        driver = webdriver.Firefox(executable_path=parentDirectory+'/drivers/geckodriver_mac', firefox_profile=firefoxProfile)
+    elif device == "manual_firefox_win":
+        driver = webdriver.Firefox(executable_path=parentDirectory+'/drivers/geckodriver_win.exe', firefox_profile=firefoxProfile)
+elif device == "manual_chrome_mac":
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument("--incognito")
-    driver = webdriver.Chrome(executable_path=r"/usr/local/bin/chromedriver", chrome_options=chrome_options)
+    driver = webdriver.Chrome(executable_path=parentDirectory+'/drivers/chromedriver_mac', options=chrome_options)
 else:
     logger.error("Invalid device type. Exiting.")
     sys.exit()
@@ -85,7 +96,7 @@ else:
 # startup
 logger.info("Starting up. Current version is: " + version + " Device is: " + device)
 bot_sendtext("debug", "Starting up.\nCurrent version is: " + version + "\nDevice is: " + device)
-lastAliveSignalTime = int(time.time())  # last time when alive signal was sent
+lastAliveSignalTime = int(time.time())
 
 
 # initial IP address check
@@ -192,4 +203,5 @@ finally:
     # shutdown
     logger.info("Shutting down.")
     bot_sendtext("debug", "Shutting down.")
+    logger.handlers.clear()
     sys.exit()
