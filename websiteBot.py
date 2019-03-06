@@ -19,7 +19,7 @@ from sendTelegram import bot_sendtext
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
 device = "RPI"
-version = "2.1.2"
+version = "2.1.3"
 # initializations
 loop = True
 parsingMode = -1
@@ -74,7 +74,7 @@ if device == "RPI":
 
     firefoxProfile = FirefoxProfile()
     firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)
-    driver = webdriver.Firefox(executable_path=parentDirectory+'/drivers/geckodriver_linux', firefox_profile=firefoxProfile)
+    driver = webdriver.Firefox(firefox_profile=firefoxProfile)
 elif device == "manual_firefox_mac" or device == "manual_firefox_win":
     from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 
