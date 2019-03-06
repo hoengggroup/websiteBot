@@ -19,7 +19,7 @@ from sendTelegram import bot_sendtext
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
 device = "RPI"
-version = "2.1.1"
+version = "2.1.2"
 # initializations
 loop = True
 parsingMode = -1
