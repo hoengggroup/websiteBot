@@ -19,7 +19,7 @@ from sendTelegram import bot_sendtext
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
 device = "RPI"
-version = "2.1.3"
+version = "2.1.4"
 # initializations
 loop = True
 parsingMode = -1
@@ -191,9 +191,9 @@ try:
         sleepTime = randint(minSleepTime, maxSleepTime)
         logger.debug("Sleeping for " + str(sleepTime) + " seconds.")
         time.sleep(sleepTime)
-except Exception as e:
-    logger.error("An unknown exception has occured in the main loop. Error: " + e)
-    bot_sendtext("debug", "We caught him!!!\nUnknown exception in main loop.\nError: " + e)
+except:
+    logger.error("An unknown exception has occured in the main loop. Error: "+str(sys.exc_info()[0])+" "+str(sys.exc_info()[1])+" "+str(sys.exc_info()[2]))
+    bot_sendtext("debug", "We caught him!!!\nUnknown exception in main loop.")
 finally:
     # cleanup
     driver.quit()
