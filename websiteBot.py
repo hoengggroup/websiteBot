@@ -20,10 +20,10 @@ from sendTelegram import bot_sendtext
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
 device = "RPI"
-version = "2.2.0"
+version = "2.3.0"
 # initializations
 loop = True
-parsingMode = -1
+blacklist = {"xxx", "17.506.2"}
 # website
 websiteURL = "http://reservation.livingscience.ch/wohnen"
 # timing
@@ -143,29 +143,24 @@ try:
         # open website
         driver.get(websiteURL)
 
-        # check for nodata field
-        try:
-            nodata_field = driver.find_element(By.CLASS_NAME, "nodata")
-            logger.debug("nodata text field: found. Text: " + nodata_field.text)
-            parsingMode = 0
-        except selenium.common.exceptions.NoSuchElementException:
-            logger.info("nodata text field: NOT found.")
-            parsingMode = 1
-
-        # check for whgnr field
-        try:
-            rowWhgnr_field = driver.find_element_by_xpath('/html/body/div/div[4]/div[2]/div[2]/div[1]/div/div[2]/div/div/div/div/div[3]/div[2]/span[2]')
-            logger.info("whgnr text field: found. Text: " + rowWhgnr_field.text)
-            if parsingMode != 1:  # i.e. parsing mode is 0 i.e. nodata field was found
-                logger.error("Modes do not match. Mode is " + str(parsingMode) + " but expected mode 1.")
-                bot_sendtext("debug", logger, "Modes do not match. Mode is " + str(parsingMode) + " but expected mode 1.")
-            logger.warning("Free room: " + rowWhgnr_field.text)
-            bot_sendtext("shoutout", logger, "Free room: " + rowWhgnr_field.text + "\n" + websiteURL)
-        except selenium.common.exceptions.NoSuchElementException:
-            logger.debug("whgnr text field: NOT found.")
-            if parsingMode != 0:  # i.e. parsing mode is 1 i.e. nodata field was NOT found
-                logger.error("Modes do not match. Mode is " + str(parsingMode) + " but expected mode 0.")
-                bot_sendtext("debug", logger, "Modes do not match. Mode is " + str(parsingMode) + " but expected mode 0.")
+        # check website content
+        # maybe wrap in try-catch
+        rowWhgnr_field = list(driver.find_elements_by_class_name("spalte7"))
+        rowWhgnr_field = rowWhgnr_field[1:]  # delete title of column
+        if len(rowWhgnr_field) == 0:
+            logger.debug("No whgnrs found.")
+        else:
+            debugString = ""
+            shoutoutString = ""
+            for room in rowWhgnr_field:
+                logger.info("whgnr text field found. Text: " + room.text)
+                if room.text not in blacklist:
+                    shoutoutString += room.text + "\n"
+                else:
+                    debugString += room.text + "\n"
+            if shoutoutString:
+                bot_sendtext("shoutout", logger, shoutoutString + websiteURL)
+            bot_sendtext("debug", logger, debugString + "---------")
 
         # get http response code
         try:
