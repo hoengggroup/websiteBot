@@ -6,6 +6,7 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 
 import urllib.request
+import requests
 from requests import get
 import time
 import logging
@@ -19,7 +20,7 @@ from sendTelegram import bot_sendtext
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
 device = "RPI"
-version = "2.1.4"
+version = "2.2.0"
 # initializations
 loop = True
 parsingMode = -1
@@ -74,7 +75,7 @@ if device == "RPI":
 
     firefoxProfile = FirefoxProfile()
     firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)
-    driver = webdriver.Firefox(firefox_profile=firefoxProfile)
+    driver = webdriver.Firefox(executable_path=parentDirectory+'/drivers/geckodriver_linux', firefox_profile=firefoxProfile)
 elif device == "manual_firefox_mac" or device == "manual_firefox_win":
     from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 
@@ -95,7 +96,7 @@ else:
 
 # startup
 logger.info("Starting up. Current version is: " + version + " Device is: " + device)
-bot_sendtext("debug", "Starting up.\nCurrent version is: " + version + "\nDevice is: " + device)
+bot_sendtext("debug", logger, "Starting up.\nCurrent version is: " + version + "\nDevice is: " + device)
 lastAliveSignalTime = int(time.time())
 
 
@@ -104,10 +105,11 @@ startup_ip = "0.0.0.0"
 try:
     startup_ip = get('https://api.ipify.org').text
     logger.info("Startup IP address is: " + startup_ip)
-    bot_sendtext("debug", "Startup IP address is: " + startup_ip)
-except Exception as e:
-    logger.error("An unknown exception has occured in the initial IP checker subroutine. Error: " + e)
-    bot_sendtext("debug", "An unknown exception has occured in the initial IP checker subroutine.\nError: " + e)
+    bot_sendtext("debug", logger, "Startup IP address is: " + startup_ip)
+except requests.exceptions.RequestException as e:
+    logger.error("RequestException has occured in the initial IP checker subroutine.")
+    logger.error("The error is: " + str(e))
+    bot_sendtext("debug", logger, "RequestException has occured in the initial IP checker subroutine.")
     loop = False
 
 
@@ -127,11 +129,15 @@ try:
             current_ip = get('https://api.ipify.org').text
             if current_ip != startup_ip:
                 logger.error("IP address has changed. New address is " + current_ip + ", while startup IP was " + startup_ip)
-                bot_sendtext("debug", "IP address has changed.\nNew address is " + current_ip + ", while startup IP was " + startup_ip)
-                break
-        except Exception as e:
-            logger.error("An unknown exception has occured in the IP checker subroutine. Error: " + e)
-            bot_sendtext("debug", "An unknown exception has occured in the IP checker subroutine.\nError: " + e)
+                bot_sendtext("debug", logger, "IP address has changed.\nNew address is " + current_ip + ", while startup IP was " + startup_ip)
+                bot_sendtext("debug", logger, "Please restart VPN service as soon as possible. Entering hibernation.")
+                # keep script running senselessly
+                while True:
+                    time.sleep(3600)
+        except requests.exceptions.RequestException as e:
+            logger.error("RequestException has occured in the IP checker subroutine.")
+            logger.error("The error is: " + str(e))
+            bot_sendtext("debug", logger, "RequestException has occured in the IP checker subroutine.")
             break
 
         # open website
@@ -145,10 +151,6 @@ try:
         except selenium.common.exceptions.NoSuchElementException:
             logger.info("nodata text field: NOT found.")
             parsingMode = 1
-        except Exception as e:
-            logger.error("An unknown exception has occured in the nodata-field-search subroutine. Error: " + e)
-            bot_sendtext("debug", "An unknown exception has occured in the nodata-field-search subroutine.\nError: " + e)
-            break
 
         # check for whgnr field
         try:
@@ -156,35 +158,34 @@ try:
             logger.info("whgnr text field: found. Text: " + rowWhgnr_field.text)
             if parsingMode != 1:  # i.e. parsing mode is 0 i.e. nodata field was found
                 logger.error("Modes do not match. Mode is " + str(parsingMode) + " but expected mode 1.")
-                bot_sendtext("debug", "Modes do not match. Mode is " + str(parsingMode) + " but expected mode 1.")
-                break
+                bot_sendtext("debug", logger, "Modes do not match. Mode is " + str(parsingMode) + " but expected mode 1.")
             logger.warning("Free room: " + rowWhgnr_field.text)
-            bot_sendtext("shoutout", "Free room: " + rowWhgnr_field.text + "\n" + websiteURL)
+            bot_sendtext("shoutout", logger, "Free room: " + rowWhgnr_field.text + "\n" + websiteURL)
         except selenium.common.exceptions.NoSuchElementException:
             logger.debug("whgnr text field: NOT found.")
             if parsingMode != 0:  # i.e. parsing mode is 1 i.e. nodata field was NOT found
                 logger.error("Modes do not match. Mode is " + str(parsingMode) + " but expected mode 0.")
-                bot_sendtext("debug", "Modes do not match. Mode is " + str(parsingMode) + " but expected mode 0.")
-                break
-        except Exception as e:
-            logger.error("An unknown exception has occured in the whgnr-field-search subroutine. Error: " + e)
-            bot_sendtext("debug", "An unknown exception has occured in the whgnr-field-search subroutine.\nError: " + e)
-            break
+                bot_sendtext("debug", logger, "Modes do not match. Mode is " + str(parsingMode) + " but expected mode 0.")
 
         # get http response code
-        with urllib.request.urlopen(websiteURL) as url:
-            httpResponseCode = url.getcode()
+        try:
+            httpResponseCode = get(websiteURL).status_code
             if httpResponseCode == 200:
                 logger.debug("URL response code: " + str(httpResponseCode) + ", OK.")
             else:
                 logger.error("Retrieve error. URL response code is " + str(httpResponseCode) + " but expected 200.")
-                bot_sendtext("debug", "Retrieve error. URL response code is " + str(httpResponseCode) + " but expected 200.")
+                bot_sendtext("debug", logger, "Retrieve error. URL response code is " + str(httpResponseCode) + " but expected 200.")
                 break
+        except requests.exceptions.RequestException as e:
+            logger.error("RequestException has occured in the HTTP response code checker subroutine.")
+            logger.error("The error is: " + str(e))
+            bot_sendtext("debug", logger, "RequestException has occured in the HTTP response code checker subroutine.")
+            break
 
         # alive signal maintainer
         if int(time.time()) - lastAliveSignalTime > aliveSignalThreshold:
             logger.debug("Still alive.")
-            bot_sendtext("debug", "Still alive.")
+            bot_sendtext("debug", logger, "Still alive.")
             lastAliveSignalTime = int(time.time())
 
         # sleeping
@@ -192,8 +193,9 @@ try:
         logger.debug("Sleeping for " + str(sleepTime) + " seconds.")
         time.sleep(sleepTime)
 except:
-    logger.error("An unknown exception has occured in the main loop. Error: "+str(sys.exc_info()[0])+" "+str(sys.exc_info()[1])+" "+str(sys.exc_info()[2]))
-    bot_sendtext("debug", "We caught him!!!\nUnknown exception in main loop.")
+    logger.error("An UNKNOWN exception has occured in the main loop.")
+    logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+    bot_sendtext("debug", logger, "We caught him!!!\nUnknown exception in main loop.")
 finally:
     # cleanup
     driver.quit()
@@ -202,6 +204,6 @@ finally:
 
     # shutdown
     logger.info("Shutting down.")
-    bot_sendtext("debug", "Shutting down.")
+    bot_sendtext("debug", logger, "Shutting down.")
     logger.handlers.clear()
     sys.exit()

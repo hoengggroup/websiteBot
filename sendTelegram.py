@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 
 import requests
+import sys
 
 
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
@@ -13,7 +14,7 @@ bot_chat_id_shoutout = '***REMOVED***'
 debug = False
 
 
-def bot_sendtext(chat_name, bot_message):
+def bot_sendtext(chat_name, logger, bot_message):
     # default payload
     params = {
         "chat_id": bot_chat_id_debug,
@@ -37,4 +38,8 @@ def bot_sendtext(chat_name, bot_message):
             }
 
     # send payload to Telegram API
-    requests.get("https://api.telegram.org/bot"+bot_token+"/sendMessage", params=params)
+    try:
+        requests.get("https://api.telegram.org/bot"+bot_token+"/sendMessage", params=params)
+    except requests.exceptions.RequestException as e:
+        logger.error("[sendTelegram] RequestException has occured in bot_sendtext.")
+        logger.error("[sendTelegram] The error is: " + str(e))
