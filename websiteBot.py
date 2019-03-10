@@ -20,7 +20,7 @@ from sendTelegram import bot_sendtext
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
 device = "RPI"
-version = "2.3.0"
+version = "2.3.1"
 # initializations
 loop = True
 blacklist = {"xxx", "17.506.2"}
@@ -170,7 +170,6 @@ try:
             else:
                 logger.error("Retrieve error. URL response code is " + str(httpResponseCode) + " but expected 200.")
                 bot_sendtext("debug", logger, "Retrieve error. URL response code is " + str(httpResponseCode) + " but expected 200.")
-                break
         except requests.exceptions.RequestException as e:
             logger.error("RequestException has occured in the HTTP response code checker subroutine.")
             logger.error("The error is: " + str(e))
