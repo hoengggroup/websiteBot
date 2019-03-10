@@ -76,6 +76,8 @@ if device == "RPI":
     firefoxProfile = FirefoxProfile()
     firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)
     driver = webdriver.Firefox(firefox_profile=firefoxProfile)
+    import sendPushbullet
+    sendPushbullet.sendPush("Start","System just started")
 elif device == "manual_firefox_mac" or device == "manual_firefox_win":
     from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 
@@ -111,6 +113,7 @@ except requests.exceptions.RequestException as e:
     logger.error("The error is: " + str(e))
     bot_sendtext("debug", logger, "RequestException has occured in the initial IP checker subroutine.")
     loop = False
+
 
 
 # main loop
@@ -150,6 +153,8 @@ try:
         if len(rowWhgnr_field) == 0:
             logger.debug("No whgnrs found.")
         else:
+            if device == "RPI":
+                sendPushbullet.processbullet(rowWhgnr_field)
             debugString = ""
             shoutoutString = ""
             for room in rowWhgnr_field:
