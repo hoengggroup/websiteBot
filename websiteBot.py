@@ -20,7 +20,7 @@ from sendTelegram import bot_sendtext
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
 device = "RPI"
-version = "2.3.1"
+version = "2.3.2"
 # initializations
 loop = True
 blacklist = {"xxx", "17.506.2"}
@@ -130,6 +130,11 @@ try:
         # subsequent IP address check
         try:
             current_ip = get('https://api.ipify.org').text
+            if "a" in current_ip or "e" in current_ip or "h" in current_ip: # is this right contains?
+                logger.error("IP request contains letters. Sleeping now for 120s. Retrying then")
+                bot_sendtext("debug",logger,"IP request contains letters. Sleeping now for 120s. Retrying then")
+                time.sleep(120)
+                continue
             if current_ip != startup_ip:
                 logger.error("IP address has changed. New address is " + current_ip + ", while startup IP was " + startup_ip)
                 bot_sendtext("debug", logger, "IP address has changed.\nNew address is " + current_ip + ", while startup IP was " + startup_ip)
@@ -140,8 +145,9 @@ try:
         except requests.exceptions.RequestException as e:
             logger.error("RequestException has occured in the IP checker subroutine.")
             logger.error("The error is: " + str(e))
-            bot_sendtext("debug", logger, "RequestException has occured in the IP checker subroutine.")
-            break
+            bot_sendtext("debug", logger, "RequestException has occured in the IP checker subroutine. Sleeping now for 120s. Retrying then.")
+            time.sleep(120)
+            continue
 
         # open website
         driver.get(websiteURL)
@@ -178,8 +184,9 @@ try:
         except requests.exceptions.RequestException as e:
             logger.error("RequestException has occured in the HTTP response code checker subroutine.")
             logger.error("The error is: " + str(e))
-            bot_sendtext("debug", logger, "RequestException has occured in the HTTP response code checker subroutine.")
-            break
+            bot_sendtext("debug", logger, "RequestException has occured in the HTTP response code checker subroutine. Sleeping now for 120s. Retrying then.")
+            time.sleep(120)
+            continue
 
         # alive signal maintainer
         if int(time.time()) - lastAliveSignalTime > aliveSignalThreshold:
@@ -204,5 +211,7 @@ finally:
     # shutdown
     logger.info("Shutting down.")
     bot_sendtext("debug", logger, "Shutting down.")
+    logger.info("This is my last logger action")
     logger.handlers.clear()
+    print("This is my last print action")
     sys.exit()
