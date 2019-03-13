@@ -20,7 +20,7 @@ from sendTelegram import bot_sendtext
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
 device = "RPI"
-version = "2.3.2"
+version = "2.3.3"
 # initializations
 loop = True
 blacklist = {"xxx", "17.506.2"}
