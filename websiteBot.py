@@ -30,6 +30,8 @@ websiteURL = "http://reservation.livingscience.ch/wohnen"
 aliveSignalThreshold = 1800
 minSleepTime = 45
 maxSleepTime = 90
+sleepTimeOnNetworkError= 120
+sleepCounterDueToNetworkError = 0 # #slept since last still alive signal. Short: #slErCo:
 # debugging
 debug = False
 debugLoopCounter = 0
@@ -133,7 +135,8 @@ try:
             if "a" in current_ip or "e" in current_ip or "h" in current_ip: # is this right contains?
                 logger.error("IP request contains letters. Sleeping now for 120s. Retrying then")
                 bot_sendtext("debug",logger,"IP request contains letters. Sleeping now for 120s. Retrying then")
-                time.sleep(120)
+                time.sleep(sleepTimeOnNetworkError)
+                sleepCounterDueToNetworkError += 1
                 continue
             if current_ip != startup_ip:
                 logger.error("IP address has changed. New address is " + current_ip + ", while startup IP was " + startup_ip)
@@ -146,7 +149,8 @@ try:
             logger.error("RequestException has occured in the IP checker subroutine.")
             logger.error("The error is: " + str(e))
             bot_sendtext("debug", logger, "RequestException has occured in the IP checker subroutine. Sleeping now for 120s. Retrying then.")
-            time.sleep(120)
+            time.sleep(sleepTimeOnNetworkError)
+            sleepCounterDueToNetworkError += 1
             continue
 
         # open website
@@ -185,14 +189,16 @@ try:
             logger.error("RequestException has occured in the HTTP response code checker subroutine.")
             logger.error("The error is: " + str(e))
             bot_sendtext("debug", logger, "RequestException has occured in the HTTP response code checker subroutine. Sleeping now for 120s. Retrying then.")
-            time.sleep(120)
+            time.sleep(sleepTimeOnNetworkError)
+            sleepCounterDueToNetworkError += 1
             continue
 
         # alive signal maintainer
         if int(time.time()) - lastAliveSignalTime > aliveSignalThreshold:
-            logger.debug("Still alive.")
-            bot_sendtext("debug", logger, "Still alive.")
+            logger.debug("Still alive #slErCo: "+str(sleepCounterDueToNetworkError))
+            bot_sendtext("debug", logger, "Still alive. #slErCo: " + str(sleepCounterDueToNetworkError))
             lastAliveSignalTime = int(time.time())
+            sleepCounterDueToNetworkError = 0
 
         # sleeping
         sleepTime = randint(minSleepTime, maxSleepTime)
