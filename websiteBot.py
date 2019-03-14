@@ -30,8 +30,8 @@ websiteURL = "http://reservation.livingscience.ch/wohnen"
 aliveSignalThreshold = 1800
 minSleepTime = 45
 maxSleepTime = 90
-sleepTimeOnNetworkError= 120
-sleepCounterDueToNetworkError = 0 # #slept since last still alive signal. Short: #slErCo:
+sleepTimeOnNetworkError = 120
+sleepCounterDueToNetworkError = 0  # Times slept since last still alive signal. Abbreviation: #slErrCo:
 # debugging
 debug = False
 debugLoopCounter = 0
@@ -132,9 +132,9 @@ try:
         # subsequent IP address check
         try:
             current_ip = get('https://api.ipify.org').text
-            if "a" in current_ip or "e" in current_ip or "h" in current_ip: # is this right contains?
-                logger.error("IP request contains letters. Sleeping now for 120s. Retrying then")
-                bot_sendtext("debug",logger,"IP request contains letters. Sleeping now for 120s. Retrying then")
+            if "a" in current_ip or "e" in current_ip or "h" in current_ip:  # is this right contains?
+                logger.error("IP request contains letters. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
+                bot_sendtext("debug", logger, "IP request contains letters. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
                 time.sleep(sleepTimeOnNetworkError)
                 sleepCounterDueToNetworkError += 1
                 continue
@@ -146,9 +146,9 @@ try:
                 while True:
                     time.sleep(3600)
         except requests.exceptions.RequestException as e:
-            logger.error("RequestException has occured in the IP checker subroutine.")
+            logger.error("RequestException has occured in the IP checker subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
             logger.error("The error is: " + str(e))
-            bot_sendtext("debug", logger, "RequestException has occured in the IP checker subroutine. Sleeping now for 120s. Retrying then.")
+            bot_sendtext("debug", logger, "RequestException has occured in the IP checker subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
             time.sleep(sleepTimeOnNetworkError)
             sleepCounterDueToNetworkError += 1
             continue
@@ -162,9 +162,9 @@ try:
             rowWhgnr_field = list(driver.find_elements_by_class_name("spalte7"))
             rowWhgnr_field = rowWhgnr_field[1:]  # delete title of column
         except selenium.common.exceptions.TimeoutException as e:
-            logger.error("TimeoutException has occured in the row whgnr getting part.")
+            logger.error("TimeoutException has occured in the row whgnr retreival subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
             logger.error("The error is: " + str(e))
-            bot_sendtext("debug", logger, "TimeoutException has occured in the row whgnr getting part. Sleeping now for 120s. Retrying then.")
+            bot_sendtext("debug", logger, "TimeoutException has occured in the row whgnr retreival subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
             time.sleep(sleepTimeOnNetworkError)
             sleepCounterDueToNetworkError += 1
             continue
@@ -195,17 +195,17 @@ try:
                 logger.error("Retrieve error. URL response code is " + str(httpResponseCode) + " but expected 200.")
                 bot_sendtext("debug", logger, "Retrieve error. URL response code is " + str(httpResponseCode) + " but expected 200.")
         except requests.exceptions.RequestException as e:
-            logger.error("RequestException has occured in the HTTP response code checker subroutine.")
+            logger.error("RequestException has occured in the HTTP response code checker subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
             logger.error("The error is: " + str(e))
-            bot_sendtext("debug", logger, "RequestException has occured in the HTTP response code checker subroutine. Sleeping now for 120s. Retrying then.")
+            bot_sendtext("debug", logger, "RequestException has occured in the HTTP response code checker subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
             time.sleep(sleepTimeOnNetworkError)
             sleepCounterDueToNetworkError += 1
             continue
 
         # alive signal maintainer
         if int(time.time()) - lastAliveSignalTime > aliveSignalThreshold:
-            logger.debug("Still alive #slErCo: "+str(sleepCounterDueToNetworkError))
-            bot_sendtext("debug", logger, "Still alive. #slErCo: " + str(sleepCounterDueToNetworkError))
+            logger.debug("Still alive #slErrCo: "+str(sleepCounterDueToNetworkError))
+            bot_sendtext("debug", logger, "Still alive. #slErrCo: " + str(sleepCounterDueToNetworkError))
             lastAliveSignalTime = int(time.time())
             sleepCounterDueToNetworkError = 0
 
@@ -226,7 +226,7 @@ finally:
     # shutdown
     logger.info("Shutting down.")
     bot_sendtext("debug", logger, "Shutting down.")
-    logger.info("This is my last logger action")
+    logger.info("This is my last logger action.")
     logger.handlers.clear()
-    print("This is my last print action")
+    print("This is my last print action.")
     sys.exit()
