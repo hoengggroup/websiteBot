@@ -20,7 +20,7 @@ from sendTelegram import bot_sendtext
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
 device = "RPI"
-version = "2.3.3"
+version = "2.3.4"
 # initializations
 loop = True
 blacklist = {"xxx", "17.506.2"}
@@ -153,13 +153,22 @@ try:
             sleepCounterDueToNetworkError += 1
             continue
 
-        # open website
-        driver.get(websiteURL)
+        try:
+            # open website
+            driver.get(websiteURL)
 
-        # check website content
-        # maybe wrap in try-catch
-        rowWhgnr_field = list(driver.find_elements_by_class_name("spalte7"))
-        rowWhgnr_field = rowWhgnr_field[1:]  # delete title of column
+            # check website content
+            # maybe wrap in try-catch
+            rowWhgnr_field = list(driver.find_elements_by_class_name("spalte7"))
+            rowWhgnr_field = rowWhgnr_field[1:]  # delete title of column
+        except selenium.common.exceptions.TimeoutException as e:
+            logger.error("TimeoutException has occured in the row whgnr getting part.")
+            logger.error("The error is: " + str(e))
+            bot_sendtext("debug", logger, "TimeoutException has occured in the row whgnr getting part. Sleeping now for 120s. Retrying then.")
+            time.sleep(sleepTimeOnNetworkError)
+            sleepCounterDueToNetworkError += 1
+            continue
+
         if len(rowWhgnr_field) == 0:
             logger.debug("No whgnrs found.")
         else:
