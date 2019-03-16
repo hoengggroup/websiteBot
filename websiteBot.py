@@ -20,7 +20,7 @@ from sendTelegram import bot_sendtext
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
 device = "RPI"
-version = "2.3.6"
+version = "2.3.6.1"
 # initializations
 loop = True
 blacklist = {"xxx", "17.506.2"}
@@ -163,7 +163,7 @@ try:
             # maybe wrap in try-catch
             rowWhgnr_field = list(driver.find_elements_by_class_name("spalte7"))
             logger.debug("Got rowWhgnr")
-            logger.debug("Length: "+len(rowWhgnr_field))
+            logger.debug("Length: "+str(len(rowWhgnr_field)))
             rowWhgnr_field = rowWhgnr_field[1:]  # delete title of column
             logger.debug("Cut rowWhgnr field")
         except selenium.common.exceptions.TimeoutException as e:
