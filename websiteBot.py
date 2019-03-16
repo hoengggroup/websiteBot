@@ -20,7 +20,7 @@ from sendTelegram import bot_sendtext
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
 device = "RPI"
-version = "2.3.4"
+version = "2.3.6"
 # initializations
 loop = True
 blacklist = {"xxx", "17.506.2"}
@@ -155,12 +155,17 @@ try:
 
         try:
             # open website
+            logger.debug("Getting website")
             driver.get(websiteURL)
+            logger.debug("Got website")
 
             # check website content
             # maybe wrap in try-catch
             rowWhgnr_field = list(driver.find_elements_by_class_name("spalte7"))
+            logger.debug("Got rowWhgnr")
+            logger.debug("Length: "+len(rowWhgnr_field))
             rowWhgnr_field = rowWhgnr_field[1:]  # delete title of column
+            logger.debug("Cut rowWhgnr field")
         except selenium.common.exceptions.TimeoutException as e:
             logger.error("TimeoutException has occured in the row whgnr getting part.")
             logger.error("The error is: " + str(e))
@@ -188,7 +193,9 @@ try:
 
         # get http response code
         try:
+            logger.debug("Getting http response")
             httpResponseCode = get(websiteURL).status_code
+            logger.debug("Got http response")
             if httpResponseCode == 200:
                 logger.debug("URL response code: " + str(httpResponseCode) + ", OK.")
             else:
