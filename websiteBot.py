@@ -20,7 +20,7 @@ from sendTelegram import bot_sendtext
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
 device = "RPI"
-version = "2.3.6.1"
+version = "2.3.7"
 # initializations
 loop = True
 blacklist = {"xxx", "17.506.2"}
@@ -78,6 +78,7 @@ if device == "RPI":
     firefoxProfile = FirefoxProfile()
     firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)
     driver = webdriver.Firefox(firefox_profile=firefoxProfile)
+    driver.set_page_load_timeout(30)
 
     import sendPushbullet
     sendPushbullet.sendPush("Start", "System just started")
@@ -116,7 +117,6 @@ except requests.exceptions.RequestException as e:
     logger.error("The error is: " + str(e))
     bot_sendtext("debug", logger, "RequestException has occured in the initial IP checker subroutine.")
     loop = False
-
 
 # main loop
 try:
