@@ -231,14 +231,12 @@ try:
             sleepTime = randint(minSleepTime, maxSleepTime)
             logger.debug("Sleeping for " + str(sleepTime) + " seconds.")
             time.sleep(sleepTime)
-            break
         elif mode == MODE_WAIT_ON_NET_ERROR:
             logger.info("Sleeping now in NET ERROR mode")
             time.sleep(sleepTimeOnNetworkError)
             sleepCounterDueToNetworkError += 1
             logger.info("Woke up from NET ERROR mode sleep")
             mode = MODE_NORMAL
-            break
         else:
             logger.error("UNKNOWN MODE")
             bot_sendtext("debug",logger,"Error: Unknown mode.")
