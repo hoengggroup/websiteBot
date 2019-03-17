@@ -20,7 +20,7 @@ from sendTelegram import bot_sendtext
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
 device = "RPI"
-version = "2.3.7"
+version = "2.4"
 # initializations
 loop = True
 blacklist = {"xxx", "17.506.2"}
@@ -37,7 +37,10 @@ debug = False
 debugLoopCounter = 0
 debugLoopCounterMax = 1
 localDebugURL = ""
-
+#modes
+MODE_NORMAL = 0
+MODE_WAIT_ON_NET_ERROR = 1
+mode = MODE_NORMAL
 
 # log setup
 # create logger
@@ -121,105 +124,126 @@ except requests.exceptions.RequestException as e:
 # main loop
 try:
     while loop:
-        logger.info("Waking up from sleep and starting next while-loop.")
+        switch(mode){
+            case MODE_NORMAL:
+                logger.debug("Waking up from sleep. Normal mode")
+                # test with local saved webpage when debugging
+                if debug:
+                    debugLoopCounter += 1
+                    if debugLoopCounter == debugLoopCounterMax:
+                        websiteURL = localDebugURL
 
-        # test with local saved webpage when debugging
-        if debug:
-            debugLoopCounter += 1
-            if debugLoopCounter == debugLoopCounterMax:
-                websiteURL = localDebugURL
+                # subsequent IP address check
+                try:
+                    current_ip = get('https://api.ipify.org').text
+                    if "a" in current_ip or "e" in current_ip or "h" in current_ip:  # is this right contains?
+                        logger.error("IP request contains letters. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
+                        bot_sendtext("debug", logger, "IP request contains letters. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
+                        mode = MODE_WAIT_ON_NET_ERROR
+                        continue
+                    if current_ip != startup_ip:
+                        logger.error("IP address has changed. New address is " + current_ip + ", while startup IP was " + startup_ip)
+                        bot_sendtext("debug", logger, "IP address has changed.\nNew address is " + current_ip + ", while startup IP was " + startup_ip)
+                        bot_sendtext("debug", logger, "Please restart VPN service as soon as possible. Entering hibernation.")
+                        # keep script running senselessly
+                        while True:
+                            time.sleep(3600)
+                except requests.exceptions.RequestException as e:
+                    logger.error("RequestException has occured in the IP checker subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
+                    logger.error("The error is: " + str(e))
+                    bot_sendtext("debug", logger, "RequestException has occured in the IP checker subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
+                    mode = MODE_WAIT_ON_NET_ERROR
+                    continue
 
-        # subsequent IP address check
-        try:
-            current_ip = get('https://api.ipify.org').text
-            if "a" in current_ip or "e" in current_ip or "h" in current_ip:  # is this right contains?
-                logger.error("IP request contains letters. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
-                bot_sendtext("debug", logger, "IP request contains letters. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
+                try:
+                    # open website
+                    logger.debug("Getting website")
+                    driver.get(websiteURL)
+                    logger.debug("Got website")
+
+                    # check website content
+                    # maybe wrap in try-catch
+                    rowWhgnr_field = list(driver.find_elements_by_class_name("spalte7"))
+                    logger.debug("Got rowWhgnr")
+                    logger.debug("Length: "+str(len(rowWhgnr_field)))
+                    rowWhgnr_field = rowWhgnr_field[1:]  # delete title of column
+                    logger.debug("Cut rowWhgnr field")
+                except selenium.common.exceptions.TimeoutException as e:
+                    logger.error("TimeoutException has occured in the row whgnr retreival subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
+                    logger.error("The error is: " + str(e))
+                    bot_sendtext("debug", logger, "TimeoutException has occured in the row whgnr retreival subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
+                    mode = MODE_WAIT_ON_NET_ERROR
+                    continue
+                except selenium.common.exceptions.WebDriverException as e:
+                    logger.error("WebDriverException has occured in the row whgnr retreival subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
+                    logger.error("The error is: " + str(e))
+                    bot_sendtext("debug", logger, "WebDriverException has occured in the row whgnr retreival subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
+                    mode = MODE_WAIT_ON_NET_ERROR
+                    continue
+                except:
+                    logger.error("An UNKNOWN exception has occured in the main loop.")
+                    logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+                    mode = MODE_WAIT_ON_NET_ERROR
+                    continue
+
+
+                if len(rowWhgnr_field) == 0:
+                    logger.debug("No whgnrs found.")
+                else:
+                    if device == "RPI":
+                        sendPushbullet.processbullet(rowWhgnr_field)
+                    debugString = ""
+                    shoutoutString = ""
+                    for room in rowWhgnr_field:
+                        logger.info("whgnr text field found. Text: " + room.text)
+                        if room.text not in blacklist:
+                            shoutoutString += room.text + "\n"
+                        else:
+                            debugString += room.text + "\n"
+                    if shoutoutString:
+                        bot_sendtext("shoutout", logger, shoutoutString + websiteURL)
+                    bot_sendtext("debug", logger, debugString + "---------")
+
+                # get http response code
+                try:
+                    logger.debug("Getting http response")
+                    httpResponseCode = get(websiteURL).status_code
+                    logger.debug("Got http response")
+                    if httpResponseCode == 200:
+                        logger.debug("URL response code: " + str(httpResponseCode) + ", OK.")
+                    else:
+                        logger.error("Retrieve error. URL response code is " + str(httpResponseCode) + " but expected 200.")
+                        bot_sendtext("debug", logger, "Retrieve error. URL response code is " + str(httpResponseCode) + " but expected 200.")
+                except requests.exceptions.RequestException as e:
+                    logger.error("RequestException has occured in the HTTP response code checker subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
+                    logger.error("The error is: " + str(e))
+                    bot_sendtext("debug", logger, "RequestException has occured in the HTTP response code checker subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
+                    mode = MODE_WAIT_ON_NET_ERROR
+                    continue
+
+                # alive signal maintainer
+                if int(time.time()) - lastAliveSignalTime > aliveSignalThreshold:
+                    logger.debug("Still alive #slErrCo: "+str(sleepCounterDueToNetworkError))
+                    bot_sendtext("debug", logger, "Still alive. #slErrCo: " + str(sleepCounterDueToNetworkError))
+                    lastAliveSignalTime = int(time.time())
+                    sleepCounterDueToNetworkError = 0
+
+                # sleeping
+                sleepTime = randint(minSleepTime, maxSleepTime)
+                logger.debug("Sleeping for " + str(sleepTime) + " seconds.")
+                time.sleep(sleepTime)
+                break;
+            case MODE_WAIT_ON_NET_ERROR:
+                logger.info("Sleeping now in NET ERROR mode")
                 time.sleep(sleepTimeOnNetworkError)
                 sleepCounterDueToNetworkError += 1
-                continue
-            if current_ip != startup_ip:
-                logger.error("IP address has changed. New address is " + current_ip + ", while startup IP was " + startup_ip)
-                bot_sendtext("debug", logger, "IP address has changed.\nNew address is " + current_ip + ", while startup IP was " + startup_ip)
-                bot_sendtext("debug", logger, "Please restart VPN service as soon as possible. Entering hibernation.")
-                # keep script running senselessly
-                while True:
-                    time.sleep(3600)
-        except requests.exceptions.RequestException as e:
-            logger.error("RequestException has occured in the IP checker subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
-            logger.error("The error is: " + str(e))
-            bot_sendtext("debug", logger, "RequestException has occured in the IP checker subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
-            time.sleep(sleepTimeOnNetworkError)
-            sleepCounterDueToNetworkError += 1
-            continue
-
-        try:
-            # open website
-            logger.debug("Getting website")
-            driver.get(websiteURL)
-            logger.debug("Got website")
-
-            # check website content
-            # maybe wrap in try-catch
-            rowWhgnr_field = list(driver.find_elements_by_class_name("spalte7"))
-            logger.debug("Got rowWhgnr")
-            logger.debug("Length: "+str(len(rowWhgnr_field)))
-            rowWhgnr_field = rowWhgnr_field[1:]  # delete title of column
-            logger.debug("Cut rowWhgnr field")
-        except selenium.common.exceptions.TimeoutException as e:
-            logger.error("TimeoutException has occured in the row whgnr retreival subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
-            logger.error("The error is: " + str(e))
-            bot_sendtext("debug", logger, "TimeoutException has occured in the row whgnr retreival subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
-            time.sleep(sleepTimeOnNetworkError)
-            sleepCounterDueToNetworkError += 1
-            continue
-
-        if len(rowWhgnr_field) == 0:
-            logger.debug("No whgnrs found.")
-        else:
-            if device == "RPI":
-                sendPushbullet.processbullet(rowWhgnr_field)
-            debugString = ""
-            shoutoutString = ""
-            for room in rowWhgnr_field:
-                logger.info("whgnr text field found. Text: " + room.text)
-                if room.text not in blacklist:
-                    shoutoutString += room.text + "\n"
-                else:
-                    debugString += room.text + "\n"
-            if shoutoutString:
-                bot_sendtext("shoutout", logger, shoutoutString + websiteURL)
-            bot_sendtext("debug", logger, debugString + "---------")
-
-        # get http response code
-        try:
-            logger.debug("Getting http response")
-            httpResponseCode = get(websiteURL).status_code
-            logger.debug("Got http response")
-            if httpResponseCode == 200:
-                logger.debug("URL response code: " + str(httpResponseCode) + ", OK.")
-            else:
-                logger.error("Retrieve error. URL response code is " + str(httpResponseCode) + " but expected 200.")
-                bot_sendtext("debug", logger, "Retrieve error. URL response code is " + str(httpResponseCode) + " but expected 200.")
-        except requests.exceptions.RequestException as e:
-            logger.error("RequestException has occured in the HTTP response code checker subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
-            logger.error("The error is: " + str(e))
-            bot_sendtext("debug", logger, "RequestException has occured in the HTTP response code checker subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
-            time.sleep(sleepTimeOnNetworkError)
-            sleepCounterDueToNetworkError += 1
-            continue
-
-        # alive signal maintainer
-        if int(time.time()) - lastAliveSignalTime > aliveSignalThreshold:
-            logger.debug("Still alive #slErrCo: "+str(sleepCounterDueToNetworkError))
-            bot_sendtext("debug", logger, "Still alive. #slErrCo: " + str(sleepCounterDueToNetworkError))
-            lastAliveSignalTime = int(time.time())
-            sleepCounterDueToNetworkError = 0
-
-        # sleeping
-        sleepTime = randint(minSleepTime, maxSleepTime)
-        logger.debug("Sleeping for " + str(sleepTime) + " seconds.")
-        time.sleep(sleepTime)
+                logger.info("Woke up from NET ERROR mode sleep")
+                mode = MODE_NORMAL
+                break;
+            default:
+                logger.error("UNKNOWN MODE")
+                bot_sendtext("debug",logger,"Error: Unknown mode.")
+        }
 except:
     logger.error("An UNKNOWN exception has occured in the main loop.")
     logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
