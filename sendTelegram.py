@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import requests
-import sys
+import os.path
 
 
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
@@ -12,12 +12,14 @@ bot_chat_id_shoutout = '***REMOVED***'
 # debugging
 debug = False
 
+device = os.path.basename(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
 
 def bot_sendtext(chat_name, logger, bot_message):
     # default payload
     params = {
         "chat_id": bot_chat_id_debug,
-        "text": bot_message,
+        "text": "[" + str(device) + "] " + bot_message,
         "parse_mode": "HTML",
     }
 
@@ -26,13 +28,13 @@ def bot_sendtext(chat_name, logger, bot_message):
         if debug:
             params = {
                 "chat_id": bot_chat_id_debug,
-                "text": "[SHOUTOUT]: " + bot_message,
+                "text": "[" + str(device) + "] [SHOUTOUT]: " + bot_message,
                 "parse_mode": "HTML",
             }
         else:
             params = {
                 "chat_id": bot_chat_id_shoutout,
-                "text": bot_message,
+                "text": "[" + str(device) + "] " + bot_message,
                 "parse_mode": "HTML",
             }
 
@@ -40,5 +42,5 @@ def bot_sendtext(chat_name, logger, bot_message):
     try:
         requests.get("https://api.telegram.org/bot"+bot_token+"/sendMessage", params=params)
     except requests.exceptions.RequestException as e:
-        logger.error("[sendTelegram] RequestException has occured in bot_sendtext.")
-        logger.error("[sendTelegram] The error is: " + str(e))
+        logger.error("[" + str(device) + "] [sendTelegram] RequestException has occured in bot_sendtext.")
+        logger.error("[" + str(device) + "] [sendTelegram] The error is: " + str(e))
