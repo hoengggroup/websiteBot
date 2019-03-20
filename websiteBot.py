@@ -5,7 +5,7 @@ import selenium
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 
-# unused?: import urllib.request
+import urllib.request
 import requests # for http requests like IP check. Request to living science page is made with SELENIUM, NOT requests
 from requests import get
 import time # for sleeping
@@ -21,7 +21,7 @@ from sendTelegram import bot_sendtext
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
 device = "RPI" #RPI
-version = "2.4.1.2"
+version = "2.4.2"
 # initializations
 loop = True
 blacklist = {"xxx", "17.506.2"}
