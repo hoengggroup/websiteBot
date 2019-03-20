@@ -5,22 +5,23 @@ import selenium
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 
-import urllib.request
-import requests
+# unused?: import urllib.request
+import requests # for http requests like IP check. Request to living science page is made with SELENIUM, NOT requests
 from requests import get
-import time
-import logging
-import sys
-from random import randint
-from pathlib import Path
+import time # for sleeping
+import logging # for logging
+import sys # for getting error info, for exit()
+from random import randint # for sleeping random time
+from pathlib import Path # for getting super super folder name
+import os.path # for getting super super folder name
 
 from sendTelegram import bot_sendtext
 
 
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
-device = "RPI"
-version = "2.4"
+device = "manual_firefox_win" #RPI
+version = "2.4.1"
 # initializations
 loop = True
 blacklist = {"xxx", "17.506.2"}
@@ -37,10 +38,16 @@ debug = False
 debugLoopCounter = 0
 debugLoopCounterMax = 1
 localDebugURL = ""
-#modes
+# modes
 MODE_NORMAL = 0
 MODE_WAIT_ON_NET_ERROR = 1
 mode = MODE_NORMAL
+# device_mode
+device_mode = os.path.basename(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if(device_mode=="LuckyLuke"): # faster on Lucky Luke
+    minSleepTime = 10
+    maxSleepTime = 30
+
 
 # log setup
 # create logger
