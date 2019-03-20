@@ -20,8 +20,8 @@ from sendTelegram import bot_sendtext
 
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
-device = "manual_firefox_win" #RPI
-version = "2.4.1.1"
+device = "RPI" #RPI
+version = "2.4.1.2"
 # initializations
 loop = True
 blacklist = {"xxx", "17.506.2"}
