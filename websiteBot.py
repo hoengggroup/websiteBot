@@ -6,22 +6,21 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 
 import urllib.request
-import requests # for http requests like IP check. Request to living science page is made with SELENIUM, NOT requests
+import requests
 from requests import get
-import time # for sleeping
-import logging # for logging
-import sys # for getting error info, for exit()
-from random import randint # for sleeping random time
-from pathlib import Path # for getting super super folder name
-import os.path # for getting super super folder name
+import time
+import logging
+import sys
+from random import randint
+from pathlib import Path
 
 from sendTelegram import bot_sendtext
 
 
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
-device = "RPI" #RPI
-version = "2.4.2"
+device = "RPI"
+version = "2.5"
 # initializations
 loop = True
 blacklist = {"xxx", "17.506.2"}
@@ -29,25 +28,20 @@ blacklist = {"xxx", "17.506.2"}
 websiteURL = "http://reservation.livingscience.ch/wohnen"
 # timing
 aliveSignalThreshold = 1800
-minSleepTime = 45
-maxSleepTime = 90
+minSleepTime = 5
+maxSleepTime = 30
 sleepTimeOnNetworkError = 120
-sleepCounterDueToNetworkError = 0  # Times slept since last still alive signal. Abbreviation: #slErrCo:
+sleepCounterDueToNetworkError = 0   # Times slept since last still alive signal. Abbreviation: #slErrCo:
+GET_TIMEOUT = 15 # timeout in seconds for get requests. If no timeout is set, it waits endlessly
 # debugging
 debug = False
 debugLoopCounter = 0
 debugLoopCounterMax = 1
 localDebugURL = ""
-# modes
+#modes
 MODE_NORMAL = 0
 MODE_WAIT_ON_NET_ERROR = 1
 mode = MODE_NORMAL
-# device_mode
-device_mode = os.path.basename(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-if(device_mode=="LuckyLuke"): # faster on Lucky Luke
-    minSleepTime = 10
-    maxSleepTime = 30
-
 
 # log setup
 # create logger
@@ -119,7 +113,7 @@ lastAliveSignalTime = int(time.time())
 # initial IP address check
 startup_ip = "0.0.0.0"
 try:
-    startup_ip = get('https://api.ipify.org').text
+    startup_ip = get('https://api.ipify.org',timeout=GET_TIMEOUT).text
     logger.info("Startup IP address is: " + startup_ip)
     bot_sendtext("debug", logger, "Startup IP address is: " + startup_ip)
 except requests.exceptions.RequestException as e:
@@ -141,7 +135,7 @@ try:
 
             # subsequent IP address check
             try:
-                current_ip = get('https://api.ipify.org').text
+                current_ip = get('https://api.ipify.org',timeout=GET_TIMEOUT).text
                 if "a" in current_ip or "e" in current_ip or "h" in current_ip:  # is this right contains?
                     logger.error("IP request contains letters. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
                     bot_sendtext("debug", logger, "IP request contains letters. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
@@ -158,6 +152,11 @@ try:
                 logger.error("RequestException has occured in the IP checker subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
                 logger.error("The error is: " + str(e))
                 bot_sendtext("debug", logger, "RequestException has occured in the IP checker subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
+                mode = MODE_WAIT_ON_NET_ERROR
+                continue
+            except:
+                logger.error("An UNKNOWN exception has occured in the IP check subroutine")
+                logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
                 mode = MODE_WAIT_ON_NET_ERROR
                 continue
 
@@ -213,7 +212,7 @@ try:
             # get http response code
             try:
                 logger.debug("Getting http response")
-                httpResponseCode = get(websiteURL).status_code
+                httpResponseCode = get(websiteURL,timeout=GET_TIMEOUT).status_code
                 logger.debug("Got http response")
                 if httpResponseCode == 200:
                     logger.debug("URL response code: " + str(httpResponseCode) + ", OK.")
@@ -224,6 +223,11 @@ try:
                 logger.error("RequestException has occured in the HTTP response code checker subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
                 logger.error("The error is: " + str(e))
                 bot_sendtext("debug", logger, "RequestException has occured in the HTTP response code checker subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
+                mode = MODE_WAIT_ON_NET_ERROR
+                continue
+            except:
+                logger.error("An UNKNOWN exception has occured in the getting HTTP response subroutine.")
+                logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
                 mode = MODE_WAIT_ON_NET_ERROR
                 continue
 
@@ -246,7 +250,8 @@ try:
             mode = MODE_NORMAL
         else:
             logger.error("UNKNOWN MODE")
-            bot_sendtext("debug",logger,"Error: Unknown mode.")
+            bot_sendtext("debug",logger,"Error: Unknown mode. Entering MODE ON NET ERROR")
+            mode = MODE_WAIT_ON_NET_ERROR
 except:
     logger.error("An UNKNOWN exception has occured in the main loop.")
     logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
