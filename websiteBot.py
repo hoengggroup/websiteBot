@@ -20,7 +20,7 @@ from sendTelegram import bot_sendtext
 # CHECK THESE VARIABLES BEFORE DEPLOYMENT!
 # metadata
 device = "RPI"
-version = "2.5"
+version = "2.5.1"
 # initializations
 loop = True
 blacklist = {"xxx", "17.506.2"}
@@ -81,8 +81,10 @@ if device == "RPI":
 
     firefoxProfile = FirefoxProfile()
     firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)
+    firefoxProfile.set_preference("http.response.timeout", 5)
+    firefoxProfile.set_preference("dom.max_script_run_time", 5)
     driver = webdriver.Firefox(firefox_profile=firefoxProfile)
-    driver.set_page_load_timeout(30)
+    driver.set_page_load_timeout(5)
 
     import sendPushbullet
     sendPushbullet.sendPush("Start", "System just started")
