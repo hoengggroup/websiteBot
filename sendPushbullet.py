@@ -4,15 +4,16 @@ import pushbullet
 
 import sys
 
+
 filterset = {"17.515.2", "17.515.3", "17.509.2", "17.509.3"}
 
 
-def sendPush(header, msg):
+def send_push(header, msg):
     pb = pushbullet.Pushbullet("***REMOVED***")
     pb.push_note(header, msg)
 
 
-def processbullet(roomfield):
+def process_bullet(roomfield):
     try:
         pb = pushbullet.Pushbullet("***REMOVED***")
         for filter in filterset:

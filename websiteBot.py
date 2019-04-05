@@ -3,76 +3,31 @@
 
 import selenium
 from selenium import webdriver
-from selenium.webdriver.common.by import By
 
-import urllib.request
-import requests
-from requests import get
 import time
-import logging
 import sys
 from random import randint
 from pathlib import Path
 
 from sendTelegram import bot_sendtext
+from loggerConfig import create_logger
+from vpnCheck import vpn_check
+from globalConfig import (version_code, device_type, debugging_enabled,
+                          debug_loop_counter, debug_loop_limit,
+                          debug_local_URL, mode_normal, mode_wait_on_net_error)
+from websiteConfig_1 import (website_URL, alive_signal_threshold,
+                             min_sleep_time, max_sleep_time,
+                             sleep_time_on_network_error,
+                             sleep_counter_due_to_network_error,
+                             check_livingscience)
 
 
-# CHECK THESE VARIABLES BEFORE DEPLOYMENT!
-# metadata
-device = "RPI"
-version = "2.5.1"
-# initializations
-loop = True
-blacklist = {"xxx", "17.506.2"}
-# website
-websiteURL = "http://reservation.livingscience.ch/wohnen"
-# timing
-aliveSignalThreshold = 1800
-minSleepTime = 5
-maxSleepTime = 30
-sleepTimeOnNetworkError = 120
-sleepCounterDueToNetworkError = 0   # Times slept since last still alive signal. Abbreviation: #slErrCo:
-GET_TIMEOUT = 15  # timeout in seconds for get requests. If no timeout is set, it waits endlessly
-# debugging
-debug = False
-debugLoopCounter = 0
-debugLoopCounterMax = 1
-localDebugURL = ""
-#modes
-MODE_NORMAL = 0
-MODE_WAIT_ON_NET_ERROR = 1
-mode = MODE_NORMAL
-
-# log setup
-# create logger
-logger = logging.getLogger('server_log')
-logger.setLevel(logging.DEBUG)
-# create file handler and set it to DEBUG level
-fh = logging.FileHandler('server_debug.log')
-fh.setLevel(logging.DEBUG)
-# create file handler and set it to INFO level
-fh2 = logging.FileHandler('server_info.log')
-fh2.setLevel(logging.INFO)
-# create console handler and set it to DEBUG level
-ch = logging.StreamHandler()
-ch.setLevel(logging.DEBUG)
-# create formatter and add it to the handlers
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
-fh.setFormatter(formatter)
-fh2.setFormatter(formatter)
-ch.setFormatter(formatter)
-# add the handlers to the logger
-logger.addHandler(fh)
-logger.addHandler(fh2)
-logger.addHandler(ch)
-
-
-# get directory of project
-parentDirectory = str(Path(__file__).resolve().parents[0])
+logger = create_logger()
+parent_directory_binaries = str(Path(__file__).resolve().parents[0])
 
 
 # specify imports and selenium drivers for various devices
-if device == "RPI":
+if device_type == "RPI":
     from pyvirtualdisplay import Display
     from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 
@@ -86,182 +41,115 @@ if device == "RPI":
     driver = webdriver.Firefox(firefox_profile=firefoxProfile)
     driver.set_page_load_timeout(5)
 
-    import sendPushbullet
-    sendPushbullet.sendPush("Start", "System just started")
-elif device == "manual_firefox_mac" or device == "manual_firefox_win":
+    from sendPushbullet import send_push
+    send_push("Start", "System just started.")
+
+elif device_type == "manual_firefox_mac" or device_type == "manual_firefox_win":
     from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 
     firefoxProfile = FirefoxProfile()
     firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)
-    if device == "manual_firefox_mac":
-        driver = webdriver.Firefox(executable_path=parentDirectory+'/drivers/geckodriver_mac', firefox_profile=firefoxProfile)
-    elif device == "manual_firefox_win":
-        driver = webdriver.Firefox(executable_path=parentDirectory+'/drivers/geckodriver_win.exe', firefox_profile=firefoxProfile)
-elif device == "manual_chrome_mac":
+
+    if device_type == "manual_firefox_mac":
+        driver = webdriver.Firefox(executable_path=parent_directory_binaries + '/drivers/geckodriver_mac', firefox_profile=firefoxProfile)
+
+    elif device_type == "manual_firefox_win":
+        driver = webdriver.Firefox(executable_path=parent_directory_binaries + '/drivers/geckodriver_win.exe', firefox_profile=firefoxProfile)
+
+elif device_type == "manual_chrome_mac":
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument("--incognito")
-    driver = webdriver.Chrome(executable_path=parentDirectory+'/drivers/chromedriver_mac', options=chrome_options)
+    driver = webdriver.Chrome(executable_path=parent_directory_binaries + '/drivers/chromedriver_mac', options=chrome_options)
+
 else:
     logger.error("Invalid device type. Exiting.")
     sys.exit()
 
 
-# startup
-logger.info("Starting up. Current version is: " + version + " Device is: " + device)
-bot_sendtext("debug", logger, "Starting up.\nCurrent version is: " + version + "\nDevice is: " + device)
-lastAliveSignalTime = int(time.time())
+# startup; initial IP/VPN status check
+logger.info("Starting up. Current version is: " + version_code + " Device is: " + device_type)
+bot_sendtext("debug", logger, "Starting up.\nCurrent version is: " + version_code + "\nDevice is: " + device_type)
+last_alive_signal_time = int(time.time())
+ip_address, mode = vpn_check(logger, True, "0.0.0.0", mode_normal)
 
-
-# initial IP address check
-startup_ip = "0.0.0.0"
-try:
-    startup_ip = get('https://api.ipify.org',timeout=GET_TIMEOUT).text
-    logger.info("Startup IP address is: " + startup_ip)
-    bot_sendtext("debug", logger, "Startup IP address is: " + startup_ip)
-except requests.exceptions.RequestException as e:
-    logger.error("RequestException has occured in the initial IP checker subroutine.")
-    logger.error("The error is: " + str(e))
-    bot_sendtext("debug", logger, "RequestException has occured in the initial IP checker subroutine.")
-    loop = False
 
 # main loop
 try:
-    while loop:
-        if mode==MODE_NORMAL:
-            logger.debug("Waking up from sleep. Normal mode")
+    while True:
+        if mode == mode_normal:
+            logger.debug("Waking up from sleep. Normal mode.")
             # test with local saved webpage when debugging
-            if debug:
-                debugLoopCounter += 1
-                if debugLoopCounter == debugLoopCounterMax:
-                    websiteURL = localDebugURL
+            if debugging_enabled:
+                debug_loop_counter += 1
+                if debug_loop_counter == debug_loop_limit:
+                    website_URL = debug_local_URL
 
-            # subsequent IP address check
-            try:
-                current_ip = get('https://api.ipify.org',timeout=GET_TIMEOUT).text
-                if "a" in current_ip or "e" in current_ip or "h" in current_ip:  # is this right contains?
-                    logger.error("IP request contains letters. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
-                    bot_sendtext("debug", logger, "IP request contains letters. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
-                    mode = MODE_WAIT_ON_NET_ERROR
-                    continue
-                if current_ip != startup_ip:
-                    logger.error("IP address has changed. New address is " + current_ip + ", while startup IP was " + startup_ip)
-                    bot_sendtext("debug", logger, "IP address has changed.\nNew address is " + current_ip + ", while startup IP was " + startup_ip)
-                    bot_sendtext("debug", logger, "Please restart VPN service as soon as possible. Entering hibernation.")
-                    # keep script running senselessly
-                    while True:
-                        time.sleep(3600)
-            except requests.exceptions.RequestException as e:
-                logger.error("RequestException has occured in the IP checker subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
-                logger.error("The error is: " + str(e))
-                bot_sendtext("debug", logger, "RequestException has occured in the IP checker subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
-                mode = MODE_WAIT_ON_NET_ERROR
-                continue
-            except:
-                logger.error("An UNKNOWN exception has occured in the IP check subroutine")
-                logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
-                mode = MODE_WAIT_ON_NET_ERROR
+            # subsequent IP/VPN status check
+            ip_address, mode = vpn_check(logger, False, ip_address, mode)
+            if mode != mode_normal or ip_address == "0.0.0.0":
                 continue
 
             try:
                 # open website
                 logger.debug("Getting website")
-                driver.get(websiteURL)
+                driver.get(website_URL)
                 logger.debug("Got website")
 
-                # check website content
-                # maybe wrap in try-catch
-                rowWhgnr_field = list(driver.find_elements_by_class_name("spalte7"))
-                logger.debug("Got rowWhgnr")
-                logger.debug("Length: "+str(len(rowWhgnr_field)))
-                rowWhgnr_field = rowWhgnr_field[1:]  # delete title of column
-                logger.debug("Cut rowWhgnr field")
+                rowWhgnr_field, mode = check_livingscience(driver, logger, mode)
+
             except selenium.common.exceptions.TimeoutException as e:
-                logger.error("TimeoutException has occured in the row whgnr retreival subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
+                logger.error("TimeoutException has occured in the row whgnr retreival subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
                 logger.error("The error is: " + str(e))
-                bot_sendtext("debug", logger, "TimeoutException has occured in the row whgnr retreival subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
-                mode = MODE_WAIT_ON_NET_ERROR
+                bot_sendtext("debug", logger, "TimeoutException has occured in the row whgnr retreival subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
+                mode = mode_wait_on_net_error
                 continue
+
             except selenium.common.exceptions.WebDriverException as e:
-                logger.error("WebDriverException has occured in the row whgnr retreival subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
+                logger.error("WebDriverException has occured in the row whgnr retreival subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
                 logger.error("The error is: " + str(e))
-                bot_sendtext("debug", logger, "WebDriverException has occured in the row whgnr retreival subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
-                mode = MODE_WAIT_ON_NET_ERROR
+                bot_sendtext("debug", logger, "WebDriverException has occured in the row whgnr retreival subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
+                mode = mode_wait_on_net_error
                 continue
+
             except:
                 logger.error("An UNKNOWN exception has occured in the main loop.")
                 logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
-                mode = MODE_WAIT_ON_NET_ERROR
-                continue
-
-
-            if len(rowWhgnr_field) == 0:
-                logger.debug("No whgnrs found.")
-            else:
-                if device == "RPI":
-                    sendPushbullet.processbullet(rowWhgnr_field)
-                debugString = ""
-                shoutoutString = ""
-                for room in rowWhgnr_field:
-                    logger.info("whgnr text field found. Text: " + room.text)
-                    if room.text not in blacklist:
-                        shoutoutString += room.text + "\n"
-                    else:
-                        debugString += room.text + "\n"
-                if shoutoutString:
-                    bot_sendtext("live", logger, shoutoutString + websiteURL)
-                bot_sendtext("debug", logger, debugString + "---------")
-
-            # get http response code
-            try:
-                logger.debug("Getting http response")
-                httpResponseCode = get(websiteURL,timeout=GET_TIMEOUT).status_code
-                logger.debug("Got http response")
-                if httpResponseCode == 200:
-                    logger.debug("URL response code: " + str(httpResponseCode) + ", OK.")
-                else:
-                    logger.error("Retrieve error. URL response code is " + str(httpResponseCode) + " but expected 200.")
-                    bot_sendtext("debug", logger, "Retrieve error. URL response code is " + str(httpResponseCode) + " but expected 200.")
-            except requests.exceptions.RequestException as e:
-                logger.error("RequestException has occured in the HTTP response code checker subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
-                logger.error("The error is: " + str(e))
-                bot_sendtext("debug", logger, "RequestException has occured in the HTTP response code checker subroutine. Sleeping now for " + str(sleepTimeOnNetworkError) + "s; retrying then.")
-                mode = MODE_WAIT_ON_NET_ERROR
-                continue
-            except:
-                logger.error("An UNKNOWN exception has occured in the getting HTTP response subroutine.")
-                logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
-                mode = MODE_WAIT_ON_NET_ERROR
+                mode = mode_wait_on_net_error
                 continue
 
             # alive signal maintainer
-            if int(time.time()) - lastAliveSignalTime > aliveSignalThreshold:
-                logger.debug("Still alive #slErrCo: "+str(sleepCounterDueToNetworkError))
-                bot_sendtext("debug", logger, "Still alive. #slErrCo: " + str(sleepCounterDueToNetworkError))
-                lastAliveSignalTime = int(time.time())
-                sleepCounterDueToNetworkError = 0
+            if int(time.time()) - last_alive_signal_time > alive_signal_threshold:
+                logger.debug("Still alive #slErrCo: " + str(sleep_counter_due_to_network_error))
+                bot_sendtext("debug", logger, "Still alive. #slErrCo: " + str(sleep_counter_due_to_network_error))
+                last_alive_signal_time = int(time.time())
+                sleep_counter_due_to_network_error = 0
 
             # sleeping
-            sleepTime = randint(minSleepTime, maxSleepTime)
-            logger.debug("Sleeping for " + str(sleepTime) + " seconds.")
-            time.sleep(sleepTime)
-        elif mode == MODE_WAIT_ON_NET_ERROR:
-            logger.info("Sleeping now in NET ERROR mode")
-            time.sleep(sleepTimeOnNetworkError)
-            sleepCounterDueToNetworkError += 1
-            logger.info("Woke up from NET ERROR mode sleep")
-            mode = MODE_NORMAL
+            sleep_time = randint(min_sleep_time, max_sleep_time)
+            logger.debug("Sleeping for " + str(sleep_time) + " seconds.")
+            time.sleep(sleep_time)
+
+        elif mode == mode_wait_on_net_error:
+            logger.info("Sleeping now in NET ERROR mode.")
+            time.sleep(sleep_time_on_network_error)
+            sleep_counter_due_to_network_error += 1
+            logger.info("Woke up from NET ERROR mode sleep.")
+            mode = mode_normal
+
         else:
             logger.error("UNKNOWN MODE")
-            bot_sendtext("debug",logger,"Error: Unknown mode. Entering MODE ON NET ERROR")
-            mode = MODE_WAIT_ON_NET_ERROR
+            bot_sendtext("debug", logger, "Error: Unknown mode. Entering MODE ON NET ERROR.")
+            mode = mode_wait_on_net_error
+
 except:
     logger.error("An UNKNOWN exception has occured in the main loop.")
     logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
     bot_sendtext("debug", logger, "We caught him!!!\nUnknown exception in main loop.")
+
 finally:
     # cleanup
     driver.quit()
-    if device == "RPI":
+    if device_type == "RPI":
         display.stop()
 
     # shutdown
