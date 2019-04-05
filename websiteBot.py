@@ -32,7 +32,7 @@ minSleepTime = 5
 maxSleepTime = 30
 sleepTimeOnNetworkError = 120
 sleepCounterDueToNetworkError = 0   # Times slept since last still alive signal. Abbreviation: #slErrCo:
-GET_TIMEOUT = 15 # timeout in seconds for get requests. If no timeout is set, it waits endlessly
+GET_TIMEOUT = 15  # timeout in seconds for get requests. If no timeout is set, it waits endlessly
 # debugging
 debug = False
 debugLoopCounter = 0
@@ -208,7 +208,7 @@ try:
                     else:
                         debugString += room.text + "\n"
                 if shoutoutString:
-                    bot_sendtext("shoutout", logger, shoutoutString + websiteURL)
+                    bot_sendtext("live", logger, shoutoutString + websiteURL)
                 bot_sendtext("debug", logger, debugString + "---------")
 
             # get http response code

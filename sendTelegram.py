@@ -1,46 +1,38 @@
 # -*- coding: utf-8 -*-
 
 import requests
-import os.path
+import telegramConfig as telco
 
-
-# CHECK THESE VARIABLES BEFORE DEPLOYMENT!
-# Telegram infrastructure
-bot_token = '***REMOVED***'
-bot_chat_id_debug = '***REMOVED***'
-bot_chat_id_shoutout = '***REMOVED***'
 # debugging
 debug = False
-
-device = os.path.basename(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 
 def bot_sendtext(chat_name, logger, bot_message):
     # default payload
     params = {
-        "chat_id": bot_chat_id_debug,
-        "text": "[" + str(device) + "] " + bot_message,
+        "chat_id": telco.bot_chat_id_debug,
+        "text": "[DEBUG]\n" + bot_message,
         "parse_mode": "HTML",
     }
 
-    # special case payloads (shoutout test / shoutout deployment)
-    if chat_name == "shoutout":
+    # special case payloads (live test / live deployment)
+    if chat_name == "live":
         if debug:
             params = {
-                "chat_id": bot_chat_id_debug,
-                "text": "[" + str(device) + "] [SHOUTOUT]: " + bot_message,
+                "chat_id": telco.bot_chat_id_debug,
+                "text": "[DEBUG]\n" + bot_message,
                 "parse_mode": "HTML",
             }
         else:
             params = {
-                "chat_id": bot_chat_id_shoutout,
-                "text": "[" + str(device) + "] " + bot_message,
+                "chat_id": telco.bot_chat_id_live,
+                "text": "[LIVE]\n" + bot_message,
                 "parse_mode": "HTML",
             }
 
     # send payload to Telegram API
     try:
-        requests.get("https://api.telegram.org/bot"+bot_token+"/sendMessage", params=params)
+        requests.get("https://api.telegram.org/bot" + telco.bot_token + "/sendMessage", params=params)
     except requests.exceptions.RequestException as e:
-        logger.error("[" + str(device) + "] [sendTelegram] RequestException has occured in bot_sendtext.")
-        logger.error("[" + str(device) + "] [sendTelegram] The error is: " + str(e))
+        logger.error("[sendTelegram] RequestException has occured in bot_sendtext.")
+        logger.error("[sendTelegram] The error is: " + str(e))
