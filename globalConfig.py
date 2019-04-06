@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-version_code = "3.0"
+version_code = "3.0.1 nightmade"
 device_type = "RPI"
 
 # debugging

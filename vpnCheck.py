@@ -14,6 +14,7 @@ def vpn_check(logger, notify, ip_address, mode):
         response = get('https://api.nordvpn.com/vpn/check/full', timeout=get_timeout).json()
         logger.info("IP address is: " + response['ip'])
         logger.info("VPN status is (unreliable): " + response['status'])
+        ip_address = response['ip'] ## fix here OK??
         if notify or response['status'] != "Protected":
             bot_sendtext("debug", logger, "IP address is: " + response['ip'] + "\nVPN status is (unreliable): " + response['status'])
             if response['ip'] == ip_address and ip_address != "0.0.0.0":
