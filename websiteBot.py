@@ -94,7 +94,25 @@ try:
                 logger.debug("Getting website")
                 driver.get(website_URL)
                 logger.debug("Got website")
+            except selenium.common.exceptions.TimeoutException as e:
+                logger.error("TimeoutException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
+                logger.error("The error is: " + str(e))
+                bot_sendtext("debug", logger, "TimeoutException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
+                mode = mode_wait_on_net_error
+                continue
+            except selenium.common.exceptions.WebDriverException as e:
+                logger.error("WebDriverException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
+                logger.error("The error is: " + str(e))
+                bot_sendtext("debug", logger, "WebDriverException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
+                mode = mode_wait_on_net_error
+                continue
+            except:
+                logger.error("An UNKNOWN exception has occured in the get website subroutine.")
+                logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+                mode = mode_wait_on_net_error
+                continue
 
+            try:
                 rowWhgnr_field, mode = check_livingscience(driver, logger, mode)
 
             except selenium.common.exceptions.TimeoutException as e:
@@ -112,7 +130,7 @@ try:
                 continue
 
             except:
-                logger.error("An UNKNOWN exception has occured in the main loop.")
+                logger.error("An UNKNOWN exception has occured in the row whgnr subroutine.")
                 logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
                 mode = mode_wait_on_net_error
                 continue

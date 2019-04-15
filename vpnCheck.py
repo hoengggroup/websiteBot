@@ -15,10 +15,10 @@ def vpn_check(logger, notify, ip_address, mode):
         logger.info("IP address is: " + response['ip'])
         logger.info("VPN status is (unreliable): " + response['status'])
         if notify or response['status'] != "Protected":
-            bot_sendtext("debug", logger, "IP address is: " + response['ip'] + "\nVPN status is (unreliable): " + response['status'])
+            # bot_sendtext("debug", logger, "IP address is: " + response['ip'] + "\nVPN status is (unreliable): " + response['status'])
             if response['ip'] == ip_address and ip_address != "0.0.0.0":
                 logger.info("IP address has not changed (reliable).")
-                bot_sendtext("debug", logger, "IP address has not changed (reliable).")
+                # bot_sendtext("debug", logger, "IP address has not changed (reliable).")
 
         if response['ip'] != ip_address and ip_address != "0.0.0.0":
             logger.info("IP address has changed. Please restart VPN service as soon as possible. Entering hibernation.")
