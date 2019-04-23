@@ -21,6 +21,10 @@ from websiteConfig_1 import (website_URL, alive_signal_threshold,
                              sleep_counter_due_to_network_error,
                              check_livingscience)
 
+import sdnotify #for watchdog
+
+alife_notifier = sdnotify.SystemdNotifier()
+
 
 logger = create_logger()
 parent_directory_binaries = str(Path(__file__).resolve().parents[0])
@@ -141,6 +145,8 @@ try:
                 bot_sendtext("debug", logger, "Still alive. #slErrCo: " + str(sleep_counter_due_to_network_error))
                 last_alive_signal_time = int(time.time())
                 sleep_counter_due_to_network_error = 0
+
+            alife_notifier.notify("WATCHDOG=1") # send status: alife
 
             # sleeping
             sleep_time = randint(min_sleep_time, max_sleep_time)

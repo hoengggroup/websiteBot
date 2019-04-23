@@ -4,6 +4,9 @@ from selenium.webdriver.common.by import By
 import time
 from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 import sys
+import sdnotify #for watchdog
+
+alife_notifier = sdnotify.SystemdNotifier()
 
 THRESH_ERROR_COUNT_MAX = 50
 firefoxProfile = FirefoxProfile()
@@ -22,6 +25,7 @@ except:
 lastVal = 0.0
 errorCount=0
 while True:
+    alife_notifier.notify("WATCHDOG=1") # send status: alife
 
     #a=[]
     try:

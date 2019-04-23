@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-version_code = "3.1"
+version_code = "3.1.2"
 device_type = "RPI"
 
 # debugging
