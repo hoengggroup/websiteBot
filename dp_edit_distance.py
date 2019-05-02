@@ -15,10 +15,10 @@ def get_edit_distance_changes(text_old, text_new):
                 delta = 1
             tb[i][j] = min(tb[i-1][j], tb[i][j-1], tb[i-1][j-1]) + delta
 
-    for i in range(len(tb)):
-        for j in range(len(tb[i])):
-            print(tb[i][j], end='\t')
-        print()
+    # for i in range(len(tb)):
+        # for j in range(len(tb[i])):
+            # print(tb[i][j], end='\t')
+        # print()
 
     reverse_change_stack = []
 
@@ -31,13 +31,13 @@ def get_edit_distance_changes(text_old, text_new):
         counter = counter+1
 
         min_before = min(tb[i-1][j], tb[i][j-1], tb[i-1][j-1])
-        print("right now @ " + str(i) + " "+str(j) + " min bef:" + str(min_before) + " current:" + str(tb[i][j]))
+        # print("right now @ " + str(i) + " "+str(j) + " min bef:" + str(min_before) + " current:" + str(tb[i][j]))
 
         # first choice (pref:) diagonal up, i.e. swap
         if(tb[i-1][j-1] == min_before and i-1 >= 0 and j-1 >= 0):
             if(min_before < tb[i][j]):
                 # swapped:
-                print("swap")
+                # print("swap")
                 reverse_change_stack.extend([("swap", text_old[j-1], text_new[i-1])])
 
             i = i-1
@@ -47,7 +47,7 @@ def get_edit_distance_changes(text_old, text_new):
         # else on of them was deleted:
         elif(tb[i-1][j] == min_before and i-1 >= 0):
             if(min_before < tb[i][j]):
-                print("add")
+                # print("add")
                 reverse_change_stack.extend([("added", text_new[i-1])])
             i = i-1
             continue
@@ -55,7 +55,7 @@ def get_edit_distance_changes(text_old, text_new):
         # else on of them was deleted:
         elif(tb[i][j-1] == min_before and j-1 >= 0):
             if(min_before < tb[i][j]):
-                print("del")
+                # print("del")
                 reverse_change_stack.extend([("deleted", text_old[j-1])])
 
             j = j-1
@@ -65,7 +65,7 @@ def get_edit_distance_changes(text_old, text_new):
 
     return reverse_change_stack[::-1]
 
-
+'''
 a = []
 b = []
 text_old = "eins zwei drei"
@@ -80,4 +80,4 @@ changes = get_edit_distance_changes(a, b)
 for a in changes:
     for my_str in a:
         print(str(my_str), end=' ')
-    print()
+    print()'''
