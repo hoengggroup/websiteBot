@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
-# a=['eins','zwei','drei','vier','fünf','sechs']
-# b=['eins','zwei','drei','vier','sechs','sieben']
-# b=['eins','drei','vier','fuenf','sechs','sieben']
+# a = ['eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs']
+# b = ['eins', 'zwei', 'drei', 'vier', 'sechs', 'sieben']
+# b = ['eins', 'drei', 'vier', 'fuenf', 'sechs', 'sieben']
 
 
 def get_edit_distance_changes(text_old, text_new):
@@ -64,6 +64,7 @@ def get_edit_distance_changes(text_old, text_new):
             pass
 
     return reverse_change_stack[::-1]
+
 
 '''
 a = []
