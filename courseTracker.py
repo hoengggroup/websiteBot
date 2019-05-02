@@ -4,28 +4,29 @@ from selenium.webdriver.common.by import By
 import time
 from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 import sys
-import sdnotify #for watchdog
+import sdnotify  # for watchdog
 
-alife_notifier = sdnotify.SystemdNotifier()
+alive_notifier = sdnotify.SystemdNotifier()
 
 THRESH_ERROR_COUNT_MAX = 50
 firefoxProfile = FirefoxProfile()
 firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)
-driver = webdriver.Firefox(executable_path="/Users/black/programming/python/driversSelenium/geckodriver_mac",firefox_profile=firefoxProfile)
+driver = webdriver.Firefox(executable_path="/Users/black/programming/python/driversSelenium/geckodriver_mac", firefox_profile=firefoxProfile)
 driver.set_page_load_timeout(3)
-print("getting")
+
+print("Getting.")
 try:
     driver.get("https://www.finanzen.ch/devisen/realtimekurs/eurokurs")
 except selenium.common.exceptions.TimeoutException as e:
-    print("timeout in beginning, should be ok")
+    print("Timeout in beginning; should be ok.")
 except:
     print("UNKNOWN error when getting website.")
     print("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
 
 lastVal = 0.0
-errorCount=0
+errorCount = 0
 while True:
-    alife_notifier.notify("WATCHDOG=1") # send status: alife
+    alive_notifier.notify("WATCHDOG=1")  # send status: alive
 
     #a=[]
     try:
@@ -51,10 +52,6 @@ while True:
         print("An UNKNOWN exception has occured in the main while loop.")
         print("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
 
-
-
-
-
     # pushbulletHelloWorld.processbullet(a)
 
     # print(len(a))
@@ -62,4 +59,4 @@ while True:
     # for element in a:
        # print(element.text)
 
-print("finished")
+print("Finished.")
