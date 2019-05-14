@@ -20,6 +20,7 @@ import pickle # to save webpage list
 # our dependecies
 from loggerConfig import create_logger
 import dp_edit_distance
+from telegramService import handler
 
 
 logger = create_logger()
@@ -165,17 +166,22 @@ while(True):
                 old_words_list = string_to_wordlist(current_wbpg.last_content)
                 new_words_list = string_to_wordlist(current_text)
 
+                msg_to_send=""
                 changes = dp_edit_distance.get_edit_distance_changes(old_words_list, new_words_list)
                 logger.info("Website word difference is: "+str(changes))
                 print("Changes begin ---")
                 for change_tupel in changes:
                     for my_str in change_tupel:
                         print(str(my_str), end=' ')
+                        msg_to_send += (my_str+" ")
                     print()
+                    msg_to_send += "\n"
                 print("--- End of changes. ---")
 
                 # 3.2 notify world about changes
                 # TODO
+                for current_chat_id in current_wbpg.chat_ids:
+                    handler(current_chat_id,msg_to_send)
                 # - iterate over list of chat ids and send message to them
 
                 # 3.3 update vars of wbpg object
