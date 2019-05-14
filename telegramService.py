@@ -51,11 +51,13 @@ def unknown(update, context):
 
 
 def handler(chat_id, message):
-    context.bot.send_message(chat_id=chat_id, text=message)
+    if(message==""): return
+    bot.send_message(chat_id=chat_id, text=message)
 
 
 updater = Updater(token='***REMOVED***', use_context=True)
 dispatcher = updater.dispatcher
+bot = telegram.Bot(token= '***REMOVED***')
 
 #filter_webpage = FilterWebpages()
 
