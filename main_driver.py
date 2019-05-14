@@ -21,29 +21,35 @@ import pickle # to save webpage list
 from loggerConfig import create_logger
 import dp_edit_distance
 
+
 logger = create_logger()
 
-
+firefox = False
 
 parent_directory_binaries = str(Path(__file__).resolve().parents[0])
 
-firefoxProfile = FirefoxProfile()
-firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)
-# Disable CSS
-firefoxProfile.set_preference('permissions.default.stylesheet', 2)
-# Disable images
-firefoxProfile.set_preference('permissions.default.image', 2)
-# Disable JavaScript
-firefoxProfile.set_preference('javascript.enabled', False)
-# Disable Flash
-firefoxProfile.set_preference('dom.ipc.plugins.enabled.libflashplayer.so', 'false')
-print("hi")
-caps = DesiredCapabilities().FIREFOX
-# caps["pageLoadStrategy"] = "normal"  # complete
-caps["pageLoadStrategy"] = "eager"  # interactive
+if firefox:
+    firefoxProfile = FirefoxProfile()
+    firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)
+    # Disable CSS
+    firefoxProfile.set_preference('permissions.default.stylesheet', 2)
+    # Disable images
+    firefoxProfile.set_preference('permissions.default.image', 2)
+    # Disable JavaScript
+    firefoxProfile.set_preference('javascript.enabled', False)
+    # Disable Flash
+    firefoxProfile.set_preference('dom.ipc.plugins.enabled.libflashplayer.so', 'false')
+    print("hi")
+    caps = DesiredCapabilities().FIREFOX
+    # caps["pageLoadStrategy"] = "normal"  # complete
+    caps["pageLoadStrategy"] = "eager"  # interactive
 
-driver = webdriver.Firefox(desired_capabilities=caps, executable_path=parent_directory_binaries + '/drivers/geckodriver_mac', firefox_profile=firefoxProfile)
-driver.set_page_load_timeout(5)
+    driver = webdriver.Firefox(desired_capabilities=caps, executable_path=parent_directory_binaries + '/drivers/geckodriver_mac', firefox_profile=firefoxProfile)
+    driver.set_page_load_timeout(5)
+else:
+    chrome_options = webdriver.ChromeOptions()
+    chrome_options.add_argument("--incognito")
+    driver = webdriver.Chrome(executable_path=parent_directory_binaries + '/drivers/chromedriver_mac', options=chrome_options)
 
 print("hi2")
 
@@ -52,31 +58,35 @@ class Webpage:
     url = ""
 
     # to config aka must get/set via methods
-    chat_ids=set()
+    chat_ids = set()
     t_sleep = 60 # sleeping time in seconds
-    
+
     # used while running
     last_time_checked = datetime.time()
     last_hash = ""
     last_content = ""
 
-    def __init__(self,url,t_sleep):
+    def __init__(self, url, t_sleep):
         self.url = url
         self.t_sleep = t_sleep
         self.last_time_checked = datetime.datetime(1999, 2, 28, 23, 23, 53, 952623) # init with very old value
 
 
-    def add_chat_id(self,new_id):
-        self.chat_ids.add(new_id)
-    
-    def remove_chat_id(self,chat_id_to_remove):
+    def add_chat_id(self, chat_id_to_add):
+        try:
+            self.chat_ids.add(chat_id_to_add)
+            return True
+        except KeyError:
+            return False
+
+    def remove_chat_id(self, chat_id_to_remove):
         try:
             self.chat_ids.remove(chat_id_to_remove)
             return True
         except KeyError:
             return False
-    
-    def set_t_sleep(self,new_t_sleep):
+
+    def set_t_sleep(self, new_t_sleep):
         self.t_sleep = new_t_sleep
 
 
@@ -88,7 +98,7 @@ def string_to_wordlist(str_to_convert):
 
 
 # 1. load from file
-webpages_dict =pickle.load(open("save.p","rb"))
+webpages_dict = pickle.load(open("save.p","rb"))
 
 
 print("Webpages loaded from file:")
@@ -171,15 +181,17 @@ while(True):
                 # 3.3 update vars of wbpg object
                 current_wbpg.last_hash = current_hash
                 current_wbpg.last_content = current_text
-            
+
             # 4. update time last written
             current_wbpg.last_time_checked = datetime.datetime.now()
-    
+
     # save back to file
     pickle.dump(webpages_dict,open("save.p","wb"))
 
     # sleep now
     time.sleep(10)
+
+
 
 
 print("eof")
