@@ -20,7 +20,7 @@ import pickle # to save webpage list
 # our dependecies
 from loggerConfig import create_logger
 import dp_edit_distance
-from telegramService import handler
+import telegramService
 
 
 logger = create_logger()
@@ -76,19 +76,24 @@ class Webpage:
     def add_chat_id(self, chat_id_to_add):
         try:
             self.chat_ids.add(chat_id_to_add)
+            logger.info("Added chat ID "+str(chat_id_to_add) +" to "+str(self.url))
             return True
         except KeyError:
+            logger.info("Failed to add chat ID "+str(chat_id_to_add) +" to "+str(self.url))
             return False
 
     def remove_chat_id(self, chat_id_to_remove):
         try:
             self.chat_ids.remove(chat_id_to_remove)
+            logger.info("Removed chat ID "+str(chat_id_to_remove) +" from "+str(self.url))
             return True
         except KeyError:
+            logger.info("Failed to remove chat ID "+str(chat_id_to_remove) +" from "+str(self.url))
             return False
 
     def set_t_sleep(self, new_t_sleep):
         self.t_sleep = new_t_sleep
+        logger.info("Set new t_sleep for "+str(self.url) +" to "+str(self.t_sleep))
 
 
 def string_to_wordlist(str_to_convert):
@@ -100,6 +105,8 @@ def string_to_wordlist(str_to_convert):
 
 # 1. load from file
 webpages_dict = pickle.load(open("save.p","rb"))
+
+telegramService.handler(***REMOVED***,"Hi")
 
 
 print("Webpages loaded from file:")
@@ -115,7 +122,8 @@ myWebpage.add_chat_id("234")
 webpages_dict["Tassilo Test"] = myWebpage
 '''
 
-
+# update reference in telegramService
+telegramService.set_webpages_dict_reference(webpages_dict)
 
 
 
@@ -181,7 +189,7 @@ while(True):
                 # 3.2 notify world about changes
                 # TODO
                 for current_chat_id in current_wbpg.chat_ids:
-                    handler(current_chat_id,msg_to_send)
+                    telegramService.handler(current_chat_id,msg_to_send)
                 # - iterate over list of chat ids and send message to them
 
                 # 3.3 update vars of wbpg object

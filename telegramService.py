@@ -10,29 +10,36 @@ class FilterWebpages(BaseFilter):
         #return 'Tassilo Test' in message.text
 '''
 
-def start(update, context):
-    import main_driver
+webpages_dict = {}
 
-    list_webpages = list(main_driver.webpages_dict.keys())
+def set_webpages_dict_reference(the_webpages_dict_reference):
+    global webpages_dict
+    webpages_dict = the_webpages_dict_reference
+
+def start(update, context):
+
+    list_webpages = list(webpages_dict.keys())
     context.bot.send_message(chat_id=update.message.chat_id, text=list_webpages)
 
 
 def subscribe(update, context):
-    import main_driver
-
     webpage = ' '.join(context.args)
-    webpage_object = main_driver.webpages_dict[webpage]
-    if webpage_object.add_chat_id(update.message.chat_id):
+    if(not (webpage in webpages_dict)):
+        context.bot.send_message(chat_id=update.message.chat_id, text="Error. Webpage "+str(webpage)+" doesn't exist")
+        return
+
+    webpage_object = webpages_dict[webpage]
+
+    if webpage_object.add_chat_id(chat_id_to_add = update.message.chat_id):
         context.bot.send_message(chat_id=update.message.chat_id, text='You have subscribed to webpage: ' + webpage)
     else:
         context.bot.send_message(chat_id=update.message.chat_id, text='Error. Subscription failed.')
 
 
 def stop(update, context):
-    import main_driver
 
     webpage = ' '.join(context.args)
-    webpage_object = main_driver.webpages_dict[webpage]
+    webpage_object = webpages_dict[webpage]
     if webpage_object.remove_chat_id(update.message.chat_id):
         context.bot.send_message(chat_id=update.message.chat_id, text='You have unsubscribed from webpage: ' + webpage)
     else:
@@ -44,7 +51,7 @@ def unknown(update, context):
 
 
 def handler(chat_id, message):
-    bot.send_message(chat_id=chat_id, text=message)
+    context.bot.send_message(chat_id=chat_id, text=message)
 
 
 updater = Updater(token='***REMOVED***', use_context=True)
