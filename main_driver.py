@@ -136,8 +136,6 @@ def safe_websites_dict():
 # 1. load from file
 webpages_dict = pickle.load(open("save.p","rb"))
 
-myWebpage = Webpage("http://tassilo-schwarz.com/test-page/",15)
-webpages_dict["Tassilo Test"] = myWebpage
 
 print("Webpages loaded from file:")
 for myKey in webpages_dict:
@@ -151,7 +149,6 @@ print("Finished __ webpages loaded from file:")
 '''
 to add
 myWebpage = Webpage("https://google.com",15)
-myWebpage.add_chat_id("234")
 webpages_dict["GoogleMain"] = myWebpage'''
 
 
