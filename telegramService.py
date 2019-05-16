@@ -11,10 +11,16 @@ def set_webpages_dict_reference(the_webpages_dict_reference):
 
 def start(update, context):
     list_webpages = list(webpages_dict.keys())
-    message_list = '\n- '
-    message_list += '\n- '.join(list_webpages)
-    context.bot.send_message(chat_id=update.message.chat_id, text='Welcome. Here is the list of available webpages:', parse_mode='HTML')
-    context.bot.send_message(chat_id=update.message.chat_id, text=message_list, parse_mode='HTML')
+    message_list = "\n- "
+    message_list += "\n- ".join(list_webpages)
+    command_list = ("/start - display this welcome message.\n"
+                    "/subscribe [webpage] - subscribe to notifications about [webpage]\n"
+                    "/unsubscribe [webpage] - unsubscribe from notifications about [webpage]\n"
+                    "/active - show your active subscriptions\n"
+                    "/stop - unsubscribe from notifications about all webpages you are subscribed to")
+    context.bot.send_message(chat_id=update.message.chat_id, text="Welcome.\nHere is the list of available webpages:", parse_mode="HTML")
+    context.bot.send_message(chat_id=update.message.chat_id, text=message_list + "\nPlease pay attention to the correct spelling and capitalization.")
+    context.bot.send_message(chat_id=update.message.chat_id, text=("The available commands are:\n" + command_list))
 
 
 def subscribe(update, context):
@@ -25,15 +31,15 @@ def subscribe(update, context):
             if wp in webpages_dict.keys():
                 webpage_object = webpages_dict[wp]
             else:
-                context.bot.send_message(chat_id=update.message.chat_id, text='Error. Webpage ' + str(wp) + ' does not exist in list.', parse_mode='HTML')
+                context.bot.send_message(chat_id=update.message.chat_id, text="Error. Webpage " + str(wp) + " does not exist in list.", parse_mode="HTML")
                 continue
 
             if webpage_object.add_chat_id(chat_id_to_add=update.message.chat_id):
-                context.bot.send_message(chat_id=update.message.chat_id, text='You have successfully been subscribed to webpage: ' + str(wp), parse_mode='HTML')
+                context.bot.send_message(chat_id=update.message.chat_id, text="You have successfully been subscribed to webpage: " + str(wp), parse_mode="HTML")
             else:
-                context.bot.send_message(chat_id=update.message.chat_id, text='Error. Subscription to webpage ' + str(wp) + ' failed or you are already subscribed.', parse_mode='HTML')
+                context.bot.send_message(chat_id=update.message.chat_id, text="Error. Subscription to webpage " + str(wp) + " failed.\nTry again or check if you are already subscribed with the /active command.", parse_mode="HTML")
     else:
-        context.bot.send_message(chat_id=update.message.chat_id, text='Error. You need to specify which website you want to subscribe to.', parse_mode='HTML')
+        context.bot.send_message(chat_id=update.message.chat_id, text="Error. You need to specify which website you want to subscribe to.", parse_mode="HTML")
 
 
 def unsubscribe(update, context):
@@ -44,15 +50,15 @@ def unsubscribe(update, context):
             if wp in webpages_dict.keys():
                 webpage_object = webpages_dict[wp]
             else:
-                context.bot.send_message(chat_id=update.message.chat_id, text='Error. Webpage ' + str(wp) + ' does not exist in list.', parse_mode='HTML')
+                context.bot.send_message(chat_id=update.message.chat_id, text="Error. Webpage " + str(wp) + " does not exist in list.", parse_mode="HTML")
                 continue
 
             if webpage_object.remove_chat_id(chat_id_to_remove=update.message.chat_id):
-                context.bot.send_message(chat_id=update.message.chat_id, text='You have successfully been unsubscribed from webpage: ' + str(wp), parse_mode='HTML')
+                context.bot.send_message(chat_id=update.message.chat_id, text="You have successfully been unsubscribed from webpage: " + str(wp), parse_mode="HTML")
             else:
-                context.bot.send_message(chat_id=update.message.chat_id, text='Error. Unsubscription from webpage ' + str(wp) + ' failed or you are already unsubscribed.', parse_mode='HTML')
+                context.bot.send_message(chat_id=update.message.chat_id, text="Error. Unsubscription from webpage " + str(wp) + " failed.\nTry again or check if you are already not subscribed with the /active command.", parse_mode="HTML")
     else:
-        context.bot.send_message(chat_id=update.message.chat_id, text='Error. You need to specify which website you want to unsubscribe from.', parse_mode='HTML')
+        context.bot.send_message(chat_id=update.message.chat_id, text="Error. You need to specify which website you want to unsubscribe from.", parse_mode="HTML")
 
 
 def active(update, context):
@@ -62,31 +68,31 @@ def active(update, context):
         if webpage_object.is_chat_id_active(chat_id_to_check=update.message.chat_id):
             webpages.append(wp)
 
+    # TODO: Make prettier like in "start" function
     if webpages:
-        # TODO: Make prettier like in "start" function
-        context.bot.send_message(chat_id=update.message.chat_id, text='You are currently subscribed to the following webpages: ' + str(webpages), parse_mode='HTML')
+        context.bot.send_message(chat_id=update.message.chat_id, text="You are (still) currently subscribed to the following webpages: " + str(webpages), parse_mode="HTML")
     else:
-        context.bot.send_message(chat_id=update.message.chat_id, text='Error. Checking subscriptions failed or you are not subscribed to any webpages.', parse_mode='HTML')
+        context.bot.send_message(chat_id=update.message.chat_id, text="You are (now) not subscribed to any webpages.", parse_mode="HTML")
 
 
 def stop(update, context):
-    webpages = list(webpages_dict.keys())
-    success_message = ''
-    fail_message = 0
-    for wp in webpages:
-        if webpages_dict[wp].remove_chat_id(update.message.chat_id):
-            success_message.join(webpages_dict[wp] + ' ')
-        else:
-            fail_message += 1
+    webpages = list()
+    for wp in list(webpages_dict.keys()):
+        webpage_object = webpages_dict[wp]
+        if webpage_object.remove_chat_id(chat_id_to_remove=update.message.chat_id):
+            webpages.append(wp)
 
-    if success_message:
-        context.bot.send_message(chat_id=update.message.chat_id, text='You have successfully been unsubscribed from webpages: ' + str(success_message), parse_mode='HTML')
-    elif fail_message:
-        context.bot.send_message(chat_id=update.message.chat_id, text='Error. Some unsubscriptions failed or you were not subscribed to any webpages.', parse_mode='HTML')
+    # TODO: Make prettier like in "start" function
+    if webpages:
+        context.bot.send_message(chat_id=update.message.chat_id, text="You have successfully been unsubscribed from the following webpages: " + str(webpages), parse_mode="HTML")
+        active(update, context)
+        context.bot.send_message(chat_id=update.message.chat_id, text="Goodbye.", parse_mode="HTML")
+    else:
+        context.bot.send_message(chat_id=update.message.chat_id, text="You were not subscribed to any webpages.\nGoodbye.", parse_mode="HTML")
 
 
 def unknown(update, context):
-    context.bot.send_message(chat_id=update.message.chat_id, text='Sorry, I did not understand that command.', parse_mode='HTML')
+    context.bot.send_message(chat_id=update.message.chat_id, text="Sorry, I did not understand that command.", parse_mode="HTML")
 
 
 def handler(chat_id, message):
@@ -97,15 +103,15 @@ def handler(chat_id, message):
 
 webpages_dict = {}
 
-updater = Updater(token='***REMOVED***', use_context=True)
+updater = Updater(token="***REMOVED***", use_context=True)
 dispatcher = updater.dispatcher
-bot = telegram.Bot(token='***REMOVED***')
+bot = telegram.Bot(token="***REMOVED***")
 
-dispatcher.add_handler(CommandHandler('start', start))
-dispatcher.add_handler(CommandHandler('subscribe', subscribe))
-dispatcher.add_handler(CommandHandler('unsubscribe', unsubscribe))
-dispatcher.add_handler(CommandHandler('active', active))
-dispatcher.add_handler(CommandHandler('stop', stop))
+dispatcher.add_handler(CommandHandler("start", start))
+dispatcher.add_handler(CommandHandler("subscribe", subscribe))
+dispatcher.add_handler(CommandHandler("unsubscribe", unsubscribe))
+dispatcher.add_handler(CommandHandler("active", active))
+dispatcher.add_handler(CommandHandler("stop", stop))
 # The "unknown" handler needs to be added last:
 dispatcher.add_handler(MessageHandler(Filters.command, unknown))
 

@@ -33,24 +33,24 @@ if firefox:
     firefoxProfile = FirefoxProfile()
     firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)
     # Disable CSS
-    firefoxProfile.set_preference('permissions.default.stylesheet', 2)
+    firefoxProfile.set_preference("permissions.default.stylesheet", 2)
     # Disable images
-    firefoxProfile.set_preference('permissions.default.image', 2)
+    firefoxProfile.set_preference("permissions.default.image", 2)
     # Disable JavaScript
-    firefoxProfile.set_preference('javascript.enabled', False)
+    firefoxProfile.set_preference("javascript.enabled", False)
     # Disable Flash
-    firefoxProfile.set_preference('dom.ipc.plugins.enabled.libflashplayer.so', 'false')
+    firefoxProfile.set_preference("dom.ipc.plugins.enabled.libflashplayer.so", "false")
     print("hi")
     caps = DesiredCapabilities().FIREFOX
     # caps["pageLoadStrategy"] = "normal"  # complete
     caps["pageLoadStrategy"] = "eager"  # interactive
 
-    driver = webdriver.Firefox(desired_capabilities=caps, executable_path=parent_directory_binaries + '/drivers/geckodriver_mac', firefox_profile=firefoxProfile)
+    driver = webdriver.Firefox(desired_capabilities=caps, executable_path=parent_directory_binaries + "/drivers/geckodriver_mac", firefox_profile=firefoxProfile)
     driver.set_page_load_timeout(5)
 else:
     chrome_options = webdriver.ChromeOptions()
     chrome_options.add_argument("--incognito")
-    driver = webdriver.Chrome(executable_path=parent_directory_binaries + '/drivers/chromedriver_mac', options=chrome_options)
+    driver = webdriver.Chrome(executable_path=parent_directory_binaries + "/drivers/chromedriver_mac", options=chrome_options)
 
 
 class Webpage:
@@ -105,7 +105,7 @@ class Webpage:
 
     def add_chat_id(self, chat_id_to_add):
         if chat_id_to_add in self.chat_ids:
-            logger.info("Chat ID " + str(chat_id_to_add) + ' is already subscribed.')
+            logger.info("Chat ID " + str(chat_id_to_add) + " is already subscribed to: " + str(self.url))
             return False
         try:
             self.chat_ids.add(chat_id_to_add)
@@ -114,12 +114,12 @@ class Webpage:
             return True
         except KeyError:
             save_websites_dict()
-            logger.info("Failed to add chat ID " + str(chat_id_to_add) + " to: "+str(self.url))
+            logger.info("Failed to add chat ID " + str(chat_id_to_add) + " to: " + str(self.url))
             return False
 
     def remove_chat_id(self, chat_id_to_remove):
         if chat_id_to_remove not in self.chat_ids:
-            logger.info("Chat ID " + str(chat_id_to_remove) + ' is already unsubscribed.')
+            logger.info("Chat ID " + str(chat_id_to_remove) + " is already unsubscribed from: " + str(self.url))
             return False
         try:
             self.chat_ids.remove(chat_id_to_remove)
@@ -221,7 +221,7 @@ while(True):
                 print("Changes begin ---")
                 for change_tupel in changes:
                     for my_str in change_tupel:
-                        print(str(my_str), end=' ')
+                        print(str(my_str), end=" ")
                         msg_to_send += (my_str + " ")
                     print()
                     msg_to_send += "\n"
