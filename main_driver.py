@@ -54,7 +54,6 @@ else:
 
 
 class Webpage:
-
     def __init__(self, url, t_sleep):
         self.url = url
         self.t_sleep = t_sleep  # sleeping time in seconds
@@ -98,25 +97,37 @@ class Webpage:
     def get_last_time_checked(self):
         return self.last_time_checked
 
+    def is_chat_id_active(self, chat_id_to_check):
+        if chat_id_to_check in self.chat_ids:
+            return True
+        else:
+            return False
+
     def add_chat_id(self, chat_id_to_add):
+        if chat_id_to_add in self.chat_ids:
+            logger.info("Chat ID " + str(chat_id_to_add) + ' is already subscribed.')
+            return False
         try:
             self.chat_ids.add(chat_id_to_add)
-            safe_websites_dict()
+            save_websites_dict()
             logger.info("Added chat ID " + str(chat_id_to_add) + " to: " + str(self.url))
             return True
         except KeyError:
-            safe_websites_dict()
+            save_websites_dict()
             logger.info("Failed to add chat ID " + str(chat_id_to_add) + " to: "+str(self.url))
             return False
 
     def remove_chat_id(self, chat_id_to_remove):
+        if chat_id_to_remove not in self.chat_ids:
+            logger.info("Chat ID " + str(chat_id_to_remove) + ' is already unsubscribed.')
+            return False
         try:
             self.chat_ids.remove(chat_id_to_remove)
-            safe_websites_dict()
+            save_websites_dict()
             logger.info("Removed chat ID " + str(chat_id_to_remove) + " from: " + str(self.url))
             return True
         except KeyError:
-            safe_websites_dict()
+            save_websites_dict()
             logger.info("Failed to remove chat ID " + str(chat_id_to_remove) + " from: " + str(self.url))
             return False
 
@@ -128,7 +139,7 @@ def string_to_wordlist(str_to_convert):
     return my_ret
 
 
-def safe_websites_dict():
+def save_websites_dict():
     # save back to file
     pickle.dump(webpages_dict, open("save.p", "wb"))
 

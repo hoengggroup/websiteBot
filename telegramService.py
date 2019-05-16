@@ -18,44 +18,55 @@ def start(update, context):
 
 
 def subscribe(update, context):
-    webpage = ' '.join(context.args)
-    if webpage in webpages_dict:
-        webpage_object = webpages_dict[webpage]
-    elif webpage:
-        context.bot.send_message(chat_id=update.message.chat_id, text='Error. Webpage ' + str(webpage) + ' does not exist in list.', parse_mode='HTML')
+    webpages = list()
+    if context.args:
+        webpages += list(context.args)
+        for wp in webpages:
+            if wp in webpages_dict.keys():
+                webpage_object = webpages_dict[wp]
+            else:
+                context.bot.send_message(chat_id=update.message.chat_id, text='Error. Webpage ' + str(wp) + ' does not exist in list.', parse_mode='HTML')
+                continue
+
+            if webpage_object.add_chat_id(chat_id_to_add=update.message.chat_id):
+                context.bot.send_message(chat_id=update.message.chat_id, text='You have successfully been subscribed to webpage: ' + str(wp), parse_mode='HTML')
+            else:
+                context.bot.send_message(chat_id=update.message.chat_id, text='Error. Subscription to webpage ' + str(wp) + ' failed or you are already subscribed.', parse_mode='HTML')
     else:
         context.bot.send_message(chat_id=update.message.chat_id, text='Error. You need to specify which website you want to subscribe to.', parse_mode='HTML')
 
-    if webpage_object.add_chat_id(chat_id_to_add=update.message.chat_id):
-        context.bot.send_message(chat_id=update.message.chat_id, text='You have successfully been subscribed to webpage: ' + str(webpage), parse_mode='HTML')
-    else:
-        context.bot.send_message(chat_id=update.message.chat_id, text='Error. Subscription failed.', parse_mode='HTML')
-
 
 def unsubscribe(update, context):
-    webpage = ' '.join(context.args)
-    if webpage in webpages_dict:
-        webpage_object = webpages_dict[webpage]
-    elif webpage:
-        context.bot.send_message(chat_id=update.message.chat_id, text='Error. Webpage ' + str(webpage) + ' does not exist in list.', parse_mode='HTML')
+    webpages = list()
+    if context.args:
+        webpages += list(context.args)
+        for wp in webpages:
+            if wp in webpages_dict.keys():
+                webpage_object = webpages_dict[wp]
+            else:
+                context.bot.send_message(chat_id=update.message.chat_id, text='Error. Webpage ' + str(wp) + ' does not exist in list.', parse_mode='HTML')
+                continue
+
+            if webpage_object.remove_chat_id(chat_id_to_remove=update.message.chat_id):
+                context.bot.send_message(chat_id=update.message.chat_id, text='You have successfully been unsubscribed from webpage: ' + str(wp), parse_mode='HTML')
+            else:
+                context.bot.send_message(chat_id=update.message.chat_id, text='Error. Unsubscription from webpage ' + str(wp) + ' failed or you are already unsubscribed.', parse_mode='HTML')
     else:
         context.bot.send_message(chat_id=update.message.chat_id, text='Error. You need to specify which website you want to unsubscribe from.', parse_mode='HTML')
 
-    if webpage_object.remove_chat_id(update.message.chat_id):
-        context.bot.send_message(chat_id=update.message.chat_id, text='You have successfully been unsubscribed from webpage: ' + str(webpage), parse_mode='HTML')
-    else:
-        context.bot.send_message(chat_id=update.message.chat_id, text='Error. Unsubscription failed or you were not subscribed.', parse_mode='HTML')
-
 
 def active(update, context):
-    # TODO
-    # Pseudocode
-    webpages = webpages_dict.check_for_chat_id(update.message.chat_id)  # str
+    webpages = list()
+    for wp in list(webpages_dict.keys()):
+        webpage_object = webpages_dict[wp]
+        if webpage_object.is_chat_id_active(chat_id_to_check=update.message.chat_id):
+            webpages.append(wp)
 
     if webpages:
+        # TODO: Make prettier like in "start" function
         context.bot.send_message(chat_id=update.message.chat_id, text='You are currently subscribed to the following webpages: ' + str(webpages), parse_mode='HTML')
     else:
-        context.bot.send_message(chat_id=update.message.chat_id, text='Error while checking subscriptions.', parse_mode='HTML')
+        context.bot.send_message(chat_id=update.message.chat_id, text='Error. Checking subscriptions failed or you are not subscribed to any webpages.', parse_mode='HTML')
 
 
 def stop(update, context):
