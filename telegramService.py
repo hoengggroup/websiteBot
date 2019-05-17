@@ -114,7 +114,7 @@ def unknown(update, context):
 def handler(chat_id, message):
     if not(message):
         return
-    bot.send_message(chat_id=chat_id, text=message)
+    bot.send_message(chat_id=chat_id, text=message, parse_mode="HTML")
 
 
 webpages_dict = {}

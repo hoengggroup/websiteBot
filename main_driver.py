@@ -237,17 +237,17 @@ while(True):
                 old_words_list = string_to_wordlist(current_wbpg.get_last_content())
                 new_words_list = string_to_wordlist(current_text)
 
-                msg_to_send = "CHANGES in "+current_wpbg_name+":\n"
+                msg_to_send = "CHANGES in " + current_wpbg_name + ":\n"
                 changes = dp_edit_distance.get_edit_distance_changes(old_words_list, new_words_list)
                 logger.info("Website word difference is: " + str(changes))
                 print("Changes begin ---")
                 for change_tupel in changes:
                     if change_tupel[0] == "swap":
-                        msg_to_send += "SWAP: " + change_tupel[1] + " TO " + change_tupel[2] + "\n"
+                        msg_to_send += "SWAP: <i>" + change_tupel[1] + "</i> TO <b>" + change_tupel[2] + "</b>\n"
                     elif change_tupel[0] == "added":
-                        msg_to_send += "ADD: " + change_tupel[1] + "\n"
+                        msg_to_send += "ADD: <b>" + change_tupel[1] + "</b>\n"
                     elif change_tupel[0] == "deleted":
-                        msg_to_send += "DEL: <s>" + change_tupel[1] + "</s>\n"
+                        msg_to_send += "DEL: <i>" + change_tupel[1] + "</i>\n"
                     else:
                         msg_to_send += "Unknown OP: "
                         for my_str in change_tupel:
