@@ -137,9 +137,9 @@ delimiters = "\n", ". " # delimiters where to split string
 regexPattern = '|'.join(map(re.escape, delimiters)) # auto create regex pattern from delimiter list (above)
 
 def string_to_wordlist(str_to_convert):
-    print("String: "+str_to_convert)
+    # print("String: "+str_to_convert)
     str_split = re.split(regexPattern,str_to_convert)
-    print("splitted: "+str(str_split))
+    # print("splitted: "+str(str_split))
     return str_split
 
 
@@ -234,16 +234,24 @@ while(True):
                 old_words_list = string_to_wordlist(current_wbpg.get_last_content())
                 new_words_list = string_to_wordlist(current_text)
 
-                msg_to_send = ""
+                msg_to_send = "CHANGES in "+current_wpbg_name+":\n"
                 changes = dp_edit_distance.get_edit_distance_changes(old_words_list, new_words_list)
                 logger.info("Website word difference is: " + str(changes))
                 print("Changes begin ---")
                 for change_tupel in changes:
-                    for my_str in change_tupel:
-                        print(str(my_str), end=" ")
-                        msg_to_send += (my_str + " ")
-                    print()
-                    msg_to_send += "\n"
+                    if(change_tupel[0]=="swap"):
+                        msg_to_send+="SWAP: "+change_tupel[1]+" TO "+change_tupel[2]+"\n"
+                    elif(change_tupel[0]=="added"):
+                        msg_to_send+="ADD: "+change_tupel[1]+"\n"
+                    elif(change_tupel[0]=="deleted"):
+                        msg_to_send+="DEL: ~"+change_tupel[1]+"~\n"
+                    else:
+                        msg_to_send+="Unknown OP: "
+                        for my_str in change_tupel:
+                            msg_to_send += (my_str + " ")
+                        msg_to_send += "\n"
+                
+                print(msg_to_send)
                 print("--- End of changes. ---")
 
                 # 3.2 notify world about changes
