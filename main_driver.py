@@ -5,6 +5,7 @@ import selenium
 from selenium import webdriver
 from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
+import re
 
 import hashlib
 
@@ -134,7 +135,7 @@ class Webpage:
 
 def string_to_wordlist(str_to_convert):
     my_ret = []
-    for word in str_to_convert.split():
+    for word in re.split(". |\.|\n",str_to_convert):
         my_ret.append(word)
     return my_ret
 
@@ -142,6 +143,21 @@ def string_to_wordlist(str_to_convert):
 def save_websites_dict():
     # save back to file
     pickle.dump(webpages_dict, open("save.p", "wb"))
+
+def add_webpage(name,url,t_sleep):
+    new_webpage = Webpage(url=url,t_sleep = t_sleep)
+    webpages_dict[name] = new_webpage
+
+def remove_webpage(name,url,t_sleep):
+    if name not in webpages_dict:
+        logger.info("couldn't remove "+name+" as it does not exist")
+        return False
+    try:
+        del webpages_dict[name]
+        return True
+    except Exception as ex:
+        print("Couldn't remove webpage from webpage_dict. Error: '%s'" % ex.message)
+        return False
 
 
 # 1. load from file
