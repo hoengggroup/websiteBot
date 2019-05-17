@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-import telegram
+from telegram import Bot
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 
 
@@ -10,17 +10,20 @@ def set_webpages_dict_reference(the_webpages_dict_reference):
 
 
 def start(update, context):
+    context.bot.send_message(chat_id=update.message.chat_id, text="Welcome to this website-tracker bot.\nYou can display the available webpages with /webpages and the available commands with /commands.", parse_mode="HTML")
+
+
+def webpages(update, context):
     list_webpages = list(webpages_dict.keys())
     message_list = "\n- "
     message_list += "\n- ".join(list_webpages)
-
-    context.bot.send_message(chat_id=update.message.chat_id, text="Welcome.", parse_mode="HTML")
+    
     context.bot.send_message(chat_id=update.message.chat_id, text="The available webpages are:" + message_list + "\n\nPlease pay attention to the correct spelling and capitalization.", parse_mode="HTML")
-    commands(update, context)
 
 
 def commands(update, context):
-    command_list = ("/start\n- display welcome message and lists of available websites and commands\n"
+    command_list = ("/start\n- display welcome message and lists of available webpages and commands\n"
+                    "/webpages\n- display list of available webpages\n"
                     "/commands\n- display this list of available commands\n"
                     "/subscribe {webpage} [webpages]\n- subscribe to notifications about one or more webpages\n"
                     "/unsubscribe {webpage} [webpages]\n- unsubscribe from notifications about one or more webpages\n"
@@ -46,7 +49,7 @@ def subscribe(update, context):
             else:
                 context.bot.send_message(chat_id=update.message.chat_id, text="Error. Subscription to webpage " + str(wp) + " failed.\nTry again or check if you are already subscribed with the /active command.", parse_mode="HTML")
     else:
-        context.bot.send_message(chat_id=update.message.chat_id, text="Error. You need to specify which website you want to subscribe to.", parse_mode="HTML")
+        context.bot.send_message(chat_id=update.message.chat_id, text="Error. You need to specify which webpage you want to subscribe to.", parse_mode="HTML")
 
 
 def unsubscribe(update, context):
@@ -65,7 +68,7 @@ def unsubscribe(update, context):
             else:
                 context.bot.send_message(chat_id=update.message.chat_id, text="Error. Unsubscription from webpage " + str(wp) + " failed.\nTry again or check if you are already not subscribed with the /active command.", parse_mode="HTML")
     else:
-        context.bot.send_message(chat_id=update.message.chat_id, text="Error. You need to specify which website you want to unsubscribe from.", parse_mode="HTML")
+        context.bot.send_message(chat_id=update.message.chat_id, text="Error. You need to specify which webpage you want to unsubscribe from.", parse_mode="HTML")
 
 
 def active(update, context):
@@ -118,9 +121,10 @@ webpages_dict = {}
 
 updater = Updater(token="***REMOVED***", use_context=True)
 dispatcher = updater.dispatcher
-bot = telegram.Bot(token="***REMOVED***")
+bot = Bot(token="***REMOVED***")
 
 dispatcher.add_handler(CommandHandler("start", start))
+dispatcher.add_handler(CommandHandler("webpages", webpages))
 dispatcher.add_handler(CommandHandler("commands", commands))
 dispatcher.add_handler(CommandHandler("subscribe", subscribe))
 dispatcher.add_handler(CommandHandler("unsubscribe", unsubscribe))
