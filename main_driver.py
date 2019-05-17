@@ -133,13 +133,14 @@ class Webpage:
             return False
 
 
-delimiters = "\n", ". " # delimiters where to split string
-regexPattern = '|'.join(map(re.escape, delimiters)) # auto create regex pattern from delimiter list (above)
+delimiters = "\n", ". "  # delimiters where to split string
+regexPattern = '|'.join(map(re.escape, delimiters))  # auto create regex pattern from delimiter list (above)
+
 
 def string_to_wordlist(str_to_convert):
-    # print("String: "+str_to_convert)
-    str_split = re.split(regexPattern,str_to_convert)
-    # print("splitted: "+str(str_split))
+    # print("String: " + str_to_convert)
+    str_split = re.split(regexPattern, str_to_convert)
+    # print("splitted: " + str(str_split))
     return str_split
 
 
@@ -147,13 +148,15 @@ def save_websites_dict():
     # save back to file
     pickle.dump(webpages_dict, open("save.p", "wb"))
 
-def add_webpage(name,url,t_sleep):
-    new_webpage = Webpage(url=url,t_sleep = t_sleep)
+
+def add_webpage(name, url, t_sleep):
+    new_webpage = Webpage(url=url, t_sleep=t_sleep)
     webpages_dict[name] = new_webpage
 
-def remove_webpage(name,url,t_sleep):
+
+def remove_webpage(name, url, t_sleep):
     if name not in webpages_dict:
-        logger.info("couldn't remove "+name+" as it does not exist")
+        logger.info("Couldn't remove " + name + ", as it does not exist.")
         return False
     try:
         del webpages_dict[name]
@@ -239,18 +242,18 @@ while(True):
                 logger.info("Website word difference is: " + str(changes))
                 print("Changes begin ---")
                 for change_tupel in changes:
-                    if(change_tupel[0]=="swap"):
-                        msg_to_send+="SWAP: "+change_tupel[1]+" TO "+change_tupel[2]+"\n"
-                    elif(change_tupel[0]=="added"):
-                        msg_to_send+="ADD: "+change_tupel[1]+"\n"
-                    elif(change_tupel[0]=="deleted"):
-                        msg_to_send+="DEL: ~"+change_tupel[1]+"~\n"
+                    if change_tupel[0] == "swap":
+                        msg_to_send += "SWAP: " + change_tupel[1] + " TO " + change_tupel[2] + "\n"
+                    elif change_tupel[0] == "added":
+                        msg_to_send += "ADD: " + change_tupel[1] + "\n"
+                    elif change_tupel[0] == "deleted":
+                        msg_to_send += "DEL: <s>" + change_tupel[1] + "</s>\n"
                     else:
-                        msg_to_send+="Unknown OP: "
+                        msg_to_send += "Unknown OP: "
                         for my_str in change_tupel:
                             msg_to_send += (my_str + " ")
                         msg_to_send += "\n"
-                
+
                 print(msg_to_send)
                 print("--- End of changes. ---")
 
