@@ -222,7 +222,7 @@ while(True):
                 continue
 
             # 2. hash website text
-            current_text = driver.find_element_by_tag_name("body").text
+            current_text = driver.find_element_by_tag_name("body").text.lower()
             current_hash = (hashlib.md5(current_text.encode())).hexdigest()
 
             # 3. if different
