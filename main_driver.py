@@ -133,11 +133,14 @@ class Webpage:
             return False
 
 
+delimiters = "\n", ". " # delimiters where to split string
+regexPattern = '|'.join(map(re.escape, delimiters)) # auto create regex pattern from delimiter list (above)
+
 def string_to_wordlist(str_to_convert):
-    my_ret = []
-    for word in re.split(". |\.|\n",str_to_convert):
-        my_ret.append(word)
-    return my_ret
+    print("String: "+str_to_convert)
+    str_split = re.split(regexPattern,str_to_convert)
+    print("splitted: "+str(str_split))
+    return str_split
 
 
 def save_websites_dict():
