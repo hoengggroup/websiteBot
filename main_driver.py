@@ -150,19 +150,27 @@ def save_websites_dict():
 
 
 def add_webpage(name, url, t_sleep):
-    new_webpage = Webpage(url=url, t_sleep=t_sleep)
-    webpages_dict[name] = new_webpage
+    if name in webpages_dict:
+        logger.info("Couldn't add " + name + ", as a webpage with this name already exists.")
+        return False
+    try:
+        new_webpage = Webpage(url=url, t_sleep=t_sleep)
+        webpages_dict[name] = new_webpage
+        return True
+    except Exception as ex:
+        print("Couldn't add webpage to webpages_dict. Error: '%s'" % ex.message)
+        return False
 
 
-def remove_webpage(name, url, t_sleep):
+def remove_webpage(name):
     if name not in webpages_dict:
-        logger.info("Couldn't remove " + name + ", as it does not exist.")
+        logger.info("Couldn't remove " + name + ", as this webpage does not exist.")
         return False
     try:
         del webpages_dict[name]
         return True
     except Exception as ex:
-        print("Couldn't remove webpage from webpage_dict. Error: '%s'" % ex.message)
+        print("Couldn't remove webpage from webpages_dict. Error: '%s'" % ex.message)
         return False
 
 
