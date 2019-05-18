@@ -1,7 +1,7 @@
 # websiteBot
 
 ## Introduction
-This is a bot written in Python which monitors a given webpage for changes using the Selenium library and a home-made from-scratch implementation of a diff-like difference tracker.
+This is a bot written in Python which monitors a given webpage for changes using the Selenium library and a home-made from-scratch implementation of a ```diff```-like difference tracker.
 Upon detecting changes, it sends a message via the Telegram bot ```@websiteBot_bot``` to any people who subscribed to the pertinent webpages.
 
 ## Use / Installation
