@@ -9,6 +9,16 @@ def set_webpages_dict_reference(the_webpages_dict_reference):
     webpages_dict = the_webpages_dict_reference
 
 
+def set_add_webpage_reference(the_add_webpage_reference):
+    global add_webpage_function
+    add_webpage_function = the_add_webpage_reference
+
+
+def set_remove_webpage_reference(the_remove_webpage_reference):
+    global remove_webpage_function
+    remove_webpage_function = the_remove_webpage_reference
+
+
 def start(update, context):
     context.bot.send_message(chat_id=update.message.chat_id, text="Welcome to this website-tracker bot.\nYou can display the available webpages with /webpages and the available commands with /commands.", parse_mode="HTML")
 
@@ -103,6 +113,55 @@ def stop(update, context):
         context.bot.send_message(chat_id=update.message.chat_id, text="You were not subscribed to any webpages.\nGoodbye.", parse_mode="HTML")
 
 
+def whoami(update, context):
+    if update.message.chat_id in admin_chat_ids:
+        context.bot.send_message(chat_id=update.message.chat_id, text="Root", parse_mode="HTML")
+    else:
+        context.bot.send_message(chat_id=update.message.chat_id, text="User", parse_mode="HTML")
+
+
+def admincommands(update, context):
+    if update.message.chat_id in admin_chat_ids:
+        command_list = ("/whoami\n- check admin status (not an inherently privileged command, anyone can check their status)\n"
+                        "/admincommands\n- display this list of available admin-only commands\n"
+                        "/addwebpage {name} {url} {t_sleep}\n- add a webpage to the list of available webpages\n"
+                        "/removewebpage {name}\n- remove a webpage from the list of available webpages\n")
+
+        context.bot.send_message(chat_id=update.message.chat_id, text="The available admin-only commands are:\n" + command_list, parse_mode="HTML")
+    else:
+        context.bot.send_message(chat_id=update.message.chat_id, text="This command is only available to admins. Sorry.", parse_mode="HTML")
+
+
+def addwebpage(update, context):
+    if update.message.chat_id in admin_chat_ids:
+        if len(context.args) == 3:
+            name = str(context.args[0])
+            url = str(context.args[1])
+            t_sleep = int(context.args[2])
+            if add_webpage_function(name=name, url=url, t_sleep=t_sleep):
+                context.bot.send_message(chat_id=update.message.chat_id, text="The webpage " + name + " has successfully been added to the list.", parse_mode="HTML")
+            else:
+                context.bot.send_message(chat_id=update.message.chat_id, text="Error. Addition of webpage " + name + " failed.\nTry again or check if a webpage with the same name is already on the list with the /webpages command.", parse_mode="HTML")
+        else:
+            context.bot.send_message(chat_id=update.message.chat_id, text="Error. You did not provide the correct arguments for this command (format: \"/addwebpage name url t_sleep\").", parse_mode="HTML")
+    else:
+        context.bot.send_message(chat_id=update.message.chat_id, text="This command is only available to admins. Sorry.", parse_mode="HTML")
+
+
+def removewebpage(update, context):
+    if update.message.chat_id in admin_chat_ids:
+        if len(context.args) == 1:
+            name = str(context.args[0])
+            if remove_webpage_function(name=name):
+                context.bot.send_message(chat_id=update.message.chat_id, text="The webpage " + name + " has successfully been removed from the list.", parse_mode="HTML")
+            else:
+                context.bot.send_message(chat_id=update.message.chat_id, text="Error. Removal of webpage " + name + " failed.\nTry again or check if this webpage (with this exact spelling) even exists on the list with the /webpages command.", parse_mode="HTML")
+        else:
+            context.bot.send_message(chat_id=update.message.chat_id, text="Error. You did not provide the correct arguments for this command (format: \"/removewebpage name\").", parse_mode="HTML")
+    else:
+        context.bot.send_message(chat_id=update.message.chat_id, text="This command is only available to admins. Sorry.", parse_mode="HTML")
+
+
 def text(update, context):
     context.bot.send_message(chat_id=update.message.chat_id, text="Sorry, I only understand commands. Check if you entered a leading slash or get a list of the available commands with /commands.", parse_mode="HTML")
 
@@ -123,6 +182,9 @@ updater = Updater(token="***REMOVED***", use_context=True)
 dispatcher = updater.dispatcher
 bot = Bot(token="***REMOVED***")
 
+admin_chat_ids = {***REMOVED***}
+
+# --- Generally accessible commands:
 dispatcher.add_handler(CommandHandler("start", start))
 dispatcher.add_handler(CommandHandler("webpages", webpages))
 dispatcher.add_handler(CommandHandler("commands", commands))
@@ -130,8 +192,15 @@ dispatcher.add_handler(CommandHandler("subscribe", subscribe))
 dispatcher.add_handler(CommandHandler("unsubscribe", unsubscribe))
 dispatcher.add_handler(CommandHandler("active", active))
 dispatcher.add_handler(CommandHandler("stop", stop))
+# --- Privileged admin-only commands:
+# "whoami" is not inherently privileged (anyone can check their status) but we'll not shout it from the rooftops regardless
+dispatcher.add_handler(CommandHandler("whoami", whoami))
+dispatcher.add_handler(CommandHandler("admincommands", admincommands))
+dispatcher.add_handler(CommandHandler("addwebpage", addwebpage))
+dispatcher.add_handler(CommandHandler("removewebpage", removewebpage))
+# --- Catch-all commands for unknown inputs:
 dispatcher.add_handler(MessageHandler(Filters.text, text))
-# The "unknown" handler needs to be added last because it would override any handlers added afterwards:
+# The "unknown" handler needs to be added last because it would override any handlers added afterwards
 dispatcher.add_handler(MessageHandler(Filters.command, unknown))
 
 updater.start_polling()

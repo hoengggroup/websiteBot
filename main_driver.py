@@ -115,7 +115,7 @@ class Webpage:
             return True
         except KeyError:
             save_websites_dict()
-            logger.info("Failed to add chat ID " + str(chat_id_to_add) + " to: " + str(self.url))
+            logger.error("Failed to add chat ID " + str(chat_id_to_add) + " to: " + str(self.url))
             return False
 
     def remove_chat_id(self, chat_id_to_remove):
@@ -129,7 +129,7 @@ class Webpage:
             return True
         except KeyError:
             save_websites_dict()
-            logger.info("Failed to remove chat ID " + str(chat_id_to_remove) + " from: " + str(self.url))
+            logger.error("Failed to remove chat ID " + str(chat_id_to_remove) + " from: " + str(self.url))
             return False
 
 
@@ -151,26 +151,28 @@ def save_websites_dict():
 
 def add_webpage(name, url, t_sleep):
     if name in webpages_dict:
-        logger.info("Couldn't add " + name + ", as a webpage with this name already exists.")
+        logger.info("Couldn't add webpage " + name + ", as a webpage with this name already exists.")
         return False
     try:
         new_webpage = Webpage(url=url, t_sleep=t_sleep)
         webpages_dict[name] = new_webpage
+        logger.info("Successfully added webpage: " + name + " with url " + str(url) + " and timeout " + str(t_sleep))
         return True
     except Exception as ex:
-        print("Couldn't add webpage to webpages_dict. Error: '%s'" % ex.message)
+        logger.error("Couldn't add webpage to webpages_dict. Error: '%s'" % ex.message)
         return False
 
 
 def remove_webpage(name):
     if name not in webpages_dict:
-        logger.info("Couldn't remove " + name + ", as this webpage does not exist.")
+        logger.info("Couldn't remove webpage " + name + ", as this webpage does not exist.")
         return False
     try:
         del webpages_dict[name]
+        logger.info("Successfully removed webpage: " + name)
         return True
     except Exception as ex:
-        print("Couldn't remove webpage from webpages_dict. Error: '%s'" % ex.message)
+        logger.error("Couldn't remove webpage from webpages_dict. Error: '%s'" % ex.message)
         return False
 
 
@@ -193,14 +195,17 @@ webpages_dict["GoogleMain"] = myWebpage
 '''
 
 
-# update reference in telegramService
+# make objects and functions available / update references in telegramService
 telegramService.set_webpages_dict_reference(webpages_dict)
+telegramService.set_add_webpage_reference(add_webpage)
+telegramService.set_remove_webpage_reference(remove_webpage)
 
 
 while(True):
-    for current_wpbg_name in webpages_dict:
+    webpages_dict_loop = webpages_dict  # so we don't mutate the list (add/remove webpage) while the loop runs
+    for current_wpbg_name in webpages_dict_loop:
 
-        current_wbpg = webpages_dict[current_wpbg_name]
+        current_wbpg = webpages_dict_loop[current_wpbg_name]
 
         current_time = datetime.datetime.now()
         elapsed_time = current_time - current_wbpg.get_last_time_checked()
@@ -279,7 +284,7 @@ while(True):
             current_wbpg.set_last_time_checked(datetime.datetime.now())
 
     # save back to file
-    pickle.dump(webpages_dict, open("save.p", "wb"))
+    pickle.dump(webpages_dict_loop, open("save.p", "wb"))
 
     # sleep now
     time.sleep(10)
