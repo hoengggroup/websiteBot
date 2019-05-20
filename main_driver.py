@@ -3,6 +3,7 @@
 
 import selenium
 from selenium import webdriver
+from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 import re
@@ -12,6 +13,7 @@ import hashlib
 import pickle  # to save webpage list
 
 import sys
+import platform
 import time
 import datetime
 from datetime import date
@@ -25,43 +27,32 @@ import telegramService
 
 
 logger = create_logger()
-
-firefox = True 
-on_RPI = True # always  True for commits, as it gets directly cloned to RPI
-
 parent_directory_binaries = str(Path(__file__).resolve().parents[0])
 
-if firefox or on_RPI:
-    firefoxProfile = FirefoxProfile()
-    firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)
-    # Disable CSS
-    firefoxProfile.set_preference("permissions.default.stylesheet", 2)
-    # Disable images
-    firefoxProfile.set_preference("permissions.default.image", 2)
-    # Disable JavaScript
-    firefoxProfile.set_preference("javascript.enabled", False)
-    # Disable Flash
-    firefoxProfile.set_preference("dom.ipc.plugins.enabled.libflashplayer.so", "false")
-    print("hi")
-    caps = DesiredCapabilities().FIREFOX
-    # caps["pageLoadStrategy"] = "normal"  # complete
-    caps["pageLoadStrategy"] = "eager"  # interactive
-    if on_RPI:
-        driver = webdriver.Firefox(firefox_profile=firefoxProfile)
-    else:
-        driver = webdriver.Firefox(desired_capabilities=caps, executable_path=parent_directory_binaries + "/drivers/geckodriver_mac", firefox_profile=firefoxProfile)
-    driver.set_page_load_timeout(5)
+firefoxOptions = Options()
+firefoxOptions.headless = True
+firefoxProfile = FirefoxProfile()
+firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)  # Enable incognito
+firefoxProfile.set_preference("network.cookie.cookieBehavior", 2)  # Disable Cookies
+firefoxProfile.set_preference("permissions.default.stylesheet", 2)  # Disable CSS
+firefoxProfile.set_preference("permissions.default.image", 2)  # Disable images
+firefoxProfile.set_preference("javascript.enabled", False)  # Disable JavaScript
+firefoxProfile.set_preference("dom.ipc.plugins.enabled.libflashplayer.so", False)  # Disable Flash
+caps = DesiredCapabilities().FIREFOX
+# caps["pageLoadStrategy"] = "normal"  # complete
+caps["pageLoadStrategy"] = "eager"  # interactive
+if platform.system() == "Linux":
+    driver = webdriver.Firefox(options=firefoxOptions, desired_capabilities=caps, firefox_profile=firefoxProfile)
 else:
-    chrome_options = webdriver.ChromeOptions()
-    chrome_options.add_argument("--incognito")
-    driver = webdriver.Chrome(executable_path=parent_directory_binaries + "/drivers/chromedriver_mac", options=chrome_options)
+    driver = webdriver.Firefox(options=firefoxOptions, desired_capabilities=caps, firefox_profile=firefoxProfile, executable_path=parent_directory_binaries + "/drivers/geckodriver_" + str(platform.system()))
+driver.set_page_load_timeout(5)
 
 
 class Webpage:
     def __init__(self, url, t_sleep):
         self.url = url
         self.t_sleep = t_sleep  # sleeping time in seconds
-        self.last_time_checked = datetime.datetime.min  # (1999, 2, 28, 23, 23, 53, 952623)  # init with very old value
+        self.last_time_checked = datetime.datetime.min  # init with minimal datetime value (year 1 AD)
 
         # to config aka must get/set via methods
         self.chat_ids = set()
