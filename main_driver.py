@@ -26,7 +26,7 @@ import telegramService
 
 logger = create_logger()
 
-firefox = False
+firefox = True # always  True for commits, as it gets directly cloned to RPI
 
 parent_directory_binaries = str(Path(__file__).resolve().parents[0])
 
