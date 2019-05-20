@@ -1,0 +1,28 @@
+Message flow:
+
+User to bot:	"/start"
+Bot to user:	"Welcome. Send name and reason."
+User to bot:	"/request <personal message and name>"
+Bot to admins:	"<ChatID> wants to be approved"
+Admins to bot:	"/approveuser <ChatID>" or "/denyuser <ChatID>"
+--- When denied:
+Bot to user:	"Sorry. Goodbye."
+--- When approved:
+Bot to user:	"List of groups"
+User to bot:	"/requestgroup {group (one single group)}"
+Bot to admins:	"<ChatID wants to join {group}>"
+Admins to bot:	"/addtogroup <ChatID>"
+
+--- Then:
+Weiter wie bisher: print website list nur innerhalb gruppe , subscribe nur innerhalb gruppe, /requestgroup für andere gruppen auch noch möglich (erneute message an admins)
+
+
+
+Methods:
+add_user_to_group(chatID, group):	returns True/False on success/error
+remove_user_from_group(chatID, group):	returns True/False on success/error
+get_groups_of_user(chatID):		returns list of groups user is in (user sends /activegroups command)
+list_all_groups():			returns list of all available groups
+
+add_groups(group_name) (only for admins)
+assign_group_to_website(group, website) (only for admins)
