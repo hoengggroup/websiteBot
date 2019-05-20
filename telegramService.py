@@ -1,5 +1,7 @@
 # -*- coding: utf-8 -*-
 
+import platform
+
 from telegram import Bot
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 
@@ -178,11 +180,18 @@ def handler(chat_id, message):
 
 webpages_dict = {}
 
-updater = Updater(token="***REMOVED***", use_context=True)
-dispatcher = updater.dispatcher
-bot = Bot(token="***REMOVED***")
+if platform.system() == "Linux":
+    # @websiteBot_bot
+    updater = Updater(token="***REMOVED***", use_context=True)
+    dispatcher = updater.dispatcher
+    bot = Bot(token="***REMOVED***")
+else:
+    # @websiteBotShortTests_bot
+    updater = Updater(token="***REMOVED***", use_context=True)
+    dispatcher = updater.dispatcher
+    bot = Bot(token="***REMOVED***")
 
-admin_chat_ids = {***REMOVED***,***REMOVED***}
+admin_chat_ids = {***REMOVED***, ***REMOVED***}
 
 # --- Generally accessible commands:
 dispatcher.add_handler(CommandHandler("start", start))
