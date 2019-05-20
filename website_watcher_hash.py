@@ -25,7 +25,6 @@ firefoxProfile.set_preference('javascript.enabled', False)
 # Disable Flash
 firefoxProfile.set_preference('dom.ipc.plugins.enabled.libflashplayer.so', False)
 firefoxProfile.set_preference("network.cookie.cookieBehavior", 2)
-firefoxProfile.set_preference("extensions.firebug.onByDefault", True)
 from selenium.webdriver.firefox.options import Options
 
 options = Options()
