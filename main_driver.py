@@ -26,11 +26,12 @@ import telegramService
 
 logger = create_logger()
 
-firefox = True # always  True for commits, as it gets directly cloned to RPI
+firefox = True 
+on_RPI = True # always  True for commits, as it gets directly cloned to RPI
 
 parent_directory_binaries = str(Path(__file__).resolve().parents[0])
 
-if firefox:
+if firefox or on_RPI:
     firefoxProfile = FirefoxProfile()
     firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)
     # Disable CSS
@@ -45,8 +46,10 @@ if firefox:
     caps = DesiredCapabilities().FIREFOX
     # caps["pageLoadStrategy"] = "normal"  # complete
     caps["pageLoadStrategy"] = "eager"  # interactive
-
-    driver = webdriver.Firefox(desired_capabilities=caps, executable_path=parent_directory_binaries + "/drivers/geckodriver_mac", firefox_profile=firefoxProfile)
+    if on_RPI:
+        driver = webdriver.Firefox(firefox_profile=firefoxProfile)
+    else:
+        driver = webdriver.Firefox(desired_capabilities=caps, executable_path=parent_directory_binaries + "/drivers/geckodriver_mac", firefox_profile=firefoxProfile)
     driver.set_page_load_timeout(5)
 else:
     chrome_options = webdriver.ChromeOptions()
