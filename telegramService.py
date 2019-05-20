@@ -182,7 +182,7 @@ updater = Updater(token="***REMOVED***", use_context=True)
 dispatcher = updater.dispatcher
 bot = Bot(token="***REMOVED***")
 
-admin_chat_ids = {***REMOVED***}
+admin_chat_ids = {***REMOVED***,***REMOVED***}
 
 # --- Generally accessible commands:
 dispatcher.add_handler(CommandHandler("start", start))
