@@ -6,6 +6,8 @@ from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 from pathlib import Path
 import dp_edit_distance
 
+import time
+
 # import sys
 # import difflib
 
@@ -21,13 +23,20 @@ firefoxProfile.set_preference('permissions.default.image', 2)
 # Disable JavaScript
 firefoxProfile.set_preference('javascript.enabled', False)
 # Disable Flash
-firefoxProfile.set_preference('dom.ipc.plugins.enabled.libflashplayer.so', 'false')
+firefoxProfile.set_preference('dom.ipc.plugins.enabled.libflashplayer.so', False)
+firefoxProfile.set_preference("network.cookie.cookieBehavior", 2)
+firefoxProfile.set_preference("extensions.firebug.onByDefault", True)
+from selenium.webdriver.firefox.options import Options
+
+options = Options()
+options.headless = True
+
 
 caps = DesiredCapabilities().FIREFOX
 # caps["pageLoadStrategy"] = "normal"  # complete
 caps["pageLoadStrategy"] = "eager"  # interactive
 
-driver = webdriver.Firefox(desired_capabilities=caps, executable_path=parent_directory_binaries + '/drivers/geckodriver_mac', firefox_profile=firefoxProfile)
+driver = webdriver.Firefox(options=options, desired_capabilities=caps, executable_path=parent_directory_binaries + '/drivers/geckodriver_mac', firefox_profile=firefoxProfile)
 driver.set_page_load_timeout(10)
 
 text_old = ""
@@ -62,3 +71,5 @@ while(True):
 
         hash_old = hash_current
         text_old = text_current
+        
+    time.sleep(10)
