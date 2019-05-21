@@ -50,7 +50,7 @@ if platform.system() == "Linux":
     driver = webdriver.Firefox(options=firefoxOptions, desired_capabilities=caps, firefox_profile=firefoxProfile)
 else:
     driver = webdriver.Firefox(options=firefoxOptions, desired_capabilities=caps, firefox_profile=firefoxProfile, executable_path=parent_directory_binaries + "/drivers/geckodriver_" + str(platform.system()))
-driver.set_page_load_timeout(5)
+driver.set_page_load_timeout(35)
 
 
 class Webpage:
