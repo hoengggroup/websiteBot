@@ -25,7 +25,7 @@ from loggerConfig import create_logger
 import dp_edit_distance
 import telegramService
 
-version = "1.0"
+version = "0.1"
 
 logger = create_logger()
 parent_directory_binaries = str(Path(__file__).resolve().parents[0])
@@ -149,7 +149,6 @@ def save_websites_dict():
 
 
 def add_webpage(name, url, t_sleep):
-    print("func called")
     if name in webpages_dict:
         logger.info("Couldn't add webpage " + name + ", as a webpage with this name already exists.")
         return False
