@@ -135,14 +135,23 @@ def admincommands(update, context):
 
 
 def addwebpage(update, context):
+    print("hi")
     if update.message.chat_id in admin_chat_ids:
+        print("2")
         if len(context.args) == 3:
+            print("3")
             name = str(context.args[0])
+            print("4")
             url = str(context.args[1])
-            t_sleep = int(context.args[2])
+            print("5")
+            print("args:_"+context.args[2]+"_ebd")
+            t_sleep =  int(context.args[2])
+            print("call func")
             if add_webpage_function(name=name, url=url, t_sleep=t_sleep):
+                print("ret pos")
                 context.bot.send_message(chat_id=update.message.chat_id, text="The webpage " + name + " has successfully been added to the list.", parse_mode="HTML")
             else:
+                print("ret neg")
                 context.bot.send_message(chat_id=update.message.chat_id, text="Error. Addition of webpage " + name + " failed.\nTry again or check if a webpage with the same name is already on the list with the /webpages command.", parse_mode="HTML")
         else:
             context.bot.send_message(chat_id=update.message.chat_id, text="Error. You did not provide the correct arguments for this command (format: \"/addwebpage name url t_sleep\").", parse_mode="HTML")
@@ -176,6 +185,10 @@ def handler(chat_id, message):
     if not(message):
         return
     bot.send_message(chat_id=chat_id, text=message, parse_mode="HTML")
+
+def send_debug(message):
+    for adm_chat_id in admin_chat_ids:
+        handler(chat_id=adm_chat_id,message= message)
 
 
 webpages_dict = {}

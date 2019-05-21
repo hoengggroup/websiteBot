@@ -25,6 +25,7 @@ from loggerConfig import create_logger
 import dp_edit_distance
 import telegramService
 
+version = "1.0"
 
 logger = create_logger()
 parent_directory_binaries = str(Path(__file__).resolve().parents[0])
@@ -144,6 +145,7 @@ def save_websites_dict():
 
 
 def add_webpage(name, url, t_sleep):
+    print("func called")
     if name in webpages_dict:
         logger.info("Couldn't add webpage " + name + ", as a webpage with this name already exists.")
         return False
@@ -193,6 +195,11 @@ webpages_dict["GoogleMain"] = myWebpage
 telegramService.set_webpages_dict_reference(webpages_dict)
 telegramService.set_add_webpage_reference(add_webpage)
 telegramService.set_remove_webpage_reference(remove_webpage)
+
+
+# send admin msg
+telegramService.send_debug("Starting up. Version: "+version+"\nPlatform: "+str(platform.system()))
+
 
 
 while(True):
