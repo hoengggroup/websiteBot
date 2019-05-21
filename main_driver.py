@@ -43,6 +43,10 @@ caps = DesiredCapabilities().FIREFOX
 # caps["pageLoadStrategy"] = "normal"  # complete
 caps["pageLoadStrategy"] = "eager"  # interactive
 if platform.system() == "Linux":
+    from pyvirtualdisplay import Display
+    from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
+    display = Display(visible=0, size=(1024, 768))
+    display.start()
     driver = webdriver.Firefox(options=firefoxOptions, desired_capabilities=caps, firefox_profile=firefoxProfile)
 else:
     driver = webdriver.Firefox(options=firefoxOptions, desired_capabilities=caps, firefox_profile=firefoxProfile, executable_path=parent_directory_binaries + "/drivers/geckodriver_" + str(platform.system()))
