@@ -302,6 +302,8 @@ try:
         time.sleep(10)
 except:
     logger.error("An UNKNOWN exception has occured in main.")
+    logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+                        
     # send admin msg
     telegramService.send_debug("An UNKNOWN exception has occured in main." )
 
