@@ -136,9 +136,8 @@ delimiters = "\n", ". "  # delimiters where to split string
 regexPattern = '|'.join(map(re.escape, delimiters))  # auto create regex pattern from delimiter list (above)
 
 
-from unidecode import unidecode
 def remove_non_ascii(text):
-    return unidecode(unicode(text, encoding = "utf-8"))
+    return unidecode(str(text)) 
 
 def string_to_wordlist(str_to_convert):
     # print("String: " + str_to_convert)
@@ -300,7 +299,7 @@ try:
 
         # sleep now
         time.sleep(10)
-except:
+except Exception as ex:
     logger.error("An UNKNOWN exception has occured in main.")
     logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
                         
