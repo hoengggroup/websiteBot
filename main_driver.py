@@ -25,7 +25,7 @@ from loggerConfig import create_logger
 import dp_edit_distance
 import telegramService
 
-version = "0.2"
+version = "0.3"
 
 logger = create_logger()
 parent_directory_binaries = str(Path(__file__).resolve().parents[0])
@@ -181,7 +181,7 @@ webpages_dict = pickle.load(open("save.p", "rb"))
 print("Webpages loaded from file:")
 for myKey in webpages_dict:
     myw = webpages_dict[myKey]
-    print(myKey + ": " + myw.get_url())
+    print("Name:"+myKey + ". URL: " + myw.get_url())
     print(type(next(iter(myw.get_chat_ids()), None)))
     print("Chat IDs: " + str(myw.get_chat_ids()))
 print("Finished __ webpages loaded from file:")
@@ -204,95 +204,104 @@ telegramService.set_remove_webpage_reference(remove_webpage)
 telegramService.send_debug("Starting up. Version: "+version+"\nPlatform: "+str(platform.system()))
 
 
+try:
+    while(True):
+        webpages_dict_loop = webpages_dict  # so we don't mutate the list (add/remove webpage) while the loop runs
+        for current_wpbg_name in list(webpages_dict_loop):
+            try:
+                current_wbpg = webpages_dict_loop[current_wpbg_name]
 
-while(True):
-    webpages_dict_loop = webpages_dict  # so we don't mutate the list (add/remove webpage) while the loop runs
-    for current_wpbg_name in list(webpages_dict_loop):
-        try:
-            current_wbpg = webpages_dict_loop[current_wpbg_name]
+                current_time = datetime.datetime.now()
+                elapsed_time = current_time - current_wbpg.get_last_time_checked()
 
-            current_time = datetime.datetime.now()
-            elapsed_time = current_time - current_wbpg.get_last_time_checked()
+                if elapsed_time.total_seconds() > current_wbpg.get_t_sleep():
+                    logger.debug("Checking website " + current_wpbg_name + " with url: " + current_wbpg.get_url())
 
-            if elapsed_time.total_seconds() > current_wbpg.get_t_sleep():
-                logger.debug("Checking website " + current_wpbg_name + " with url: " + current_wbpg.get_url())
+                    # 1. get website
+                    try:
+                        # open website
+                        logger.debug("Getting website.")
+                        driver.get(current_wbpg.get_url())
+                        logger.debug("Got website.")
+                    except selenium.common.exceptions.TimeoutException as e:
+                        # logger.error("TimeoutException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
+                        logger.error("The error is: " + str(e))
 
-                # 1. get website
-                try:
-                    # open website
-                    logger.debug("Getting website.")
-                    driver.get(current_wbpg.get_url())
-                    logger.debug("Got website.")
-                except selenium.common.exceptions.TimeoutException as e:
-                    # logger.error("TimeoutException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
-                    logger.error("The error is: " + str(e))
-                    # bot_sendtext("debug", logger, "TimeoutException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
-                    # mode = mode_wait_on_net_error
-                    continue
-                except selenium.common.exceptions.WebDriverException as e:
-                    # logger.error("WebDriverException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
-                    logger.error("The error is: " + str(e))
-                    # bot_sendtext("debug", logger, "WebDriverException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
-                    # mode = mode_wait_on_net_error
-                    continue
-                except:
-                    logger.error("An UNKNOWN exception has occured in the get website subroutine.")
-                    logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
-                    # mode = mode_wait_on_net_error
-                    continue
+                        # bot_sendtext("debug", logger, "TimeoutException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
+                        # mode = mode_wait_on_net_error
+                        continue
+                    except selenium.common.exceptions.WebDriverException as e:
+                        # logger.error("WebDriverException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
+                        logger.error("The error is: " + str(e))
+                        # bot_sendtext("debug", logger, "WebDriverException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
+                        # mode = mode_wait_on_net_error
+                        continue
+                    except:
+                        logger.error("An UNKNOWN exception has occured in the get website subroutine.")
+                        logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+                        # mode = mode_wait_on_net_error
+                        telegramService.send_debug("An UNKNOWN exception has occured in the get website subroutine. The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+                        continue
 
-                # 2. hash website text
-                current_text = driver.find_element_by_tag_name("body").text.lower()
-                current_hash = (hashlib.md5(current_text.encode())).hexdigest()
+                    # 2. hash website text
+                    current_text = driver.find_element_by_tag_name("body").text.lower()
+                    current_hash = (hashlib.md5(current_text.encode())).hexdigest()
 
-                # 3. if different
-                if current_hash != current_wbpg.get_last_hash():
-                    logger.info("Website hash different. Current: " + str(current_hash) + " vs old hash: " + str(current_wbpg.last_hash))
-                    print("Strings equal?" + str(current_wbpg.get_last_content() == current_text))
+                    # 3. if different
+                    if current_hash != current_wbpg.get_last_hash():
+                        logger.info("Website hash different. Current: " + str(current_hash) + " vs old hash: " + str(current_wbpg.last_hash))
+                        print("Strings equal?" + str(current_wbpg.get_last_content() == current_text))
 
-                    # 3.1 determine difference using DP (O(m * n) ^^)
-                    old_words_list = string_to_wordlist(current_wbpg.get_last_content())
-                    new_words_list = string_to_wordlist(current_text)
+                        # 3.1 determine difference using DP (O(m * n) ^^)
+                        old_words_list = string_to_wordlist(current_wbpg.get_last_content())
+                        new_words_list = string_to_wordlist(current_text)
 
-                    msg_to_send = "CHANGES in " + current_wpbg_name + ":\n"
-                    changes = dp_edit_distance.get_edit_distance_changes(old_words_list, new_words_list)
-                    logger.info("Website word difference is: " + str(changes))
-                    print("Changes begin ---")
-                    for change_tupel in changes:
-                        if change_tupel[0] == "swap":
-                            msg_to_send += "SWAP: <i>" + change_tupel[1] + "</i> TO <b>" + change_tupel[2] + "</b>\n"
-                        elif change_tupel[0] == "added":
-                            msg_to_send += "ADD: <b>" + change_tupel[1] + "</b>\n"
-                        elif change_tupel[0] == "deleted":
-                            msg_to_send += "DEL: <i>" + change_tupel[1] + "</i>\n"
-                        else:
-                            msg_to_send += "Unknown OP: "
-                            for my_str in change_tupel:
-                                msg_to_send += (my_str + " ")
-                            msg_to_send += "\n"
+                        msg_to_send = "CHANGES in " + current_wpbg_name + ":\n"
+                        changes = dp_edit_distance.get_edit_distance_changes(old_words_list, new_words_list)
+                        logger.info("Website word difference is: " + str(changes))
+                        print("Changes begin ---")
+                        for change_tupel in changes:
+                            if change_tupel[0] == "swap":
+                                msg_to_send += "SWAP: <i>" + change_tupel[1] + "</i> TO <b>" + change_tupel[2] + "</b>\n"
+                            elif change_tupel[0] == "added":
+                                msg_to_send += "ADD: <b>" + change_tupel[1] + "</b>\n"
+                            elif change_tupel[0] == "deleted":
+                                msg_to_send += "DEL: <i>" + change_tupel[1] + "</i>\n"
+                            else:
+                                msg_to_send += "Unknown OP: "
+                                for my_str in change_tupel:
+                                    msg_to_send += (my_str + " ")
+                                msg_to_send += "\n"
 
-                    print(msg_to_send)
-                    print("--- End of changes. ---")
+                        print(msg_to_send)
+                        print("--- End of changes. ---")
 
-                    # 3.2 notify world about changes
-                    # TODO
-                    for current_chat_id in current_wbpg.get_chat_ids():
-                        telegramService.handler(current_chat_id, msg_to_send)
-                    # - iterate over list of chat ids and send message to them
+                        # 3.2 notify world about changes
+                        # TODO
+                        for current_chat_id in current_wbpg.get_chat_ids():
+                            telegramService.handler(current_chat_id, msg_to_send)
+                        # - iterate over list of chat ids and send message to them
 
-                    # 3.3 update vars of wbpg object
-                    current_wbpg.set_last_hash(current_hash)
-                    current_wbpg.set_last_content(current_text)
+                        # 3.3 update vars of wbpg object
+                        current_wbpg.set_last_hash(current_hash)
+                        current_wbpg.set_last_content(current_text)
 
-                # 4. update time last written
-                current_wbpg.set_last_time_checked(datetime.datetime.now())
-        except RuntimeError:
-            logger.error("Runtime error: dict problem")
-            continue
-    # save back to file
-    pickle.dump(webpages_dict_loop, open("save.p", "wb"))
+                    # 4. update time last written
+                    current_wbpg.set_last_time_checked(datetime.datetime.now())
+            except RuntimeError:
+                logger.error("Runtime error: dict problem")
+                continue
+        # save back to file
+        pickle.dump(webpages_dict_loop, open("save.p", "wb"))
 
-    # sleep now
-    time.sleep(10)
+        # sleep now
+        time.sleep(10)
+except:
+    logger.error("An UNKNOWN exception has occured in main.")
+    logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+    # send admin msg
+    telegramService.send_debug("Unknown error in main: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+    continue
+
 
 print("eof")

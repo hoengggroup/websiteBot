@@ -33,8 +33,17 @@ def get_edit_distance_changes(text_old, text_new):
         min_before = min(tb[i-1][j], tb[i][j-1], tb[i-1][j-1])
         # print("right now @ " + str(i) + " "+str(j) + " min bef:" + str(min_before) + " current:" + str(tb[i][j]))
 
-        # first choice (pref:) diagonal up, i.e. swap
-        if(tb[i-1][j-1] == min_before and i-1 >= 0 and j-1 >= 0):
+
+
+        # first choice : added
+        if(tb[i-1][j] == min_before and i-1 >= 0):
+            if(min_before < tb[i][j]):
+                # print("add")
+                reverse_change_stack.extend([("added", text_new[i-1])])
+            i = i-1
+            continue
+        # else (pref:) diagonal up, i.e. swap
+        elif(tb[i-1][j-1] == min_before and i-1 >= 0 and j-1 >= 0):
             if(min_before < tb[i][j]):
                 # swapped:
                 # print("swap")
@@ -43,15 +52,6 @@ def get_edit_distance_changes(text_old, text_new):
             i = i-1
             j = j-1
             continue
-
-        # else on of them was deleted:
-        elif(tb[i-1][j] == min_before and i-1 >= 0):
-            if(min_before < tb[i][j]):
-                # print("add")
-                reverse_change_stack.extend([("added", text_new[i-1])])
-            i = i-1
-            continue
-
         # else on of them was deleted:
         elif(tb[i][j-1] == min_before and j-1 >= 0):
             if(min_before < tb[i][j]):
