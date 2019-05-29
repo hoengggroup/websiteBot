@@ -6,30 +6,56 @@
 
 
 def get_edit_distance_changes(text_old, text_new):
-    tb = [[0 for i in range(len(text_old)+1)] for j in range(len(text_new)+1)]
+    tb = [[0 for i in range(len(text_old))] for j in range(len(text_new))]
 
-    for i in range(1, len(text_new)+1):
-        for j in range(1, len(text_old)+1):
+    if not (len(text_old)>0 and len(text_new)>0):
+        if(len(text_old) == 0) and (len(text_new)==0):
+            return ['empty','old and','new']
+        if(len(text_old)==0):
+            return  ['added',text_new[0]]
+        if(len(text_new)==0):
+            return  ['deleted',text_old[0]]
+        raise Exception('this case is mathematically proven to be impossible by boolean logic. For details, see https://en.wikipedia.org/wiki/George_Boole')
+
+    # now, we are sure that both text new/old have >= 1 entry
+    ## init
+    tb[0][0] = 0
+    for i in range (1,len(text_new)):
+        delta = 0
+        if(text_old[0] != text_new[i]):
+            delta = 1
+        tb[i][0] = tb[i-1][0] + delta
+
+    for j in range (1,len(text_old)):
+        delta = 0
+        if(text_old[j] != text_new[0]):
+            delta = 1
+        tb[0][j] = tb[0][j-1] + delta
+
+    ## the real dynamic programming part
+    for i in range(1, len(text_new)):
+        for j in range(1, len(text_old)):
             delta = 0
-            if(text_old[j-1] != text_new[i-1]):
+            if(text_old[j] != text_new[i]):
                 delta = 1
             tb[i][j] = min(tb[i-1][j], tb[i][j-1], tb[i-1][j-1]) + delta
 
-    # for i in range(len(tb)):
-        # for j in range(len(tb[i])):
-            # print(tb[i][j], end='\t')
-        # print()
+    '''
+    for i in range(len(tb)):
+        for j in range(len(tb[i])):
+            print(tb[i][j], end='\t')
+        print()'''
 
     reverse_change_stack = []
 
     # backtracking
-    i = len(text_new)
-    j = len(text_old)
+    i = len(text_new)-1
+    j = len(text_old)-1
 
     counter = 0
     while(counter < len(text_old)+1+len(text_new)+1):
         counter = counter+1
-
+        # print("i,j"+str(i)+" "+str(j))
         min_before = min(tb[i-1][j], tb[i][j-1], tb[i-1][j-1])
         # print("right now @ " + str(i) + " "+str(j) + " min bef:" + str(min_before) + " current:" + str(tb[i][j]))
 
@@ -39,7 +65,7 @@ def get_edit_distance_changes(text_old, text_new):
         if(tb[i-1][j] == min_before and i-1 >= 0):
             if(min_before < tb[i][j]):
                 # print("add")
-                reverse_change_stack.extend([("added", text_new[i-1])])
+                reverse_change_stack.extend([("added", text_new[i])])
             i = i-1
             continue
         # else (pref:) diagonal up, i.e. swap
@@ -47,7 +73,7 @@ def get_edit_distance_changes(text_old, text_new):
             if(min_before < tb[i][j]):
                 # swapped:
                 # print("swap")
-                reverse_change_stack.extend([("swap", text_old[j-1], text_new[i-1])])
+                reverse_change_stack.extend([("swap", text_old[j], text_new[i])])
 
             i = i-1
             j = j-1
@@ -56,7 +82,7 @@ def get_edit_distance_changes(text_old, text_new):
         elif(tb[i][j-1] == min_before and j-1 >= 0):
             if(min_before < tb[i][j]):
                 # print("del")
-                reverse_change_stack.extend([("deleted", text_old[j-1])])
+                reverse_change_stack.extend([("deleted", text_old[j])])
 
             j = j-1
             continue

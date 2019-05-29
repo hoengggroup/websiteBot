@@ -9,6 +9,7 @@ from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 import re
 
 import hashlib
+import traceback
 
 import pickle  # to save webpage list
 
@@ -135,9 +136,9 @@ class Webpage:
 delimiters = "\n", ". "  # delimiters where to split string
 regexPattern = '|'.join(map(re.escape, delimiters))  # auto create regex pattern from delimiter list (above)
 
-
+from unidecode import unidecode
 def remove_non_ascii(text):
-    return unidecode(str(text)) 
+    return unidecode(str(text))
 
 def string_to_wordlist(str_to_convert):
     # print("String: " + str_to_convert)
@@ -292,7 +293,10 @@ try:
                     # 4. update time last written
                     current_wbpg.set_last_time_checked(datetime.datetime.now())
             except RuntimeError:
-                logger.error("Runtime error: dict problem")
+                logger.error("Runtime error: dict problem runtime")
+                continue
+            except KeyError:
+                logger.error("Runtime error: dict problem key not existent")
                 continue
         # save back to file
         pickle.dump(webpages_dict_loop, open("save.p", "wb"))
@@ -302,7 +306,7 @@ try:
 except Exception as ex:
     logger.error("An UNKNOWN exception has occured in main.")
     logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
-                        
+    traceback.print_exc()         
     # send admin msg
     telegramService.send_debug("An UNKNOWN exception has occured in main." )
 
