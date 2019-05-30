@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
 import selenium
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
@@ -23,12 +22,13 @@ from pathlib import Path
 from unidecode import unidecode # for stripping Ümläüte
 
 # our own libraries/dependencies
+
 from loggerConfig import create_logger_main_driver
 import dp_edit_distance
 import telegramService
 
 
-version = "0.5"
+version = "0.6"
 
 webpages_dict = {}
 
@@ -116,10 +116,12 @@ class Webpage:
 
 
 delimiters = "\n", ". "  # delimiters where to split string
-regexPattern = '|'.join(map(re.escape, delimiters))  # auto create regex pattern from delimiter list (above)
 
 # process string ready for dp edit distance
 def preprocess_string(str_to_convert):
+    # 0. prep delimiters
+    regexPattern = '|'.join(map(re.escape, delimiters))  # auto create regex pattern from delimiter list (above)
+
     # 1. strip all non ascii characters
     str_non_unicode = unidecode(str(str_to_convert))
 
@@ -200,8 +202,10 @@ def main():
         driver = webdriver.Firefox(options=firefoxOptions, desired_capabilities=caps, firefox_profile=firefoxProfile, executable_path=parent_directory_binaries + "/drivers/geckodriver_" + str(platform.system()))
     driver.set_page_load_timeout(35)
 
+    # 1. init telegram service
+    telegramService.init()
 
-    # 1. load from file
+    # 2. load from file
     global webpages_dict
     webpages_dict = pickle.load(open("save.p", "rb"))
 

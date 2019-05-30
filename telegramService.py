@@ -9,6 +9,9 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 # our libraries
 from loggerConfig import create_logger_telegram
 
+webpages_dict = {}
+admin_chat_ids = {***REMOVED***, ***REMOVED***}
+
 
 def set_webpages_dict_reference(the_webpages_dict_reference):
     global webpages_dict
@@ -195,44 +198,45 @@ def send_admin_broadcast(message):
         handler(chat_id=adm_chat_id,message= message)
 
 
-# all inits
-logger = create_logger_telegram()
+# this needs to be called to init the telegram service
+def init():
+    global logger
+    logger = create_logger_telegram()
 
-webpages_dict = {}
+    global webpages_dict
 
-if platform.system() == "Linux":
-    # @websiteBot_bot
-    updater = Updater(token="***REMOVED***", use_context=True)
-    dispatcher = updater.dispatcher
-    bot = Bot(token="***REMOVED***")
-else:
-    # @websiteBotShortTests_bot
-    updater = Updater(token="***REMOVED***", use_context=True)
-    dispatcher = updater.dispatcher
-    bot = Bot(token="***REMOVED***")
+    if platform.system() == "Linux":
+        # @websiteBot_bot
+        updater = Updater(token="***REMOVED***", use_context=True)
+        dispatcher = updater.dispatcher
+        bot = Bot(token="***REMOVED***")
+    else:
+        # @websiteBotShortTests_bot
+        updater = Updater(token="***REMOVED***", use_context=True)
+        dispatcher = updater.dispatcher
+        bot = Bot(token="***REMOVED***")
 
-admin_chat_ids = {***REMOVED***, ***REMOVED***}
 
-# --- Generally accessible commands:
-dispatcher.add_handler(CommandHandler("start", start))
-dispatcher.add_handler(CommandHandler("webpages", webpages))
-dispatcher.add_handler(CommandHandler("commands", commands))
-dispatcher.add_handler(CommandHandler("subscribe", subscribe))
-dispatcher.add_handler(CommandHandler("unsubscribe", unsubscribe))
-dispatcher.add_handler(CommandHandler("active", active))
-dispatcher.add_handler(CommandHandler("stop", stop))
-# --- Privileged admin-only commands:
-# "whoami" is not inherently privileged (anyone can check their status) but we'll not shout it from the rooftops regardless
-dispatcher.add_handler(CommandHandler("whoami", whoami))
-dispatcher.add_handler(CommandHandler("admincommands", admincommands))
-dispatcher.add_handler(CommandHandler("addwebpage", addwebpage))
-dispatcher.add_handler(CommandHandler("removewebpage", removewebpage))
-# --- Catch-all commands for unknown inputs:
-dispatcher.add_handler(MessageHandler(Filters.text, text))
-# The "unknown" handler needs to be added last because it would override any handlers added afterwards
-dispatcher.add_handler(MessageHandler(Filters.command, unknown))
+    # --- Generally accessible commands:
+    dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(CommandHandler("webpages", webpages))
+    dispatcher.add_handler(CommandHandler("commands", commands))
+    dispatcher.add_handler(CommandHandler("subscribe", subscribe))
+    dispatcher.add_handler(CommandHandler("unsubscribe", unsubscribe))
+    dispatcher.add_handler(CommandHandler("active", active))
+    dispatcher.add_handler(CommandHandler("stop", stop))
+    # --- Privileged admin-only commands:
+    # "whoami" is not inherently privileged (anyone can check their status) but we'll not shout it from the rooftops regardless
+    dispatcher.add_handler(CommandHandler("whoami", whoami))
+    dispatcher.add_handler(CommandHandler("admincommands", admincommands))
+    dispatcher.add_handler(CommandHandler("addwebpage", addwebpage))
+    dispatcher.add_handler(CommandHandler("removewebpage", removewebpage))
+    # --- Catch-all commands for unknown inputs:
+    dispatcher.add_handler(MessageHandler(Filters.text, text))
+    # The "unknown" handler needs to be added last because it would override any handlers added afterwards
+    dispatcher.add_handler(MessageHandler(Filters.command, unknown))
 
-updater.start_polling()
+    updater.start_polling()
 
-# Use this command in the python console to clean up the Telegram service when using an IDE that does not handle it well:
-# updater.stop()
+    # Use this command in the python console to clean up the Telegram service when using an IDE that does not handle it well:
+    # updater.stop()
