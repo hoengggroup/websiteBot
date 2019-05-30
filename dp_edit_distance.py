@@ -10,11 +10,11 @@ def get_edit_distance_changes(text_old, text_new):
 
     if not (len(text_old)>0 and len(text_new)>0):
         if(len(text_old) == 0) and (len(text_new)==0):
-            return ['empty','old and','new']
+            return [('empty all','old and','new')]
         if(len(text_old)==0):
-            return  ['added',text_new[0]]
+            return  [('added all',str(text_new),'')]
         if(len(text_new)==0):
-            return  ['deleted',text_old[0]]
+            return  [('deleted all',str(text_old),'')]
         raise Exception('this case is mathematically proven to be impossible by boolean logic. For details, see https://en.wikipedia.org/wiki/George_Boole')
 
     # now, we are sure that both text new/old have >= 1 entry

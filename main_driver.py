@@ -159,6 +159,7 @@ def add_webpage(name, url, t_sleep):
     try:
         new_webpage = Webpage(url=url, t_sleep=t_sleep)
         webpages_dict[name] = new_webpage
+        save_websites_dict()
         logger.info("Successfully added webpage: " + name + " with url " + str(url) + " and timeout " + str(t_sleep))
         return True
     except Exception as ex:
@@ -172,6 +173,7 @@ def remove_webpage(name):
         return False
     try:
         del webpages_dict[name]
+        save_websites_dict()
         logger.info("Successfully removed webpage: " + name)
         return True
     except Exception as ex:
@@ -182,12 +184,16 @@ def remove_webpage(name):
 # 1. load from file
 webpages_dict = pickle.load(open("save.p", "rb"))
 
+
 print("Webpages loaded from file:")
 for myKey in webpages_dict:
     myw = webpages_dict[myKey]
     print("Name:"+myKey + ". URL: " + myw.get_url())
     print(type(next(iter(myw.get_chat_ids()), None)))
     print("Chat IDs: " + str(myw.get_chat_ids()))
+
+
+        
 print("Finished __ webpages loaded from file:")
 
 
@@ -298,8 +304,8 @@ try:
             except KeyError:
                 logger.error("Runtime error: dict problem key not existent")
                 continue
-        # save back to file
-        pickle.dump(webpages_dict_loop, open("save.p", "wb"))
+
+            save_websites_dict()
 
         # sleep now
         time.sleep(10)

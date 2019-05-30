@@ -1,17 +1,20 @@
 import dp_edit_distance
 
 def print_change_tupel(changes):
-    print("Changes begin ---")
+    print("Changes begin...")
     for change_tupel in changes:
         for my_str in change_tupel:
             print(str(my_str), end=' ')
         print()
-    print("--- End of changes. ---")
+    print("...changes end")
 
 
 def test_case(text_old, text_new):
+    print("======================================")
+    print("Test: "+str(text_old)+" -> "+str(text_new))
     changes = dp_edit_distance.get_edit_distance_changes(text_old= text_old, text_new = text_new)
     print_change_tupel(changes)
+    print("======================================\n")
 
 text_old = ['a','b','c']
 text_new = ['a','b','c','d']
@@ -36,6 +39,23 @@ text_new = ['a','2','c']
 
 test_case(text_old = text_old, text_new=text_new)
 
+
+text_old = []
+text_new = ['a','2','c']
+
+test_case(text_old = text_old, text_new=text_new)
+
+
+text_old = []
+text_new = []
+
+test_case(text_old = text_old, text_new=text_new)
+
+
+text_old = ['a','b','c']
+text_new = []
+
+test_case(text_old = text_old, text_new=text_new)
 
 
 
