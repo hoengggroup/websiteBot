@@ -1,7 +1,8 @@
 # -*- coding: utf-8 -*-
 
 import platform
-import sys # for getting detailed error msg
+import sys  # for getting detailed error msg
+from itertools import count  # for message numbering
 
 from telegram import Bot, error
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
@@ -9,8 +10,11 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
 # our libraries
 from loggerConfig import create_logger_telegram
 
-webpages_dict = {}
+
+# webpages_dict = {}  # needed here or not?, see line 20
 admin_chat_ids = {***REMOVED***, ***REMOVED***}
+
+num_messages = count(1)
 
 
 def set_webpages_dict_reference(the_webpages_dict_reference):
@@ -29,7 +33,7 @@ def set_remove_webpage_reference(the_remove_webpage_reference):
 
 
 def start(update, context):
-    context.bot.send_message(chat_id=update.message.chat_id, text="Welcome to this website-tracker bot.\nYou can display the available webpages with /webpages and the available commands with /commands.", parse_mode="HTML")
+    send_command_reply(update, context, message="Welcome to this website-tracker bot.\nYou can display the available webpages with /webpages and the available commands with /commands.")
 
 
 def webpages(update, context):
@@ -37,7 +41,7 @@ def webpages(update, context):
     message_list = "\n- "
     message_list += "\n- ".join(list_webpages)
     
-    context.bot.send_message(chat_id=update.message.chat_id, text="The available webpages are:" + message_list + "\n\nPlease pay attention to the correct spelling and capitalization.", parse_mode="HTML")
+    send_command_reply(update, context, message="The available webpages are:" + message_list + "\n\nPlease pay attention to the correct spelling and capitalization.")
 
 
 def commands(update, context):
@@ -49,7 +53,7 @@ def commands(update, context):
                     "/active\n- show your active subscriptions\n"
                     "/stop\n- unsubscribe from all webpages")
 
-    context.bot.send_message(chat_id=update.message.chat_id, text="The available commands are:\n" + command_list, parse_mode="HTML")
+    send_command_reply(update, context, message="The available commands are:\n" + command_list)
 
 
 def subscribe(update, context):
@@ -60,15 +64,15 @@ def subscribe(update, context):
             if wp in webpages_dict.keys():
                 webpage_object = webpages_dict[wp]
             else:
-                context.bot.send_message(chat_id=update.message.chat_id, text="Error. Webpage " + str(wp) + " does not exist in list.", parse_mode="HTML")
+                send_command_reply(update, context, message="Error. Webpage " + str(wp) + " does not exist in list.")
                 continue
 
             if webpage_object.add_chat_id(chat_id_to_add=update.message.chat_id):
-                context.bot.send_message(chat_id=update.message.chat_id, text="You have successfully been subscribed to webpage: " + str(wp), parse_mode="HTML")
+                send_command_reply(update, context, message="You have successfully been subscribed to webpage: " + str(wp))
             else:
-                context.bot.send_message(chat_id=update.message.chat_id, text="Error. Subscription to webpage " + str(wp) + " failed.\nTry again or check if you are already subscribed with the /active command.", parse_mode="HTML")
+                send_command_reply(update, context, message="Error. Subscription to webpage " + str(wp) + " failed.\nTry again or check if you are already subscribed with the /active command.")
     else:
-        context.bot.send_message(chat_id=update.message.chat_id, text="Error. You need to specify which webpage you want to subscribe to.", parse_mode="HTML")
+        send_command_reply(update, context, message="Error. You need to specify which webpage you want to subscribe to.")
 
 
 def unsubscribe(update, context):
@@ -79,15 +83,15 @@ def unsubscribe(update, context):
             if wp in webpages_dict.keys():
                 webpage_object = webpages_dict[wp]
             else:
-                context.bot.send_message(chat_id=update.message.chat_id, text="Error. Webpage " + str(wp) + " does not exist in list.", parse_mode="HTML")
+                send_command_reply(update, context, message="Error. Webpage " + str(wp) + " does not exist in list.")
                 continue
 
             if webpage_object.remove_chat_id(chat_id_to_remove=update.message.chat_id):
-                context.bot.send_message(chat_id=update.message.chat_id, text="You have successfully been unsubscribed from webpage: " + str(wp), parse_mode="HTML")
+                send_command_reply(update, context, message="You have successfully been unsubscribed from webpage: " + str(wp))
             else:
-                context.bot.send_message(chat_id=update.message.chat_id, text="Error. Unsubscription from webpage " + str(wp) + " failed.\nTry again or check if you are already not subscribed with the /active command.", parse_mode="HTML")
+                send_command_reply(update, context, message="Error. Unsubscription from webpage " + str(wp) + " failed.\nTry again or check if you are already not subscribed with the /active command.")
     else:
-        context.bot.send_message(chat_id=update.message.chat_id, text="Error. You need to specify which webpage you want to unsubscribe from.", parse_mode="HTML")
+        send_command_reply(update, context, message="Error. You need to specify which webpage you want to unsubscribe from.")
 
 
 def active(update, context):
@@ -100,9 +104,9 @@ def active(update, context):
     if webpages:
         message_list = "\n- "
         message_list += "\n- ".join(webpages)
-        context.bot.send_message(chat_id=update.message.chat_id, text="You are (still) currently subscribed to the following webpages: " + message_list, parse_mode="HTML")
+        send_command_reply(update, context, message="You are (still) currently subscribed to the following webpages: " + message_list)
     else:
-        context.bot.send_message(chat_id=update.message.chat_id, text="You are (now) not subscribed to any webpages.", parse_mode="HTML")
+        send_command_reply(update, context, message="You are (now) not subscribed to any webpages.")
 
 
 def stop(update, context):
@@ -115,18 +119,18 @@ def stop(update, context):
     if webpages:
         message_list = "\n- "
         message_list += "\n- ".join(webpages)
-        context.bot.send_message(chat_id=update.message.chat_id, text="You have successfully been unsubscribed from the following webpages: " + message_list, parse_mode="HTML")
+        send_command_reply(update, context, message="You have successfully been unsubscribed from the following webpages: " + message_list)
         active(update, context)
-        context.bot.send_message(chat_id=update.message.chat_id, text="Goodbye.", parse_mode="HTML")
+        send_command_reply(update, context, message="Goodbye.")
     else:
-        context.bot.send_message(chat_id=update.message.chat_id, text="You were not subscribed to any webpages.\nGoodbye.", parse_mode="HTML")
+        send_command_reply(update, context, message="You were not subscribed to any webpages.\nGoodbye.")
 
 
 def whoami(update, context):
     if update.message.chat_id in admin_chat_ids:
-        context.bot.send_message(chat_id=update.message.chat_id, text="Root", parse_mode="HTML")
+        send_command_reply(update, context, message="Root")
     else:
-        context.bot.send_message(chat_id=update.message.chat_id, text="User", parse_mode="HTML")
+        send_command_reply(update, context, message="User")
 
 
 def admincommands(update, context):
@@ -136,9 +140,9 @@ def admincommands(update, context):
                         "/addwebpage {name} {url} {t_sleep}\n- add a webpage to the list of available webpages\n"
                         "/removewebpage {name}\n- remove a webpage from the list of available webpages\n")
 
-        context.bot.send_message(chat_id=update.message.chat_id, text="The available admin-only commands are:\n" + command_list, parse_mode="HTML")
+        send_command_reply(update, context, message="The available admin-only commands are:\n" + command_list)
     else:
-        context.bot.send_message(chat_id=update.message.chat_id, text="This command is only available to admins. Sorry.", parse_mode="HTML")
+        send_command_reply(update, context, message="This command is only available to admins. Sorry.")
 
 
 def addwebpage(update, context):
@@ -148,13 +152,13 @@ def addwebpage(update, context):
             url = str(context.args[1])
             t_sleep =  int(context.args[2])
             if add_webpage_function(name=name, url=url, t_sleep=t_sleep):
-                context.bot.send_message(chat_id=update.message.chat_id, text="The webpage " + name + " has successfully been added to the list.", parse_mode="HTML")
+                send_command_reply(update, context, message="The webpage " + name + " has successfully been added to the list.")
             else:
-                context.bot.send_message(chat_id=update.message.chat_id, text="Error. Addition of webpage " + name + " failed.\nTry again or check if a webpage with the same name is already on the list with the /webpages command.", parse_mode="HTML")
+                send_command_reply(update, context, message="Error. Addition of webpage " + name + " failed.\nTry again or check if a webpage with the same name is already on the list with the /webpages command.")
         else:
-            context.bot.send_message(chat_id=update.message.chat_id, text="Error. You did not provide the correct arguments for this command (format: \"/addwebpage name url t_sleep\").", parse_mode="HTML")
+            send_command_reply(update, context, message="Error. You did not provide the correct arguments for this command (format: \"/addwebpage name url t_sleep\").")
     else:
-        context.bot.send_message(chat_id=update.message.chat_id, text="This command is only available to admins. Sorry.", parse_mode="HTML")
+        send_command_reply(update, context, message="This command is only available to admins. Sorry.")
 
 
 def removewebpage(update, context):
@@ -162,40 +166,55 @@ def removewebpage(update, context):
         if len(context.args) == 1:
             name = str(context.args[0])
             if remove_webpage_function(name=name):
-                context.bot.send_message(chat_id=update.message.chat_id, text="The webpage " + name + " has successfully been removed from the list.", parse_mode="HTML")
+                send_command_reply(update, context, message="The webpage " + name + " has successfully been removed from the list.")
             else:
-                context.bot.send_message(chat_id=update.message.chat_id, text="Error. Removal of webpage " + name + " failed.\nTry again or check if this webpage (with this exact spelling) even exists on the list with the /webpages command.", parse_mode="HTML")
+                send_command_reply(update, context, message="Error. Removal of webpage " + name + " failed.\nTry again or check if this webpage (with this exact spelling) even exists on the list with the /webpages command.")
         else:
-            context.bot.send_message(chat_id=update.message.chat_id, text="Error. You did not provide the correct arguments for this command (format: \"/removewebpage name\").", parse_mode="HTML")
+            send_command_reply(update, context, message="Error. You did not provide the correct arguments for this command (format: \"/removewebpage name\").")
     else:
-        context.bot.send_message(chat_id=update.message.chat_id, text="This command is only available to admins. Sorry.", parse_mode="HTML")
+        send_command_reply(update, context, message="This command is only available to admins. Sorry.")
 
 
 def text(update, context):
-    context.bot.send_message(chat_id=update.message.chat_id, text="Sorry, I only understand commands. Check if you entered a leading slash or get a list of the available commands with /commands.", parse_mode="HTML")
+    send_command_reply(update, context, message="Sorry, I only understand commands. Check if you entered a leading slash or get a list of the available commands with /commands.")
 
 
 def unknown(update, context):
-    context.bot.send_message(chat_id=update.message.chat_id, text="Sorry, I did not understand that command. Check the spelling or get a list of the available commands with /commands.", parse_mode="HTML")
+    send_command_reply(update, context, message="Sorry, I did not understand that command. Check the spelling or get a list of the available commands with /commands.")
 
 
-def handler(chat_id, message):
-    logger.debug("Msg to "+str(chat_id)+" MSG: "+message)
+def send_command_reply(update, context, message):
+    logger.debug("Msg to " + str(update.message.chat_id) + "; MSG: " + message)
     if not(message):
-        logger.warning("No message")
+        logger.warning("No message.")
         return
+    num_this_message = next(num_messages)
+    try:
+        context.bot.send_message(chat_id=update.message.chat_id, text=message, parse_mode="HTML")
+    except error.NetworkError:
+        logger.error("Network error when sending message #" + str(num_this_message))
+    except:
+        logger.error("Unknown error when trying to send telegram message #" + str(num_this_message) + ". The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+
+
+def send_general_broadcast(chat_id, message):
+    logger.debug("Msg to " + str(chat_id) + "; MSG: " + message)
+    if not(message):
+        logger.warning("No message.")
+        return
+    num_this_message = next(num_messages)
     try:
         bot.send_message(chat_id=chat_id, text=message, parse_mode="HTML")
-    except error.NetworkError as e:
-        logger.error("Network error when sending message "+str(e))
+    except error.NetworkError:
+        logger.error("Network error when sending message #" + str(num_this_message))
     except:
-        logger.error("Unknown error when trying to send telegram message. The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+        logger.error("Unknown error when trying to send telegram message #" + str(num_this_message) + ". The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
 
 
 def send_admin_broadcast(message):
-    message="[ADMIN BROADCAST] "+message
+    admin_message = "[ADMIN BROADCAST] " + message
     for adm_chat_id in admin_chat_ids:
-        handler(chat_id=adm_chat_id,message= message)
+        send_general_broadcast(chat_id=adm_chat_id, message=admin_message)
 
 
 # this needs to be called to init the telegram service
@@ -203,7 +222,12 @@ def init():
     global logger
     logger = create_logger_telegram()
 
-    global webpages_dict
+    # needed? at least gets rid of warnings/errors in vscode
+    global updater
+    global dispatcher
+    global bot
+
+    # global webpages_dict  # needed here or not?, see line 20
 
     if platform.system() == "Linux":
         # @websiteBot_bot

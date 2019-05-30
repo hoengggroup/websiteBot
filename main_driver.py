@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
+
 import selenium
 from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
@@ -19,10 +20,9 @@ import datetime
 from datetime import date
 from random import randint
 from pathlib import Path
-from unidecode import unidecode # for stripping Ümläüte
+from unidecode import unidecode  # for stripping Ümläüte
 
 # our own libraries/dependencies
-
 from loggerConfig import create_logger_main_driver
 import dp_edit_distance
 import telegramService
@@ -155,7 +155,7 @@ def add_webpage(name, url, t_sleep):
         logger.info("Successfully added webpage: " + name + " with url " + str(url) + " and timeout " + str(t_sleep))
         return True
     except Exception as ex:
-        logger.error("Couldn't add webpage to webpages_dict. Error: '%s'" % ex.message)
+        logger.error("Couldn't add webpage to webpages_dict. Error: '%s'" % ex.message)  # pylint: disable=no-member
         return False
 
 
@@ -169,7 +169,7 @@ def remove_webpage(name):
         logger.info("Successfully removed webpage: " + name)
         return True
     except Exception as ex:
-        logger.error("Couldn't remove webpage from webpages_dict. Error: '%s'" % ex.message)
+        logger.error("Couldn't remove webpage from webpages_dict. Error: '%s'" % ex.message)  # pylint: disable=no-member
         return False
 
 
@@ -177,6 +177,7 @@ def remove_webpage(name):
 
 def main():
     # 0. the sublime init stuff
+    global logger
     logger = create_logger_main_driver()
     parent_directory_binaries = str(Path(__file__).resolve().parents[0])
 
@@ -193,7 +194,7 @@ def main():
     # caps["pageLoadStrategy"] = "normal"  # complete
     caps["pageLoadStrategy"] = "eager"  # interactive
     if platform.system() == "Linux":
-        from pyvirtualdisplay import Display
+        from pyvirtualdisplay import Display  # pylint: disable=import-error
         from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
         display = Display(visible=0, size=(1024, 768))
         display.start()
@@ -300,7 +301,7 @@ def main():
 
                             # 3.2 notify world about changes
                             for current_chat_id in current_wbpg.get_chat_ids():
-                                telegramService.handler(current_chat_id, msg_to_send)
+                                telegramService.send_general_broadcast(current_chat_id, msg_to_send)
 
                             # 3.3 update vars of wbpg object
                             current_wbpg.set_last_hash(current_hash)
@@ -321,7 +322,7 @@ def main():
 
             # sleep now
             time.sleep(10)
-    except Exception as ex:
+    except Exception:
         logger.error("[MAIN] Problem: unknown exception. Terminating")
         logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
         traceback.print_exc()         
