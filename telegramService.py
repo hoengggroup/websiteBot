@@ -189,8 +189,15 @@ def send_command_reply(update, context, message):
         logger.warning("No message.")
         return
     num_this_message = next(num_messages)
+    limit = 4096
+    warning = "... [truncated]"
+    if len(message) > limit:
+        logger.warning("Message too long. Sending only the first " + str(limit - len(warning)) + " characters and a [truncated] warning (" + str(limit) + " characters in total).")
+        message = message[:(limit - len(warning))] + warning
+        logger.debug("New, truncated message: " + message)
     try:
         context.bot.send_message(chat_id=update.message.chat_id, text=message, parse_mode="HTML")
+        logger.debug("Message #" + str(num_this_message) + " was sent successfully.")
     except error.NetworkError:
         logger.error("Network error when sending message #" + str(num_this_message))
     except:
@@ -203,8 +210,15 @@ def send_general_broadcast(chat_id, message):
         logger.warning("No message.")
         return
     num_this_message = next(num_messages)
+    limit = 4096
+    warning = "... [truncated]"
+    if len(message) > limit:
+        logger.warning("Message too long. Sending only the first " + str(limit - len(warning)) + " characters and a [truncated] warning (" + str(limit) + " characters in total).")
+        message = message[:(limit - len(warning))] + warning
+        logger.debug("New, truncated message: " + message)
     try:
         bot.send_message(chat_id=chat_id, text=message, parse_mode="HTML")
+        logger.debug("Message #" + str(num_this_message) + " was sent successfully.")
     except error.NetworkError:
         logger.error("Network error when sending message #" + str(num_this_message))
     except:
