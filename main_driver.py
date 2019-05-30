@@ -20,38 +20,17 @@ import datetime
 from datetime import date
 from random import randint
 from pathlib import Path
+from unidecode import unidecode # for stripping Ümläüte
 
 # our own libraries/dependencies
 from loggerConfig import create_logger
 import dp_edit_distance
 import telegramService
 
-version = "0.3"
 
-logger = create_logger()
-parent_directory_binaries = str(Path(__file__).resolve().parents[0])
+version = "0.4"
 
-firefoxOptions = Options()
-firefoxOptions.headless = True
-firefoxProfile = FirefoxProfile()
-firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)  # Enable incognito
-firefoxProfile.set_preference("network.cookie.cookieBehavior", 2)  # Disable Cookies
-firefoxProfile.set_preference("permissions.default.stylesheet", 2)  # Disable CSS
-firefoxProfile.set_preference("permissions.default.image", 2)  # Disable images
-firefoxProfile.set_preference("javascript.enabled", False)  # Disable JavaScript
-firefoxProfile.set_preference("dom.ipc.plugins.enabled.libflashplayer.so", False)  # Disable Flash
-caps = DesiredCapabilities().FIREFOX
-# caps["pageLoadStrategy"] = "normal"  # complete
-caps["pageLoadStrategy"] = "eager"  # interactive
-if platform.system() == "Linux":
-    from pyvirtualdisplay import Display
-    from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
-    display = Display(visible=0, size=(1024, 768))
-    display.start()
-    driver = webdriver.Firefox(options=firefoxOptions, desired_capabilities=caps, firefox_profile=firefoxProfile)
-else:
-    driver = webdriver.Firefox(options=firefoxOptions, desired_capabilities=caps, firefox_profile=firefoxProfile, executable_path=parent_directory_binaries + "/drivers/geckodriver_" + str(platform.system()))
-driver.set_page_load_timeout(35)
+webpages_dict = {}
 
 
 class Webpage:
@@ -136,15 +115,23 @@ class Webpage:
 delimiters = "\n", ". "  # delimiters where to split string
 regexPattern = '|'.join(map(re.escape, delimiters))  # auto create regex pattern from delimiter list (above)
 
-from unidecode import unidecode
-def remove_non_ascii(text):
-    return unidecode(str(text))
+# process string ready for dp edit distance
+def preprocess_string(str_to_convert):
+    # 1. strip all non ascii characters
+    str_non_unicode = unidecode(str(str_to_convert))
 
-def string_to_wordlist(str_to_convert):
-    # print("String: " + str_to_convert)
-    str_split = re.split(regexPattern, str_to_convert)
-    # print("splitted: " + str(str_split))
-    return str_split
+    # 2. split string @delimiters
+    str_split = re.split(regexPattern, str_non_unicode)
+
+    print("splitted: "+str(str_split))
+    # 3. remove empty strings from list as well as string containing only white spaces
+    str_list_ret=[]
+    for element in str_split:
+        if element.isspace() or element == '':
+            continue
+        str_list_ret.append(element)
+    
+    return str_list_ret #str_ret
 
 
 def save_websites_dict():
@@ -181,140 +168,175 @@ def remove_webpage(name):
         return False
 
 
-# 1. load from file
-webpages_dict = pickle.load(open("save.p", "rb"))
 
 
-print("Webpages loaded from file:")
-for myKey in webpages_dict:
-    myw = webpages_dict[myKey]
-    print("Name:"+myKey + ". URL: " + myw.get_url())
-    print(type(next(iter(myw.get_chat_ids()), None)))
-    print("Chat IDs: " + str(myw.get_chat_ids()))
+def main():
+    # 0. the sublime init stuff
+    logger = create_logger()
+    parent_directory_binaries = str(Path(__file__).resolve().parents[0])
+
+    firefoxOptions = Options()
+    firefoxOptions.headless = True
+    firefoxProfile = webdriver.FirefoxProfile()
+    firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)  # Enable incognito
+    firefoxProfile.set_preference("network.cookie.cookieBehavior", 2)  # Disable Cookies
+    firefoxProfile.set_preference("permissions.default.stylesheet", 2)  # Disable CSS
+    firefoxProfile.set_preference("permissions.default.image", 2)  # Disable images
+    firefoxProfile.set_preference("javascript.enabled", False)  # Disable JavaScript
+    firefoxProfile.set_preference("dom.ipc.plugins.enabled.libflashplayer.so", False)  # Disable Flash
+    caps = DesiredCapabilities().FIREFOX
+    # caps["pageLoadStrategy"] = "normal"  # complete
+    caps["pageLoadStrategy"] = "eager"  # interactive
+    if platform.system() == "Linux":
+        from pyvirtualdisplay import Display
+        from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
+        display = Display(visible=0, size=(1024, 768))
+        display.start()
+        driver = webdriver.Firefox(options=firefoxOptions, desired_capabilities=caps, firefox_profile=firefoxProfile)
+    else:
+        driver = webdriver.Firefox(options=firefoxOptions, desired_capabilities=caps, firefox_profile=firefoxProfile, executable_path=parent_directory_binaries + "/drivers/geckodriver_" + str(platform.system()))
+    driver.set_page_load_timeout(35)
 
 
-        
-print("Finished __ webpages loaded from file:")
+    # 1. load from file
+    global webpages_dict
+    webpages_dict = pickle.load(open("save.p", "rb"))
 
 
-'''
-to add
-myWebpage = Webpage("https://google.com",15)
-webpages_dict["GoogleMain"] = myWebpage
-'''
+    print("Webpages loaded from file:")
+    for myKey in webpages_dict:
+        myw = webpages_dict[myKey]
+        print("Name:"+myKey + ". URL: " + myw.get_url())
+        print(type(next(iter(myw.get_chat_ids()), None)))
+        print("Chat IDs: " + str(myw.get_chat_ids()))
 
 
-# make objects and functions available / update references in telegramService
-telegramService.set_webpages_dict_reference(webpages_dict)
-telegramService.set_add_webpage_reference(add_webpage)
-telegramService.set_remove_webpage_reference(remove_webpage)
+            
+    print("Finished __ webpages loaded from file:")
 
 
-# send admin msg
-telegramService.send_debug("Starting up. Version: "+version+"\nPlatform: "+str(platform.system()))
+    '''
+    to add
+    myWebpage = Webpage("https://google.com",15)
+    webpages_dict["GoogleMain"] = myWebpage
+    '''
 
 
-try:
-    while(True):
-        webpages_dict_loop = webpages_dict  # so we don't mutate the list (add/remove webpage) while the loop runs
-        for current_wpbg_name in list(webpages_dict_loop):
-            try:
-                current_wbpg = webpages_dict_loop[current_wpbg_name]
+    # make objects and functions available / update references in telegramService
+    telegramService.set_webpages_dict_reference(webpages_dict)
+    telegramService.set_add_webpage_reference(add_webpage)
+    telegramService.set_remove_webpage_reference(remove_webpage)
 
-                current_time = datetime.datetime.now()
-                elapsed_time = current_time - current_wbpg.get_last_time_checked()
 
-                if elapsed_time.total_seconds() > current_wbpg.get_t_sleep():
-                    logger.debug("Checking website " + current_wpbg_name + " with url: " + current_wbpg.get_url())
-
-                    # 1. get website
-                    try:
-                        # open website
-                        logger.debug("Getting website.")
-                        driver.get(current_wbpg.get_url())
-                        logger.debug("Got website.")
-                    except selenium.common.exceptions.TimeoutException as e:
-                        # logger.error("TimeoutException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
-                        logger.error("The error is: " + str(e))
-
-                        # bot_sendtext("debug", logger, "TimeoutException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
-                        # mode = mode_wait_on_net_error
-                        continue
-                    except selenium.common.exceptions.WebDriverException as e:
-                        # logger.error("WebDriverException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
-                        logger.error("The error is: " + str(e))
-                        # bot_sendtext("debug", logger, "WebDriverException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
-                        # mode = mode_wait_on_net_error
-                        continue
-                    except:
-                        logger.error("An UNKNOWN exception has occured in the get website subroutine.")
-                        logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
-                        # mode = mode_wait_on_net_error
-                        telegramService.send_debug("An UNKNOWN exception has occured in the get website subroutine. The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
-                        continue
-
-                    # 2. hash website text
-                    current_text = driver.find_element_by_tag_name("body").text.lower()
-                    current_hash = (hashlib.md5(current_text.encode())).hexdigest()
-
-                    # 3. if different
-                    if current_hash != current_wbpg.get_last_hash():
-                        logger.info("Website hash different. Current: " + str(current_hash) + " vs old hash: " + str(current_wbpg.last_hash))
-                        print("Strings equal?" + str(current_wbpg.get_last_content() == current_text))
-
-                        # 3.1 determine difference using DP (O(m * n) ^^)
-                        old_words_list = string_to_wordlist(current_wbpg.get_last_content())
-                        new_words_list = string_to_wordlist(current_text)
-
-                        msg_to_send = "CHANGES in " + current_wpbg_name + ":\n"
-                        changes = dp_edit_distance.get_edit_distance_changes(old_words_list, new_words_list)
-                        logger.info("Website word difference is: " + str(changes))
-                        print("Changes begin ---")
-                        for change_tupel in changes:
-                            if change_tupel[0] == "swap":
-                                msg_to_send += "SWAP: <i>" + change_tupel[1] + "</i> TO <b>" + change_tupel[2] + "</b>\n"
-                            elif change_tupel[0] == "added":
-                                msg_to_send += "ADD: <b>" + change_tupel[1] + "</b>\n"
-                            elif change_tupel[0] == "deleted":
-                                msg_to_send += "DEL: <i>" + change_tupel[1] + "</i>\n"
-                            else:
-                                msg_to_send += "Unknown OP: "
-                                for my_str in change_tupel:
-                                    msg_to_send += (my_str + " ")
-                                msg_to_send += "\n"
-                        msg_to_send = remove_non_ascii(msg_to_send)
-                        print(msg_to_send)
-                        print("--- End of changes. ---")
-
-                        # 3.2 notify world about changes
-                        # TODO
-                        for current_chat_id in current_wbpg.get_chat_ids():
-                            telegramService.handler(current_chat_id, msg_to_send)
-                        # - iterate over list of chat ids and send message to them
-
-                        # 3.3 update vars of wbpg object
-                        current_wbpg.set_last_hash(current_hash)
-                        current_wbpg.set_last_content(current_text)
-
-                    # 4. update time last written
-                    current_wbpg.set_last_time_checked(datetime.datetime.now())
-            except RuntimeError:
-                logger.error("Runtime error: dict problem runtime")
-                continue
-            except KeyError:
-                logger.error("Runtime error: dict problem key not existent")
-                continue
-
-            save_websites_dict()
-
-        # sleep now
-        time.sleep(10)
-except Exception as ex:
-    logger.error("An UNKNOWN exception has occured in main.")
-    logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
-    traceback.print_exc()         
     # send admin msg
-    telegramService.send_debug("An UNKNOWN exception has occured in main." )
+    telegramService.send_debug("Starting up. Version: "+version+"\nPlatform: "+str(platform.system()))
 
 
-print("eof")
+    try:
+        while(True):
+            webpages_dict_loop = webpages_dict  # so we don't mutate the list (add/remove webpage) while the loop runs
+            for current_wpbg_name in list(webpages_dict_loop):
+                try:
+                    current_wbpg = webpages_dict_loop[current_wpbg_name]
+
+                    current_time = datetime.datetime.now()
+                    elapsed_time = current_time - current_wbpg.get_last_time_checked()
+
+                    if elapsed_time.total_seconds() > current_wbpg.get_t_sleep():
+                        logger.debug("Checking website " + current_wpbg_name + " with url: " + current_wbpg.get_url())
+
+                        # 1. get website
+                        try:
+                            # open website
+                            logger.debug("Getting website.")
+                            driver.get(current_wbpg.get_url())
+                            logger.debug("Got website.")
+                        except selenium.common.exceptions.TimeoutException as e:
+                            # logger.error("TimeoutException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
+                            logger.error("The error is: " + str(e))
+
+                            # bot_sendtext("debug", logger, "TimeoutException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
+                            # mode = mode_wait_on_net_error
+                            continue
+                        except selenium.common.exceptions.WebDriverException as e:
+                            # logger.error("WebDriverException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
+                            logger.error("The error is: " + str(e))
+                            # bot_sendtext("debug", logger, "WebDriverException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
+                            # mode = mode_wait_on_net_error
+                            continue
+                        except:
+                            logger.error("An UNKNOWN exception has occured in the get website subroutine.")
+                            logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+                            # mode = mode_wait_on_net_error
+                            telegramService.send_debug("An UNKNOWN exception has occured in the get website subroutine. The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+                            continue
+
+                        # 2. hash website text
+                        current_text = driver.find_element_by_tag_name("body").text.lower()
+                        current_hash = (hashlib.md5(current_text.encode())).hexdigest()
+
+                        # 3. if different
+                        if current_hash != current_wbpg.get_last_hash():
+                            logger.info("Website hash different. Current: " + str(current_hash) + " vs old hash: " + str(current_wbpg.last_hash))
+                            print("Strings equal?" + str(current_wbpg.get_last_content() == current_text))
+
+                            # 3.1 determine difference using DP (O(m * n) ^^)
+                            old_words_list = preprocess_string(current_wbpg.get_last_content())
+                            new_words_list = preprocess_string(current_text)
+
+                            msg_to_send = "CHANGES in " + current_wpbg_name + ":\n"
+                            changes = dp_edit_distance.get_edit_distance_changes(old_words_list, new_words_list)
+                            logger.info("Website word difference is: " + str(changes))
+                            print("Changes begin ---")
+                            for change_tupel in changes:
+                                if change_tupel[0] == "swap":
+                                    msg_to_send += "SWAP: <i>" + change_tupel[1] + "</i> TO <b>" + change_tupel[2] + "</b>\n"
+                                elif change_tupel[0] == "added":
+                                    msg_to_send += "ADD: <b>" + change_tupel[1] + "</b>\n"
+                                elif change_tupel[0] == "deleted":
+                                    msg_to_send += "DEL: <i>" + change_tupel[1] + "</i>\n"
+                                else:
+                                    msg_to_send += "Unknown OP: "
+                                    for my_str in change_tupel:
+                                        msg_to_send += (my_str + " ")
+                                    msg_to_send += "\n"
+                            print(msg_to_send)
+                            print("--- End of changes. ---")
+
+                            # 3.2 notify world about changes
+                            # TODO
+                            for current_chat_id in current_wbpg.get_chat_ids():
+                                telegramService.handler(current_chat_id, msg_to_send)
+                            # - iterate over list of chat ids and send message to them
+
+                            # 3.3 update vars of wbpg object
+                            current_wbpg.set_last_hash(current_hash)
+                            current_wbpg.set_last_content(current_text)
+
+                        # 4. update time last written
+                        current_wbpg.set_last_time_checked(datetime.datetime.now())
+                except RuntimeError:
+                    logger.error("Runtime error: dict problem runtime")
+                    continue
+                except KeyError:
+                    logger.error("Runtime error: dict problem key not existent")
+                    continue
+
+                save_websites_dict()
+
+            # sleep now
+            time.sleep(10)
+    except Exception as ex:
+        logger.error("An UNKNOWN exception has occured in main.")
+        logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+        traceback.print_exc()         
+        # send admin msg
+        telegramService.send_debug("An UNKNOWN exception has occured in main." )
+
+
+    print("eo main")
+
+
+if __name__ == "__main__":
+   # stuff only to run when not called via 'import' here
+   main()
