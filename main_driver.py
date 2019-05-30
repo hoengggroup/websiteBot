@@ -11,6 +11,7 @@ import hashlib
 import traceback
 
 import pickle  # to save webpage list
+import sdnotify  # for watchdog
 
 import sys
 import platform
@@ -28,7 +29,7 @@ import dp_edit_distance
 import telegramService
 
 
-version = "0.6"
+version = "0.7"
 
 webpages_dict = {}
 
@@ -176,6 +177,19 @@ def remove_webpage(name):
 
 
 def main():
+    #-1. init watchdog
+    alive_notifier = sdnotify.SystemdNotifier()
+    '''
+    max_watchdog_time = max(time_setup, webpage_loading_timeout + webpage_process_time,sleep_time)
+
+    where:
+    time_setup = time from here to begin of while loop 
+    webpage_loading_timeout = timeout of webdriver when loading webpage
+    webpage_process_time = time it takes to process (changes) of a webpage incl. telegram sending
+    sleep_time = sleep time at end of while loop
+    '''
+
+
     # 0. the sublime init stuff
     logger = create_logger_main_driver()
     parent_directory_binaries = str(Path(__file__).resolve().parents[0])
@@ -238,6 +252,9 @@ def main():
         while(True):
             webpages_dict_loop = webpages_dict  # so we don't mutate the list (add/remove webpage) while the loop runs
             for current_wpbg_name in list(webpages_dict_loop):
+                # notfiy watchdog
+                alive_notifier.notify("WATCHDOG=1")  # send status: alive
+
                 try:
                     current_wbpg = webpages_dict_loop[current_wpbg_name]
 
@@ -318,6 +335,8 @@ def main():
                     continue
 
                 save_websites_dict()
+            # notfiy watchdog
+            alive_notifier.notify("WATCHDOG=1")  # send status: alive
 
             # sleep now
             time.sleep(10)
