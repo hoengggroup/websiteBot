@@ -27,9 +27,10 @@ from unidecode import unidecode  # for stripping Ümläüte
 from loggerConfig import create_logger_main_driver
 import dp_edit_distance
 import telegramService
+import vpnCheck
 
 
-version = "0.7"
+version = "0.8"
 
 webpages_dict = {}
 
@@ -174,8 +175,6 @@ def remove_webpage(name):
         return False
 
 
-
-
 def main():
     #-1. init watchdog
     alive_notifier = sdnotify.SystemdNotifier()
@@ -217,8 +216,11 @@ def main():
         driver = webdriver.Firefox(options=firefoxOptions, desired_capabilities=caps, firefox_profile=firefoxProfile, executable_path=parent_directory_binaries + "/drivers/geckodriver_" + str(platform.system()))
     driver.set_page_load_timeout(35)
 
-    # 1. init telegram service
+    # 1.1 init telegram service
     telegramService.init()
+
+    # 1.2 init vpn service
+    ip_address = vpnCheck.init()
 
     # 2. load from file
     global webpages_dict
@@ -341,6 +343,12 @@ def main():
 
             # sleep now
             time.sleep(10)
+
+            # sleep longer if VPN connection is down
+            if ip_address != vpnCheck.get_ip():
+                logger.error("IP address has changed, sleeping now.")
+                telegramService.send_admin_broadcast("IP address has changed, sleeping now.")
+                time.sleep(3600)
     except Exception:
         logger.error("[MAIN] Problem: unknown exception. Terminating")
         logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
