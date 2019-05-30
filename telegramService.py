@@ -1,9 +1,13 @@
 # -*- coding: utf-8 -*-
 
 import platform
+import sys # for getting detailed error msg
 
-from telegram import Bot
+from telegram import Bot, error
 from telegram.ext import Updater, CommandHandler, MessageHandler, Filters
+
+# our libraries
+from loggerConfig import create_logger_telegram
 
 
 def set_webpages_dict_reference(the_webpages_dict_reference):
@@ -173,14 +177,26 @@ def unknown(update, context):
 
 
 def handler(chat_id, message):
+    logger.debug("Msg to "+str(chat_id)+" MSG: "+message)
     if not(message):
+        logger.warning("No message")
         return
-    bot.send_message(chat_id=chat_id, text=message, parse_mode="HTML")
+    try:
+        bot.send_message(chat_id=chat_id, text=message, parse_mode="HTML")
+    except error.NetworkError as e:
+        logger.error("Network error when sending message "+str(e))
+    except:
+        logger.error("Unknown error when trying to send telegram message. The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
 
-def send_debug(message):
+
+def send_admin_broadcast(message):
+    message="[ADMIN BROADCAST] "+message
     for adm_chat_id in admin_chat_ids:
         handler(chat_id=adm_chat_id,message= message)
 
+
+# all inits
+logger = create_logger_telegram()
 
 webpages_dict = {}
 

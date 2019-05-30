@@ -23,12 +23,12 @@ from pathlib import Path
 from unidecode import unidecode # for stripping Ümläüte
 
 # our own libraries/dependencies
-from loggerConfig import create_logger
+from loggerConfig import create_logger_main_driver
 import dp_edit_distance
 import telegramService
 
 
-version = "0.4"
+version = "0.5"
 
 webpages_dict = {}
 
@@ -45,6 +45,9 @@ class Webpage:
         # used while running
         self.last_hash = ""
         self.last_content = ""
+
+    def __str__(self):
+        return "[url] "+str(self.url)+"\t[t_sleep] "+str(self.t_sleep)+"\t[t_last_time_checked] "+str(self.last_time_checked)+"\t[chat_ids] "+str(self.chat_ids)
 
     def get_chat_ids(self):
         return self.chat_ids
@@ -172,7 +175,7 @@ def remove_webpage(name):
 
 def main():
     # 0. the sublime init stuff
-    logger = create_logger()
+    logger = create_logger_main_driver()
     parent_directory_binaries = str(Path(__file__).resolve().parents[0])
 
     firefoxOptions = Options()
@@ -203,16 +206,11 @@ def main():
     webpages_dict = pickle.load(open("save.p", "rb"))
 
 
-    print("Webpages loaded from file:")
+    logger.info("Webpages loading from file START")
     for myKey in webpages_dict:
         myw = webpages_dict[myKey]
-        print("Name:"+myKey + ". URL: " + myw.get_url())
-        print(type(next(iter(myw.get_chat_ids()), None)))
-        print("Chat IDs: " + str(myw.get_chat_ids()))
-
-
-            
-    print("Finished __ webpages loaded from file:")
+        logger.info("Webpage "+myKey + ": " + str(myw))
+    logger.info("Webpages loading from file END")
 
 
     '''
@@ -229,7 +227,7 @@ def main():
 
 
     # send admin msg
-    telegramService.send_debug("Starting up. Version: "+version+"\nPlatform: "+str(platform.system()))
+    telegramService.send_admin_broadcast("Starting up. Version: "+version+"\nPlatform: "+str(platform.system()))
 
 
     try:
@@ -247,28 +245,21 @@ def main():
 
                         # 1. get website
                         try:
-                            # open website
                             logger.debug("Getting website.")
                             driver.get(current_wbpg.get_url())
                             logger.debug("Got website.")
                         except selenium.common.exceptions.TimeoutException as e:
-                            # logger.error("TimeoutException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
-                            logger.error("The error is: " + str(e))
-
-                            # bot_sendtext("debug", logger, "TimeoutException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
-                            # mode = mode_wait_on_net_error
+                            logger.error("Timeout exception. The error is: " + str(e))
+                            telegramService.send_admin_broadcast("[getting website] URL: "+str(current_wbpg.get_url())+" Problem: timeout exception")
                             continue
                         except selenium.common.exceptions.WebDriverException as e:
-                            # logger.error("WebDriverException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
-                            logger.error("The error is: " + str(e))
-                            # bot_sendtext("debug", logger, "WebDriverException has occured in the get website subroutine. Sleeping now for " + str(sleep_time_on_network_error) + "s; retrying then.")
-                            # mode = mode_wait_on_net_error
+                            logger.error("Webdriver exception. The error is: " + str(e))
+                            telegramService.send_admin_broadcast("[getting website] URL: "+str(current_wbpg.get_url())+" Problem: webdriver exception")
                             continue
                         except:
                             logger.error("An UNKNOWN exception has occured in the get website subroutine.")
                             logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
-                            # mode = mode_wait_on_net_error
-                            telegramService.send_debug("An UNKNOWN exception has occured in the get website subroutine. The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+                            telegramService.send_admin_broadcast("[getting website] URL: "+str(current_wbpg.get_url())+" Problem: unknown error")
                             continue
 
                         # 2. hash website text
@@ -304,10 +295,8 @@ def main():
                             print("--- End of changes. ---")
 
                             # 3.2 notify world about changes
-                            # TODO
                             for current_chat_id in current_wbpg.get_chat_ids():
                                 telegramService.handler(current_chat_id, msg_to_send)
-                            # - iterate over list of chat ids and send message to them
 
                             # 3.3 update vars of wbpg object
                             current_wbpg.set_last_hash(current_hash)
@@ -315,11 +304,13 @@ def main():
 
                         # 4. update time last written
                         current_wbpg.set_last_time_checked(datetime.datetime.now())
-                except RuntimeError:
-                    logger.error("Runtime error: dict problem runtime")
+                except RuntimeError as e:
+                    logger.error("[website dict iteration] Problem: runtime error "+str(e))
+                    telegramService.send_admin_broadcast("[website dict iteration] Problem: runtime error")
                     continue
-                except KeyError:
-                    logger.error("Runtime error: dict problem key not existent")
+                except KeyError as e:
+                    logger.error("[website dict iteration] Problem: key error "+str(e))
+                    telegramService.send_admin_broadcast("[website dict iteration] Problem: key error")
                     continue
 
                 save_websites_dict()
@@ -327,12 +318,11 @@ def main():
             # sleep now
             time.sleep(10)
     except Exception as ex:
-        logger.error("An UNKNOWN exception has occured in main.")
+        logger.error("[MAIN] Problem: unknown exception. Terminating")
         logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
         traceback.print_exc()         
         # send admin msg
-        telegramService.send_debug("An UNKNOWN exception has occured in main." )
-
+        telegramService.send_admin_broadcast("[MAIN] Problem: unknown exception. Terminating")
 
     print("eo main")
 
