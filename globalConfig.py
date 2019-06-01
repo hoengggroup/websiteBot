@@ -7,5 +7,5 @@ debugging_enabled = False
 
 # modes
 static_ip = True
-static_ip_address = "83.97.23.21" # set, if static_ip = True
+static_ip_address = "84.39.112.20" # set, if static_ip = True
 

@@ -35,7 +35,7 @@ caps = DesiredCapabilities().FIREFOX
 # caps["pageLoadStrategy"] = "normal"  # complete
 caps["pageLoadStrategy"] = "eager"  # interactive
 
-driver = webdriver.Firefox(options=options, desired_capabilities=caps, executable_path=parent_directory_binaries + '/drivers/geckodriver_mac', firefox_profile=firefoxProfile)
+driver = webdriver.Firefox(options=options, desired_capabilities=caps, executable_path=parent_directory_binaries + '/drivers/geckodriver_', firefox_profile=firefoxProfile)
 driver.set_page_load_timeout(10)
 
 text_old = ""
