@@ -119,6 +119,9 @@ dmypy.json
 # pickle files
 *.p
 
+# RPI detection
+*.rpi
+
 
 
 ### Windows
