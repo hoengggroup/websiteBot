@@ -24,13 +24,12 @@ from pathlib import Path
 from unidecode import unidecode  # for stripping Ümläüte
 
 # our own libraries/dependencies
+from globalConfig import (version_code, static_ip,static_ip_address)
 from loggerConfig import create_logger_main_driver
 import dp_edit_distance
 import telegramService
 import vpnCheck
 
-
-version = "0.8"
 
 webpages_dict = {}
 
@@ -175,8 +174,17 @@ def remove_webpage(name):
         return False
 
 
+def inf_wait_and_signal():
+    logger.warning("[inf sleep] sleeping inf time")
+    while True:
+        alive_notifier.notify("WATCHDOG=1")  # send status: alive
+        time.sleep(10)
+
+
+
 def main():
     #-1. init watchdog
+    global alive_notifier 
     alive_notifier = sdnotify.SystemdNotifier()
     '''
     max_watchdog_time = max(time_setup, webpage_loading_timeout + webpage_process_time,sleep_time)
@@ -218,9 +226,26 @@ def main():
 
     # 1.1 init telegram service
     telegramService.init()
+    # send admin msg
+    ip_mode_str = "static" if static_ip else "dynamic"
+    telegramService.send_admin_broadcast("Starting up.\nVersion: \t"+version_code+"\nPlatform: \t"+str(platform.system())+"\nIP mode: \t"+ip_mode_str)
 
     # 1.2 init vpn service
-    ip_address = vpnCheck.init()
+    if static_ip:
+        vpnCheck.init()
+        
+        # init and check if configuration is correct
+        if static_ip_address == vpnCheck.init():
+            # configuration correct
+            ip_address = static_ip_address
+            pass
+        else:
+            # wrong static ip set
+            logger.error("Startup IP does not match static_ip_address in mode static_ip. Sleeping now inf")
+            telegramService.send_admin_broadcast("[IP check] Error on startup. Problem: startup IP does not match static_ip_address in mode static_ip.  Sleeping now inf")
+            inf_wait_and_signal()
+    else:
+        ip_address = vpnCheck.init()
 
     # 2. load from file
     global webpages_dict
@@ -247,12 +272,16 @@ def main():
     telegramService.set_remove_webpage_reference(remove_webpage)
 
 
-    # send admin msg
-    telegramService.send_admin_broadcast("Starting up. Version: "+version+"\nPlatform: "+str(platform.system()))
 
 
     try:
         while(True):
+            # sleep longer if VPN connection is down
+            if ip_address != vpnCheck.get_ip():
+                logger.error("IP address has changed, sleeping now.")
+                telegramService.send_admin_broadcast("IP address has changed, sleeping now.")
+                inf_wait_and_signal() # sleep inf time
+
             webpages_dict_loop = webpages_dict  # so we don't mutate the list (add/remove webpage) while the loop runs
             for current_wpbg_name in list(webpages_dict_loop):
                 # notfiy watchdog
@@ -344,11 +373,6 @@ def main():
             # sleep now
             time.sleep(10)
 
-            # sleep longer if VPN connection is down
-            if ip_address != vpnCheck.get_ip():
-                logger.error("IP address has changed, sleeping now.")
-                telegramService.send_admin_broadcast("IP address has changed, sleeping now.")
-                time.sleep(3600)
     except Exception:
         logger.error("[MAIN] Problem: unknown exception. Terminating")
         logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
