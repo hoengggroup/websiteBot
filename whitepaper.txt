@@ -26,3 +26,11 @@ list_all_groups():			returns list of all available groups
 
 add_groups(group_name) (only for admins)
 assign_group_to_website(group, website) (only for admins)
+
+
+Additionals:
+Cookie problem
+Unicode problem
+Dynamically change t_sleep
+RPI dummy file ".rpi" for detection
+IP checker
