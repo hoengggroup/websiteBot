@@ -129,7 +129,7 @@ def preprocess_string(str_to_convert):
     # 2. split string @delimiters
     str_split = re.split(regexPattern, str_non_unicode)
 
-    print("splitted: "+str(str_split))
+    # print("splitted: "+str(str_split))
     # 3. remove empty strings from list as well as string containing only white spaces
     str_list_ret=[]
     for element in str_split:
