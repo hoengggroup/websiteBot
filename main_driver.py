@@ -203,7 +203,8 @@ def main():
     parent_directory_binaries = str(Path(__file__).resolve().parents[0])
 
     firefoxOptions = Options()
-    firefoxOptions.headless = True
+    # headless makes it a pain to debug, keeps many zombie processes running in the background
+    # firefoxOptions.headless = True
     firefoxProfile = webdriver.FirefoxProfile()
     firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)  # Enable incognito
     firefoxProfile.set_preference("network.cookie.cookieBehavior", 2)  # Disable Cookies
@@ -223,6 +224,8 @@ def main():
     else:
         driver = webdriver.Firefox(options=firefoxOptions, desired_capabilities=caps, firefox_profile=firefoxProfile, executable_path=parent_directory_binaries + "/drivers/geckodriver_" + str(platform.system()))
     driver.set_page_load_timeout(35)
+    driver.install_addon(parent_directory_binaries + "/extensions/ublock.xpi")
+    driver.install_addon(parent_directory_binaries + "/extensions/cookies.xpi")
 
     # 1.1 init telegram service
     telegramService.init()
