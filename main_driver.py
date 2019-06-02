@@ -203,10 +203,12 @@ def main():
     parent_directory_binaries = str(Path(__file__).resolve().parents[0])
 
     firefoxOptions = Options()
+    firefoxOptions.preferences.update({
+    "javascript.enabled": False,})
     # headless makes it a pain to debug, keeps many zombie processes running in the background
     # firefoxOptions.headless = True
     firefoxProfile = webdriver.FirefoxProfile()
-    firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)  # Enable incognito
+    # firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)  # Enable incognito
     firefoxProfile.set_preference("network.cookie.cookieBehavior", 2)  # Disable Cookies
     firefoxProfile.set_preference("permissions.default.stylesheet", 2)  # Disable CSS
     firefoxProfile.set_preference("permissions.default.image", 2)  # Disable images
@@ -223,7 +225,7 @@ def main():
         driver = webdriver.Firefox(options=firefoxOptions, desired_capabilities=caps, firefox_profile=firefoxProfile)
     else:
         driver = webdriver.Firefox(options=firefoxOptions, desired_capabilities=caps, firefox_profile=firefoxProfile, executable_path=parent_directory_binaries + "/drivers/geckodriver_" + str(platform.system()))
-    driver.set_page_load_timeout(35)
+    driver.set_page_load_timeout(20)
     driver.install_addon(parent_directory_binaries + "/extensions/ublock.xpi")
     driver.install_addon(parent_directory_binaries + "/extensions/cookies.xpi")
 
@@ -325,7 +327,7 @@ def main():
                         # 3. if different
                         if current_hash != current_wbpg.get_last_hash():
                             logger.info("Website hash different. Current: " + str(current_hash) + " vs old hash: " + str(current_wbpg.last_hash))
-                            print("Strings equal?" + str(current_wbpg.get_last_content() == current_text))
+                            logger.debug("Strings equal?" + str(current_wbpg.get_last_content() == current_text))
 
                             # 3.1 determine difference using DP (O(m * n) ^^)
                             old_words_list = preprocess_string(current_wbpg.get_last_content())
