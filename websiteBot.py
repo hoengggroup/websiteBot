@@ -39,7 +39,6 @@ if device_type == "RPI":
 
     firefoxProfile = FirefoxProfile()
     firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)
-    firefoxProfile.set_preference("http.response.timeout", 5)
     firefoxProfile.set_preference("dom.max_script_run_time", 5)
     driver = webdriver.Firefox(firefox_profile=firefoxProfile)
     driver.set_page_load_timeout(5)

@@ -7,9 +7,10 @@ from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 import re
-
-import hashlib
+import hashlib # for hashing website content
 import traceback
+import multiprocessing # for timeout
+
 
 import pickle  # to save webpage list
 import sdnotify  # for watchdog
@@ -254,6 +255,9 @@ def main():
     else:
         ip_address = vpnCheck.init()
 
+    # 1.3 init process list
+    child_process_list = []
+
     # 2. load from file
     global webpages_dict
     webpages_dict = pickle.load(open("save.p", "rb"))
@@ -323,20 +327,44 @@ def main():
                             continue
 
                         # 2. hash website text
-                        current_text = driver.find_element_by_tag_name("body").text.lower()
+                        logger.debug("lower now")
+                        current_text = driver.find_element_by_tag_name("body").text #.lower()
+                        current_text+=". abcd. .ef "
+                        print(current_text)
+                        logger.debug("real has now")
                         current_hash = (hashlib.md5(current_text.encode())).hexdigest()
-
+                        logger.debug("hashed.")
                         # 3. if different
                         if current_hash != current_wbpg.get_last_hash():
                             logger.info("Website hash different. Current: " + str(current_hash) + " vs old hash: " + str(current_wbpg.last_hash))
                             logger.debug("Strings equal?" + str(current_wbpg.get_last_content() == current_text))
 
                             # 3.1 determine difference using DP (O(m * n) ^^)
+                            logger.debug("preprocess 1")
                             old_words_list = preprocess_string(current_wbpg.get_last_content())
+                            logger.debug("preprocess 2")
                             new_words_list = preprocess_string(current_text)
-
                             msg_to_send = "CHANGES in " + current_wpbg_name + ":\n"
-                            changes = dp_edit_distance.get_edit_distance_changes(old_words_list, new_words_list)
+                            
+                            changes = []
+                            changesDict = multiprocessing.Manager().dict()
+                            logger.debug("starting thread")
+                            p = multiprocessing.Process(target = dp_edit_distance.get_edit_distance_changes, args =(old_words_list, new_words_list, changesDict))
+                            child_process_list.append(p)
+                            p.start()
+                            p.join(1)
+
+                            if p.is_alive():
+                                logger.debug("dp edit distance didn't return in time. killing now.")
+                                p.terminate()
+                                p.join()
+                                logger.debug("dp edit distance killed successfully.")
+                            else:
+                                logger.debug("dp edit distance returned.")
+                                changes = changesDict['arg1']
+                            child_process_list.remove(p)
+                            
+
                             logger.info("Website word difference is: " + str(changes))
                             print("Changes begin ---")
                             for change_tupel in changes:
@@ -386,8 +414,14 @@ def main():
         traceback.print_exc()         
         # send admin msg
         telegramService.send_admin_broadcast("[MAIN] Problem: unknown exception. Terminating")
-
-    print("eo main")
+    finally:
+        telegramService.send_admin_broadcast("[MAIN] shutting down")
+        # cleanup
+        for proc in child_process_list:
+            if proc.is_alive():
+                proc.terminate()
+                proc.join()
+        print("eo main")
 
 
 if __name__ == "__main__":

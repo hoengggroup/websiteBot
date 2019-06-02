@@ -5,16 +5,19 @@
 # b = ['eins', 'drei', 'vier', 'fuenf', 'sechs', 'sieben']
 
 
-def get_edit_distance_changes(text_old, text_new):
+def get_edit_distance_changes(text_old, text_new,changesDict):
     tb = [[0 for i in range(len(text_old))] for j in range(len(text_new))]
 
     if not (len(text_old)>0 and len(text_new)>0):
         if(len(text_old) == 0) and (len(text_new)==0):
-            return [('empty all','old and','new')]
+            changesDict["arg1"] =[('empty all','old and','new')]
+            return
         if(len(text_old)==0):
-            return  [('added all',str(text_new),'')]
+            changesDict["arg1"] =  [('added all',str(text_new),'')]
+            return
         if(len(text_new)==0):
-            return  [('deleted all',str(text_old),'')]
+            changesDict["arg1"] =  [('deleted all',str(text_old),'')]
+            return
         raise Exception('this case is mathematically proven to be impossible by boolean logic. For details, see https://en.wikipedia.org/wiki/George_Boole')
 
     # now, we are sure that both text new/old have >= 1 entry
@@ -89,7 +92,8 @@ def get_edit_distance_changes(text_old, text_new):
         else:
             pass
 
-    return reverse_change_stack[::-1]
+    changesDict["arg1"] = reverse_change_stack[::-1]
+    print("changes len "+str(len(changesDict)))
 
 
 '''
