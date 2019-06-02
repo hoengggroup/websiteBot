@@ -212,7 +212,6 @@ def main():
     firefoxProfile.set_preference("network.cookie.cookieBehavior", 2)  # Disable Cookies
     firefoxProfile.set_preference("permissions.default.stylesheet", 2)  # Disable CSS
     firefoxProfile.set_preference("permissions.default.image", 2)  # Disable images
-    firefoxProfile.set_preference("javascript.enabled", False)  # Disable JavaScript
     firefoxProfile.set_preference("dom.ipc.plugins.enabled.libflashplayer.so", False)  # Disable Flash
     caps = DesiredCapabilities().FIREFOX
     # caps["pageLoadStrategy"] = "normal"  # complete
