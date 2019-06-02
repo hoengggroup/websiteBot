@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-version_code = "0.9.1"
+version_code = "0.9.2"
 
 # debugging
 debugging_enabled = False
