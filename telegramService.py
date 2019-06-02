@@ -133,6 +133,18 @@ def whoami(update, context):
         send_command_reply(update, context, message="User")
 
 
+def getpageinfo(update, context):
+    if update.message.chat_id in admin_chat_ids:
+        if len(context.args) == 1:
+            name = str(context.args[0])
+            if name in webpages_dict:
+                send_command_reply(update, context, message="The webpage " + name + " info: "+str(webpages_dict[name]))
+            else:
+                send_command_reply(update, context, message="Error. The webpage " + name + " does not exist.")
+        else:
+            send_command_reply(update, context, message="Error. You did not provide the correct arguments for this command (format: \"/getpageinfo name).")
+    
+
 def admincommands(update, context):
     if update.message.chat_id in admin_chat_ids:
         command_list = ("/whoami\n- check admin status (not an inherently privileged command, anyone can check their status)\n"
@@ -268,6 +280,7 @@ def init():
     dispatcher.add_handler(CommandHandler("whoami", whoami))
     dispatcher.add_handler(CommandHandler("admincommands", admincommands))
     dispatcher.add_handler(CommandHandler("addwebpage", addwebpage))
+    dispatcher.add_handler(CommandHandler("getpageinfo", getpageinfo))
     dispatcher.add_handler(CommandHandler("removewebpage", removewebpage))
     # --- Catch-all commands for unknown inputs:
     dispatcher.add_handler(MessageHandler(Filters.text, text))

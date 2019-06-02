@@ -24,7 +24,7 @@ from pathlib import Path
 from unidecode import unidecode  # for stripping Ümläüte
 
 # our own libraries/dependencies
-from globalConfig import (version_code, static_ip,static_ip_address)
+from globalConfig import (version_code, static_ip,static_ip_address,webpage_load_timeout)
 from loggerConfig import create_logger_main_driver
 import dp_edit_distance
 import telegramService
@@ -213,6 +213,7 @@ def main():
     firefoxProfile.set_preference("permissions.default.stylesheet", 2)  # Disable CSS
     firefoxProfile.set_preference("permissions.default.image", 2)  # Disable images
     firefoxProfile.set_preference("dom.ipc.plugins.enabled.libflashplayer.so", False)  # Disable Flash
+    # maybe usful later: firefoxProfile.set_preference("http.response.timeout", webpage_load_timeout)
     caps = DesiredCapabilities().FIREFOX
     # caps["pageLoadStrategy"] = "normal"  # complete
     caps["pageLoadStrategy"] = "eager"  # interactive
@@ -224,7 +225,9 @@ def main():
         driver = webdriver.Firefox(options=firefoxOptions, desired_capabilities=caps, firefox_profile=firefoxProfile)
     else:
         driver = webdriver.Firefox(options=firefoxOptions, desired_capabilities=caps, firefox_profile=firefoxProfile, executable_path=parent_directory_binaries + "/drivers/geckodriver_" + str(platform.system()))
-    driver.set_page_load_timeout(20)
+    driver.set_page_load_timeout(webpage_load_timeout)
+    driver.implicitly_wait(webpage_load_timeout) # this does the real time out
+
     driver.install_addon(parent_directory_binaries + "/extensions/ublock.xpi")
     driver.install_addon(parent_directory_binaries + "/extensions/cookies.xpi")
 

@@ -9,3 +9,5 @@ debugging_enabled = False
 static_ip = True
 static_ip_address = "84.39.112.20" # set, if static_ip = True
 
+webpage_load_timeout = 35
+
