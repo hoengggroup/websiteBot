@@ -25,7 +25,7 @@ from pathlib import Path
 from unidecode import unidecode  # for stripping Ümläüte
 
 # our own libraries/dependencies
-from globalConfig import (version_code, static_ip,static_ip_address,webpage_load_timeout)
+from globalConfig import (version_code, static_ip,static_ip_address,webpage_load_timeout,webpage_process_timeout)
 from loggerConfig import create_logger_main_driver
 import dp_edit_distance
 import telegramService
@@ -33,6 +33,8 @@ import vpnCheck
 
 
 webpages_dict = {}
+
+
 
 
 class Webpage:
@@ -181,6 +183,75 @@ def inf_wait_and_signal():
         alive_notifier.notify("WATCHDOG=1")  # send status: alive
         time.sleep(10)
 
+def process_webpage(logger,driver,current_wbpg,current_wbbg_name):
+    # 2. hash website text
+    logger.debug("lower now")
+    current_text = driver.find_element_by_tag_name("body").text #.lower()
+    current_text+=". abcd. .ef "
+    logger.debug("real hash now")
+    current_hash = (hashlib.md5(current_text.encode())).hexdigest()
+    logger.debug("hashed.")
+    # 3. if different
+    if current_hash != current_wbpg.get_last_hash():
+        logger.info("Website hash different. Current: " + str(current_hash) + " vs old hash: " + str(current_wbpg.last_hash))
+        logger.debug("Strings equal?" + str(current_wbpg.get_last_content() == current_text))
+
+        # 3.1 determine difference using DP (O(m * n) ^^)
+        logger.debug("preprocess 1")
+        old_words_list = preprocess_string(current_wbpg.get_last_content())
+        logger.debug("preprocess 2")
+        new_words_list = preprocess_string(current_text)
+        msg_to_send = "CHANGES in " + current_wbbg_name + ":\n"
+        
+        logger.debug("calling dp edit distance")
+        changes = dp_edit_distance.get_edit_distance_changes(old_words_list,new_words_list)
+
+        logger.info("Website word difference is: " + str(changes))
+        print("Changes begin ---")
+        for change_tupel in changes:
+            if change_tupel[0] == "swap":
+                msg_to_send += "SWAP: <i>" + change_tupel[1] + "</i> TO <b>" + change_tupel[2] + "</b>\n"
+            elif change_tupel[0] == "added":
+                msg_to_send += "ADD: <b>" + change_tupel[1] + "</b>\n"
+            elif change_tupel[0] == "deleted":
+                msg_to_send += "DEL: <i>" + change_tupel[1] + "</i>\n"
+            else:
+                msg_to_send += "Unknown OP: "
+                for my_str in change_tupel:
+                    msg_to_send += (my_str + " ")
+                msg_to_send += "\n"
+        print(msg_to_send)
+        print("--- End of changes. ---")
+
+        # 3.2 notify world about changes
+        for current_chat_id in current_wbpg.get_chat_ids():
+            telegramService.send_general_broadcast(current_chat_id, msg_to_send)
+
+        # 3.3 update vars of wbpg object
+        current_wbpg.set_last_hash(current_hash)
+        current_wbpg.set_last_content(current_text)
+
+    # 4. update time last written
+    current_wbpg.set_last_time_checked(datetime.datetime.now())
+
+def process_cleanup():
+    try:
+        for proc in child_process_list:
+            try:
+                if proc.is_alive():
+                    logger.info("detected active proc. killing...")
+                    proc.terminate()
+                    proc.join()
+                    logger.info("...killed.")
+            except:
+                logger.error("An UNKNOWN exception has occured in the proccess cleanup inner subroutine.")
+                logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+                telegramService.send_admin_broadcast("[PROCESS CLEANUP] unknown exception in inner subroutine")
+    except:
+        logger.error("An UNKNOWN exception has occured in the proccess cleanup outer subroutine.")
+        logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+        telegramService.send_admin_broadcast("[PROCESS CLEANUP] unknown exception in outer subroutine")
+                          
 
 
 def main():
@@ -256,6 +327,7 @@ def main():
         ip_address = vpnCheck.init()
 
     # 1.3 init process list
+    global child_process_list 
     child_process_list = []
 
     # 2. load from file
@@ -294,18 +366,18 @@ def main():
                 inf_wait_and_signal() # sleep inf time
 
             webpages_dict_loop = webpages_dict  # so we don't mutate the list (add/remove webpage) while the loop runs
-            for current_wpbg_name in list(webpages_dict_loop):
+            for current_wbbg_name in list(webpages_dict_loop):
                 # notfiy watchdog
                 alive_notifier.notify("WATCHDOG=1")  # send status: alive
 
                 try:
-                    current_wbpg = webpages_dict_loop[current_wpbg_name]
+                    current_wbpg = webpages_dict_loop[current_wbbg_name]
 
                     current_time = datetime.datetime.now()
                     elapsed_time = current_time - current_wbpg.get_last_time_checked()
 
                     if elapsed_time.total_seconds() > current_wbpg.get_t_sleep():
-                        logger.debug("Checking website " + current_wpbg_name + " with url: " + current_wbpg.get_url())
+                        logger.debug("Checking website " + current_wbbg_name + " with url: " + current_wbpg.get_url())
 
                         # 1. get website
                         try:
@@ -326,72 +398,22 @@ def main():
                             telegramService.send_admin_broadcast("[getting website] URL: "+str(current_wbpg.get_url())+" Problem: unknown error")
                             continue
 
-                        # 2. hash website text
-                        logger.debug("lower now")
-                        current_text = driver.find_element_by_tag_name("body").text #.lower()
-                        current_text+=". abcd. .ef "
-                        print(current_text)
-                        logger.debug("real has now")
-                        current_hash = (hashlib.md5(current_text.encode())).hexdigest()
-                        logger.debug("hashed.")
-                        # 3. if different
-                        if current_hash != current_wbpg.get_last_hash():
-                            logger.info("Website hash different. Current: " + str(current_hash) + " vs old hash: " + str(current_wbpg.last_hash))
-                            logger.debug("Strings equal?" + str(current_wbpg.get_last_content() == current_text))
+                        # process wbpg in own thread
+                        logger.debug("starting thread")
+                        p = multiprocessing.Process(target =process_webpage, args =(logger,driver,current_wbpg,current_wbbg_name))
+                        child_process_list.append(p)
+                        p.start()
+                        p.join(webpage_process_timeout)
 
-                            # 3.1 determine difference using DP (O(m * n) ^^)
-                            logger.debug("preprocess 1")
-                            old_words_list = preprocess_string(current_wbpg.get_last_content())
-                            logger.debug("preprocess 2")
-                            new_words_list = preprocess_string(current_text)
-                            msg_to_send = "CHANGES in " + current_wpbg_name + ":\n"
-                            
-                            changes = []
-                            changesDict = multiprocessing.Manager().dict()
-                            logger.debug("starting thread")
-                            p = multiprocessing.Process(target = dp_edit_distance.get_edit_distance_changes, args =(old_words_list, new_words_list, changesDict))
-                            child_process_list.append(p)
-                            p.start()
-                            p.join(1)
-
-                            if p.is_alive():
-                                logger.debug("dp edit distance didn't return in time. killing now.")
-                                p.terminate()
-                                p.join()
-                                logger.debug("dp edit distance killed successfully.")
-                            else:
-                                logger.debug("dp edit distance returned.")
-                                changes = changesDict['arg1']
-                            child_process_list.remove(p)
-                            
-
-                            logger.info("Website word difference is: " + str(changes))
-                            print("Changes begin ---")
-                            for change_tupel in changes:
-                                if change_tupel[0] == "swap":
-                                    msg_to_send += "SWAP: <i>" + change_tupel[1] + "</i> TO <b>" + change_tupel[2] + "</b>\n"
-                                elif change_tupel[0] == "added":
-                                    msg_to_send += "ADD: <b>" + change_tupel[1] + "</b>\n"
-                                elif change_tupel[0] == "deleted":
-                                    msg_to_send += "DEL: <i>" + change_tupel[1] + "</i>\n"
-                                else:
-                                    msg_to_send += "Unknown OP: "
-                                    for my_str in change_tupel:
-                                        msg_to_send += (my_str + " ")
-                                    msg_to_send += "\n"
-                            print(msg_to_send)
-                            print("--- End of changes. ---")
-
-                            # 3.2 notify world about changes
-                            for current_chat_id in current_wbpg.get_chat_ids():
-                                telegramService.send_general_broadcast(current_chat_id, msg_to_send)
-
-                            # 3.3 update vars of wbpg object
-                            current_wbpg.set_last_hash(current_hash)
-                            current_wbpg.set_last_content(current_text)
-
-                        # 4. update time last written
-                        current_wbpg.set_last_time_checked(datetime.datetime.now())
+                        if p.is_alive():
+                            logger.warning("processing wbpg "+ current_wbbg_name+": func didn't return in time. killing now.")
+                            telegramService.send_admin_broadcast("[Webpage processing] timeout for wbpg "+current_wbbg_name)
+                            p.terminate()
+                            p.join()
+                            logger.debug("prcessing wbpg killed successfully.")
+                        else:
+                            logger.debug("process wbpg func returned successfully.")
+                        child_process_list.remove(p)
                 except RuntimeError as e:
                     logger.error("[website dict iteration] Problem: runtime error "+str(e))
                     telegramService.send_admin_broadcast("[website dict iteration] Problem: runtime error")
@@ -405,6 +427,9 @@ def main():
             # notfiy watchdog
             alive_notifier.notify("WATCHDOG=1")  # send status: alive
 
+            # cleanup
+            process_cleanup()
+
             # sleep now
             time.sleep(10)
 
@@ -415,13 +440,10 @@ def main():
         # send admin msg
         telegramService.send_admin_broadcast("[MAIN] Problem: unknown exception. Terminating")
     finally:
-        telegramService.send_admin_broadcast("[MAIN] shutting down")
+        telegramService.send_admin_broadcast("[MAIN] shutting down...")
         # cleanup
-        for proc in child_process_list:
-            if proc.is_alive():
-                proc.terminate()
-                proc.join()
-        print("eo main")
+        process_cleanup()
+        logger.warning("Shutting down. This is last line.")
 
 
 if __name__ == "__main__":
