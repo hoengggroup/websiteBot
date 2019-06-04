@@ -42,6 +42,8 @@ class Webpage:
         self.url = url
         self.t_sleep = t_sleep  # sleeping time in seconds
         self.last_time_checked = datetime.datetime.min  # init with minimal datetime value (year 1 AD)
+        self.last_time_changed = datetime.datetime.min  # init with minimal datetime value (year 1 AD)
+        self.last_error_msg=""
 
         # to config aka must get/set via methods
         self.chat_ids = set()
@@ -51,21 +53,24 @@ class Webpage:
         self.last_content = ""
 
     def __str__(self):
-        return "[url] "+str(self.url)+"\t[t_sleep] "+str(self.t_sleep)+"\t[t_last_time_checked] "+str(self.last_time_checked)+"\t[chat_ids] "+str(self.chat_ids)
+        return "[url] "+str(self.url)+"\t[t_sleep] "+str(self.t_sleep)+"\t[t_last_time_checked] "+str(self.last_time_checked)+"\t[last_time_changed] "+str(self.last_time_changed) +"\t[last_error_msg] "+str(self.last_error_msg) +"\t[chat_ids] "+str(self.chat_ids)
 
     def get_chat_ids(self):
         return self.chat_ids
 
     def get_url(self):
-        return self.url
-
-    def set_last_hash(self, new_last_hash):
-        self.last_hash = new_last_hash
+        return self.url 
 
     def get_last_hash(self):
         return self.last_hash
 
-    def set_last_content(self, new_last_content):
+    def update_last_content(self, new_last_content):
+        new_last_hash = (hashlib.md5(new_last_content.encode())).hexdigest()
+        print("new last hash: "+str(new_last_hash))
+        if self.last_hash != new_last_hash:
+            self.last_time_changed = datetime.datetime.now()
+        self.last_hash = new_last_hash
+        print("updated last hash: "+str(self.get_last_hash()))
         self.last_content = new_last_content
 
     def get_last_content(self):
@@ -78,8 +83,8 @@ class Webpage:
     def get_t_sleep(self):
         return self.t_sleep
 
-    def set_last_time_checked(self, new_last_time_checked):
-        self.last_time_checked = new_last_time_checked
+    def update_last_time_checked(self):
+        self.last_time_checked = datetime.datetime.now()
 
     def get_last_time_checked(self):
         return self.last_time_checked
@@ -193,7 +198,7 @@ def process_webpage(logger,driver,current_wbpg,current_wbbg_name):
     logger.debug("hashed.")
     # 3. if different
     if current_hash != current_wbpg.get_last_hash():
-        logger.info("Website hash different. Current: " + str(current_hash) + " vs old hash: " + str(current_wbpg.last_hash))
+        logger.info("Website hash different. Current: " + str(current_hash) + " vs old hash: " + str(current_wbpg.get_last_hash()))
         logger.debug("Strings equal?" + str(current_wbpg.get_last_content() == current_text))
 
         # 3.1 determine difference using DP (O(m * n) ^^)
@@ -228,11 +233,10 @@ def process_webpage(logger,driver,current_wbpg,current_wbbg_name):
             telegramService.send_general_broadcast(current_chat_id, msg_to_send)
 
         # 3.3 update vars of wbpg object
-        current_wbpg.set_last_hash(current_hash)
-        current_wbpg.set_last_content(current_text)
+        current_wbpg.update_last_content(current_text)
 
     # 4. update time last written
-    current_wbpg.set_last_time_checked(datetime.datetime.now())
+    current_wbpg.update_last_time_checked()
 
 def process_cleanup():
     try:
@@ -329,6 +333,7 @@ def main():
     # 1.3 init process list
     global child_process_list 
     child_process_list = []
+
 
     # 2. load from file
     global webpages_dict
