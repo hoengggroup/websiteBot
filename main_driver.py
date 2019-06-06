@@ -69,6 +69,7 @@ class Webpage:
         print("new last hash: "+str(new_last_hash))
         if self.last_hash != new_last_hash:
             self.last_time_changed = datetime.datetime.now()
+            print("really updated last hash")
         self.last_hash = new_last_hash
         print("updated last hash: "+str(self.get_last_hash()))
         self.last_content = new_last_content
@@ -188,7 +189,7 @@ def inf_wait_and_signal():
         alive_notifier.notify("WATCHDOG=1")  # send status: alive
         time.sleep(10)
 
-def process_webpage(logger,driver,current_wbpg,current_wbbg_name):
+def process_webpage(logger,driver,current_wbpg,current_wbpg_name):
     # 2. hash website text
     logger.debug("lower now")
     current_text = driver.find_element_by_tag_name("body").text #.lower()
@@ -196,6 +197,7 @@ def process_webpage(logger,driver,current_wbpg,current_wbbg_name):
     logger.debug("real hash now")
     current_hash = (hashlib.md5(current_text.encode())).hexdigest()
     logger.debug("hashed.")
+    print("hashes are: current, last: "+str(current_hash)+"\t"+str(current_wbpg.get_last_hash()))
     # 3. if different
     if current_hash != current_wbpg.get_last_hash():
         logger.info("Website hash different. Current: " + str(current_hash) + " vs old hash: " + str(current_wbpg.get_last_hash()))
@@ -206,7 +208,7 @@ def process_webpage(logger,driver,current_wbpg,current_wbbg_name):
         old_words_list = preprocess_string(current_wbpg.get_last_content())
         logger.debug("preprocess 2")
         new_words_list = preprocess_string(current_text)
-        msg_to_send = "CHANGES in " + current_wbbg_name + ":\n"
+        msg_to_send = "CHANGES in " + current_wbpg_name + ":\n"
         
         logger.debug("calling dp edit distance")
         changes = dp_edit_distance.get_edit_distance_changes(old_words_list,new_words_list)
@@ -225,7 +227,7 @@ def process_webpage(logger,driver,current_wbpg,current_wbbg_name):
                 for my_str in change_tupel:
                     msg_to_send += (my_str + " ")
                 msg_to_send += "\n"
-        print(msg_to_send)
+        # print(msg_to_send)
         print("--- End of changes. ---")
 
         # 3.2 notify world about changes
@@ -371,18 +373,18 @@ def main():
                 inf_wait_and_signal() # sleep inf time
 
             webpages_dict_loop = webpages_dict  # so we don't mutate the list (add/remove webpage) while the loop runs
-            for current_wbbg_name in list(webpages_dict_loop):
+            for current_wbpg_name in list(webpages_dict_loop):
                 # notfiy watchdog
                 alive_notifier.notify("WATCHDOG=1")  # send status: alive
 
                 try:
-                    current_wbpg = webpages_dict_loop[current_wbbg_name]
+                    current_wbpg = webpages_dict_loop[current_wbpg_name]
 
                     current_time = datetime.datetime.now()
                     elapsed_time = current_time - current_wbpg.get_last_time_checked()
 
                     if elapsed_time.total_seconds() > current_wbpg.get_t_sleep():
-                        logger.debug("Checking website " + current_wbbg_name + " with url: " + current_wbpg.get_url())
+                        logger.debug("Checking website " + current_wbpg_name + " with url: " + current_wbpg.get_url())
 
                         # 1. get website
                         try:
@@ -405,14 +407,14 @@ def main():
 
                         # process wbpg in own thread
                         logger.debug("starting thread")
-                        p = multiprocessing.Process(target =process_webpage, args =(logger,driver,current_wbpg,current_wbbg_name))
+                        p = multiprocessing.Process(target =process_webpage, args =(logger,driver,current_wbpg,current_wbpg_name))
                         child_process_list.append(p)
                         p.start()
                         p.join(webpage_process_timeout)
 
                         if p.is_alive():
-                            logger.warning("processing wbpg "+ current_wbbg_name+": func didn't return in time. killing now.")
-                            telegramService.send_admin_broadcast("[Webpage processing] timeout for wbpg "+current_wbbg_name)
+                            logger.warning("processing wbpg "+ current_wbpg_name+": func didn't return in time. killing now.")
+                            telegramService.send_admin_broadcast("[Webpage processing] timeout for wbpg "+current_wbpg_name)
                             p.terminate()
                             p.join()
                             logger.debug("prcessing wbpg killed successfully.")
