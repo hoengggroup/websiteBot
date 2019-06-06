@@ -189,8 +189,7 @@ def inf_wait_and_signal():
         alive_notifier.notify("WATCHDOG=1")  # send status: alive
         time.sleep(10)
 
-def process_webpage(logger,driver,current_wbpg_ref_dict,current_wbpg_name):
-    current_wbpg=current_wbpg_ref_dict["1"]
+def process_webpage(logger,driver,current_wbpg,current_wbpg_name):
     # 2. hash website text
     logger.debug("lower now")
     current_text = driver.find_element_by_tag_name("body").text #.lower()
@@ -408,9 +407,7 @@ def main():
 
                         # process wbpg in own thread
                         logger.debug("starting thread")
-                        current_wbpg_ref_dict = dict()
-                        current_wbpg_ref_dict["1"] = current_wbpg
-                        p = multiprocessing.Process(target =process_webpage, args =(logger,driver,current_wbpg_ref_dict,current_wbpg_name))
+                        p = multiprocessing.Process(target =process_webpage, args =(logger,driver,current_wbpg,current_wbpg_name))
                         child_process_list.append(p)
                         p.start()
                         p.join(webpage_process_timeout)
