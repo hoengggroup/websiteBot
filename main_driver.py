@@ -135,12 +135,12 @@ class ChatID:
     
     def set_status(self, new_status):
         try:
-            self.status = new_status
+            self.status = int(new_status)
             save_chat_ids_dict()
             return True
         except KeyError:
             save_chat_ids_dict()
-            logger.error("Failed to set new status " + str(new_status) + " for chat ID " + str(self.chat_id))
+            logger.error("Failed to set new status " + str(new_status) + " for this chat ID.")
             return False
 
 

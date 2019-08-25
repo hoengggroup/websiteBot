@@ -77,14 +77,15 @@ def approveuser(update, context):
         if context.args:
             user_ids += list(context.args)
             for ids in user_ids:
-                if ids in chat_ids_dict.keys():
-                    chat_id_object = chat_ids_dict[ids]
+                int_ids = int(ids)
+                if int_ids in chat_ids_dict.keys():
+                    chat_id_object = chat_ids_dict[int_ids]
                 else:
                     send_command_reply(update, context, message="Error. Chat ID " + str(ids) + " does not exist in list.")
                     continue
 
                 if chat_id_object.set_status(new_status=1):
-                    send_command_reply(update, context, message="Chat ID " + str(ids) + "successfully approved (status set to 1).")
+                    send_command_reply(update, context, message="Chat ID " + str(ids) + " successfully approved (status set to 1).")
                     send_general_broadcast(ids, message="Your application to use this bot was granted. You can now display the available webpages with /webpages and the available commands with /commands")
                 else:
                     send_command_reply(update, context, message="Error. Setting of new status 1 (approved) for chat ID " + str(ids) + " failed.\nPlease try again.")
@@ -101,14 +102,15 @@ def denyuser(update, context):
         if context.args:
             user_ids += list(context.args)
             for ids in user_ids:
-                if ids in chat_ids_dict.keys():
-                    chat_id_object = chat_ids_dict[ids]
+                int_ids = int(ids)
+                if int_ids in chat_ids_dict.keys():
+                    chat_id_object = chat_ids_dict[int_ids]
                 else:
                     send_command_reply(update, context, message="Error. Chat ID " + str(ids) + " does not exist in list.")
                     continue
 
                 if chat_id_object.set_status(new_status=3):
-                    send_command_reply(update, context, message="Chat ID " + str(ids) + "successfully denied (status set to 3).")
+                    send_command_reply(update, context, message="Chat ID " + str(ids) + " successfully denied (status set to 3).")
                     send_general_broadcast(ids, message="Sorry, you were denied from using this bot. Goodbye.")
                 else:
                     send_command_reply(update, context, message="Error. Setting of new status 3 (denied) for chat ID " + str(ids) + " failed.\nPlease try again.")
@@ -125,14 +127,19 @@ def getuserstatus(update, context):
         if context.args:
             user_ids += list(context.args)
             for ids in user_ids:
-                if ids in chat_ids_dict.keys():
-                    chat_id_object = chat_ids_dict[ids]
+                int_ids = int(ids)
+                if int_ids in chat_ids_dict.keys():
+                    chat_id_object = chat_ids_dict[int_ids]
                     status = chat_id_object.get_status()
                     send_command_reply(update, context, message="Chat ID " + str(ids) + " has status: " +  str(status))
                 else:
                     send_command_reply(update, context, message="Error. Chat ID " + str(ids) + " does not exist in list.")
         else:
-            send_command_reply(update, context, message="Error. You did not provide the correct arguments for this command (format: \"/getuserstatus chat_ids\").")
+            for int_ids in chat_ids_dict.keys():
+                chat_id_object = chat_ids_dict[int_ids]
+                status = chat_id_object.get_status()
+                send_command_reply(update, context, message="Chat ID " + str(int_ids) + " has status: " +  str(status))
+        send_command_reply(update, context, message="0 = admin, 1 = user, 2 = pending, 3 = denied")
     else:
         send_command_reply(update, context, message="This command is only available to admins. Sorry.")
 
@@ -249,10 +256,11 @@ def stop(update, context):
     else:
         send_command_reply(update, context, message="You were not subscribed to any webpages because you were not an approved user.")
 
-    if delete_chat_id_function(update.message.chat_id):
-        send_command_reply(update, context, message="Your chat ID was removed from this bot. Goodbye.")
-    else:
-        send_command_reply(update, context, message="Error. Your chat ID could not be removed from this bot. Please try again.")
+    if chat_ids_dict[update.message.chat_id].get_status() > 0:
+        if delete_chat_id_function(update.message.chat_id):
+            send_command_reply(update, context, message="Your chat ID was removed from this bot. Goodbye.")
+        else:
+            send_command_reply(update, context, message="Error. Your chat ID could not be removed from this bot. Please try again.")
 
 
 # access level: none
