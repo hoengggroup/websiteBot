@@ -35,6 +35,7 @@ import vpnCheck
 webpages_dict = {}
 chat_ids_dict = {}
 
+multiprocessing.set_start_method('spawn', True)
 
 
 class Webpage:
@@ -126,12 +127,8 @@ class Webpage:
 
 
 class ChatID:
-    def __init__(self, chat_id, status=2):
-        self.chat_id = chat_id
+    def __init__(self, status):
         self.status = status  # 0 = admin, 1 = user, 2 = pending, 3 = denied
-    
-    def __str__(self):
-        return "[chat_id] " + str(self.chat_id) + "[status] " + str(self.status)
     
     def get_status(self):
         return self.status
@@ -211,18 +208,32 @@ def remove_webpage(name):
         return False
 
 
-def add_chat_id(chat_id):
+def create_chat_id(chat_id, status=2):
     if chat_id in chat_ids_dict:
-        logger.info("Couldn't add chat ID " + chat_id + ", as this chat ID already exists.")
+        logger.info("Couldn't add chat ID " + str(chat_id) + ", as this chat ID already exists.")
         return False
     try:
-        new_chat_id = ChatID(chat_id=chat_id)
+        new_chat_id = ChatID(status=status)
         chat_ids_dict[chat_id] = new_chat_id
         save_chat_ids_dict()
         logger.info("Successfully added chat ID: " + str(chat_id))
         return True
     except Exception as ex:
         logger.error("Couldn't add chat ID to chat_ids_dict. Error: '%s'" % ex.message)  # pylint: disable=no-member
+        return False
+
+
+def delete_chat_id(chat_id):
+    if chat_id not in chat_ids_dict:
+        logger.info("Couldn't remove chat ID " + str(chat_id) + ", as this chat ID does not exist.")
+        return False
+    try:
+        del chat_ids_dict[chat_id]
+        save_chat_ids_dict()
+        logger.info("Successfully removed chat ID: " + str(chat_id))
+        return True
+    except Exception as ex:
+        logger.error("Couldn't remove chat ID from chat_ids_dict. Error: '%s'" % ex.message)  # pylint: disable=no-member
         return False
 
 
@@ -383,9 +394,13 @@ def main():
 
 
     # 2. load from file
-    manager = multiprocessing.Manager()
+    manager_1 = multiprocessing.Manager()
     global webpages_dict
-    webpages_dict = manager.dict() #pickle.load(open("save.p", "rb"))
+    webpages_dict = manager_1.dict() #pickle.load(open("save.p", "rb"))
+
+    manager_2 = multiprocessing.Manager()
+    global chat_ids_dict
+    chat_ids_dict = manager_2.dict() #pickle.load(open("save.p", "rb"))
 
 
     logger.info("Webpages loading from file START")
@@ -407,9 +422,12 @@ def main():
     telegramService.set_add_webpage_reference(add_webpage)
     telegramService.set_remove_webpage_reference(remove_webpage)
     telegramService.set_chat_ids_dict_reference(chat_ids_dict)
-    telegramService.set_add_chat_id_reference(add_chat_id)
+    telegramService.set_create_chat_id_reference(create_chat_id)
+    telegramService.set_delete_chat_id_reference(delete_chat_id)
 
 
+    # set status of pre-configured admin chat IDs to 0 for administrative access after startup
+    telegramService.escalate_admin_privileges()
 
 
     try:
