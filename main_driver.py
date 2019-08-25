@@ -33,7 +33,7 @@ import vpnCheck
 
 
 webpages_dict = {}
-
+chat_ids_dict = {}
 
 
 
@@ -125,6 +125,29 @@ class Webpage:
             return False
 
 
+class ChatID:
+    def __init__(self, chat_id, status=2):
+        self.chat_id = chat_id
+        self.status = status  # 0 = admin, 1 = user, 2 = pending, 3 = denied
+    
+    def __str__(self):
+        return "[chat_id] " + str(self.chat_id) + "[status] " + str(self.status)
+    
+    def get_status(self):
+        return self.status
+    
+    def set_status(self, new_status):
+        try:
+            self.status = new_status
+            save_chat_ids_dict()
+            return True
+        except KeyError:
+            save_chat_ids_dict()
+            logger.error("Failed to set new status " + str(new_status) + " for chat ID " + str(self.chat_id))
+            return False
+
+
+
 delimiters = "\n", ". "  # delimiters where to split string
 
 # process string ready for dp edit distance
@@ -152,6 +175,11 @@ def preprocess_string(str_to_convert):
 def save_websites_dict():
     # save back to file
     pickle.dump(webpages_dict, open("save.p", "wb"))
+
+
+def save_chat_ids_dict():
+    #save back to file
+    pickle.dump(chat_ids_dict, open("save.p", "wb"))
 
 
 def add_webpage(name, url, t_sleep):
@@ -183,11 +211,27 @@ def remove_webpage(name):
         return False
 
 
+def add_chat_id(chat_id):
+    if chat_id in chat_ids_dict:
+        logger.info("Couldn't add chat ID " + chat_id + ", as this chat ID already exists.")
+        return False
+    try:
+        new_chat_id = ChatID(chat_id=chat_id)
+        chat_ids_dict[chat_id] = new_chat_id
+        save_chat_ids_dict()
+        logger.info("Successfully added chat ID: " + str(chat_id))
+        return True
+    except Exception as ex:
+        logger.error("Couldn't add chat ID to chat_ids_dict. Error: '%s'" % ex.message)  # pylint: disable=no-member
+        return False
+
+
 def inf_wait_and_signal():
     logger.warning("[inf sleep] sleeping inf time")
     while True:
         alive_notifier.notify("WATCHDOG=1")  # send status: alive
         time.sleep(10)
+
 
 def process_webpage(logger,driver,current_wbpg_dict,current_wbpg_name):
     current_wbpg=current_wbpg_dict[current_wbpg_name]
@@ -276,7 +320,7 @@ def main():
     '''
 
 
-    # 0. the sublime init stuff
+    # 0. the selenium init stuff
     global logger
     logger = create_logger_main_driver()
     parent_directory_binaries = str(Path(__file__).resolve().parents[0])
@@ -362,6 +406,8 @@ def main():
     telegramService.set_webpages_dict_reference(webpages_dict)
     telegramService.set_add_webpage_reference(add_webpage)
     telegramService.set_remove_webpage_reference(remove_webpage)
+    telegramService.set_chat_ids_dict_reference(chat_ids_dict)
+    telegramService.set_add_chat_id_reference(add_chat_id)
 
 
 

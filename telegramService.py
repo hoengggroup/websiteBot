@@ -32,109 +32,210 @@ def set_remove_webpage_reference(the_remove_webpage_reference):
     remove_webpage_function = the_remove_webpage_reference
 
 
+def set_chat_ids_dict_reference(the_chat_ids_dict_reference):
+    global chat_ids_dict
+    chat_ids_dict = the_chat_ids_dict_reference
+
+
+def set_add_chat_id_reference(the_add_chat_id_reference):
+    global add_chat_id_function
+    add_chat_id_function = the_add_chat_id_reference
+
+
+# access level: none
 def start(update, context):
-    send_command_reply(update, context, message="Welcome to this website-tracker bot.\nYou can display the available webpages with /webpages and the available commands with /commands.")
+    send_command_reply(update, context, message="Welcome to this website-tracker bot.\nPlease tell me your name and your message to be invited with /apply {your name and message}\nUntil approval all other functions will remain inaccessible.")
 
 
+# access level: none
+def apply(update, context):
+    if context.args:
+        message_to_admins = "Application:\n" + context.args + "\nSent by: " + update.message.chat_id
+        if add_chat_id_function(chat_id=update.message.chat_id, status=2):
+            send_command_reply(update, context, message="Your application has been sent to the admins of this bot.")
+        else:
+            send_command_reply(update, context, message="Error. Something went wrong.\nPlease try again.")
+        for admins in admin_chat_ids:
+            send_general_broadcast(admins, message_to_admins)
+    else:
+        send_command_reply(update, context, message="Error. You need to send your name and appliction along with this command.")
+
+
+# access level: admin (0)
+def approveuser(update, context):
+    if chat_ids_dict.get_status(update.message.chat_id) <= 0:
+        user_ids = list()
+        if context.args:
+            user_ids += list(context.args)
+            for ids in user_ids:
+                if ids in chat_ids_dict.keys():
+                    chat_id_object = chat_ids_dict[ids]
+                else:
+                    send_command_reply(update, context, message="Error. Chat ID " + str(ids) + " does not exist in list.")
+                    continue
+
+                if chat_id_object.set_status(new_status=1):
+                    send_command_reply(update, context, message="Chat ID " + str(ids) + "successfully approved (status set to 1).")
+                    send_general_broadcast(ids, message="Your application to use this bot was granted. You can now display the available webpages with /webpages and the available commands with /commands")
+                else:
+                    send_command_reply(update, context, message="Error. Setting of new status 1 (approved) for chat ID " + str(ids) + " failed.\nPlease try again.")
+        else:
+            send_command_reply(update, context, message="Error. You need to specify which user(s) you want to approve.")
+    else:
+        send_command_reply(update, context, message="This command is only available to admins. Sorry.")
+
+
+# access level: admin (0)
+def denyuser(update, context):
+    if chat_ids_dict.get_status(update.message.chat_id) <= 0:
+        user_ids = list()
+        if context.args:
+            user_ids += list(context.args)
+            for ids in user_ids:
+                if ids in chat_ids_dict.keys():
+                    chat_id_object = chat_ids_dict[ids]
+                else:
+                    send_command_reply(update, context, message="Error. Chat ID " + str(ids) + " does not exist in list.")
+                    continue
+
+                if chat_id_object.set_status(new_status=3):
+                    send_command_reply(update, context, message="Chat ID " + str(ids) + "successfully denied (status set to 3).")
+                    send_general_broadcast(ids, message="Sorry, you were denied from using this bot. Goodbye.")
+                else:
+                    send_command_reply(update, context, message="Error. Setting of new status 3 (denied) for chat ID " + str(ids) + " failed.\nPlease try again.")
+        else:
+            send_command_reply(update, context, message="Error. You need to specify which user(s) you want to approve.")
+    else:
+        send_command_reply(update, context, message="This command is only available to admins. Sorry.")
+
+
+# access level: user (1)
 def webpages(update, context):
-    list_webpages = list(webpages_dict.keys())
-    message_list = "\n- "
-    message_list += "\n- ".join(list_webpages)
-    
-    send_command_reply(update, context, message="The available webpages are:" + message_list + "\n\nPlease pay attention to the correct spelling and capitalization.")
+    if chat_ids_dict.get_status(update.message.chat_id) <= 1:
+        list_webpages = list(webpages_dict.keys())
+        message_list = "\n- "
+        message_list += "\n- ".join(list_webpages)
+        
+        send_command_reply(update, context, message="The available webpages are:" + message_list + "\n\nPlease pay attention to the correct spelling and capitalization.")
+    else:
+        send_command_reply(update, context, message="This command is only available to approved users. Sorry.")
 
 
+# access level: user (1)
 def commands(update, context):
-    command_list = ("/start\n- display welcome message and lists of available webpages and commands\n"
-                    "/webpages\n- display list of available webpages\n"
-                    "/commands\n- display this list of available commands\n"
-                    "/subscribe {webpage} [webpages]\n- subscribe to notifications about one or more webpages\n"
-                    "/unsubscribe {webpage} [webpages]\n- unsubscribe from notifications about one or more webpages\n"
-                    "/active\n- show your active subscriptions\n"
-                    "/stop\n- unsubscribe from all webpages")
+    if chat_ids_dict.get_status(update.message.chat_id) <= 1:
+        command_list = ("/start\n- display welcome message and lists of available webpages and commands\n"
+                        "/webpages\n- display list of available webpages\n"
+                        "/commands\n- display this list of available commands\n"
+                        "/subscribe {webpage} [webpages]\n- subscribe to notifications about one or more webpages\n"
+                        "/unsubscribe {webpage} [webpages]\n- unsubscribe from notifications about one or more webpages\n"
+                        "/active\n- show your active subscriptions\n"
+                        "/stop\n- unsubscribe from all webpages")
 
-    send_command_reply(update, context, message="The available commands are:\n" + command_list)
+        send_command_reply(update, context, message="The available commands are:\n" + command_list)
+    else:
+        send_command_reply(update, context, message="This command is only available to approved users. Sorry.")
 
 
+# access level: user (1)
 def subscribe(update, context):
-    webpages = list()
-    if context.args:
-        webpages += list(context.args)
-        for wp in webpages:
-            if wp in webpages_dict.keys():
-                webpage_object = webpages_dict[wp]
-            else:
-                send_command_reply(update, context, message="Error. Webpage " + str(wp) + " does not exist in list.")
-                continue
+    if chat_ids_dict.get_status(update.message.chat_id) <= 1:
+        webpages = list()
+        if context.args:
+            webpages += list(context.args)
+            for wp in webpages:
+                if wp in webpages_dict.keys():
+                    webpage_object = webpages_dict[wp]
+                else:
+                    send_command_reply(update, context, message="Error. Webpage " + str(wp) + " does not exist in list.")
+                    continue
 
-            if webpage_object.add_chat_id(chat_id_to_add=update.message.chat_id):
-                send_command_reply(update, context, message="You have successfully been subscribed to webpage: " + str(wp))
-            else:
-                send_command_reply(update, context, message="Error. Subscription to webpage " + str(wp) + " failed.\nTry again or check if you are already subscribed with the /active command.")
+                if webpage_object.add_chat_id(chat_id_to_add=update.message.chat_id):
+                    send_command_reply(update, context, message="You have successfully been subscribed to webpage: " + str(wp))
+                else:
+                    send_command_reply(update, context, message="Error. Subscription to webpage " + str(wp) + " failed.\nTry again or check if you are already subscribed with the /active command.")
+        else:
+            send_command_reply(update, context, message="Error. You need to specify which webpage you want to subscribe to.")
     else:
-        send_command_reply(update, context, message="Error. You need to specify which webpage you want to subscribe to.")
+        send_command_reply(update, context, message="This command is only available to approved users. Sorry.")
 
 
+# access level: user (1)
 def unsubscribe(update, context):
-    webpages = list()
-    if context.args:
-        webpages += list(context.args)
-        for wp in webpages:
-            if wp in webpages_dict.keys():
-                webpage_object = webpages_dict[wp]
-            else:
-                send_command_reply(update, context, message="Error. Webpage " + str(wp) + " does not exist in list.")
-                continue
+    if chat_ids_dict.get_status(update.message.chat_id) <= 1:
+        webpages = list()
+        if context.args:
+            webpages += list(context.args)
+            for wp in webpages:
+                if wp in webpages_dict.keys():
+                    webpage_object = webpages_dict[wp]
+                else:
+                    send_command_reply(update, context, message="Error. Webpage " + str(wp) + " does not exist in list.")
+                    continue
 
-            if webpage_object.remove_chat_id(chat_id_to_remove=update.message.chat_id):
-                send_command_reply(update, context, message="You have successfully been unsubscribed from webpage: " + str(wp))
-            else:
-                send_command_reply(update, context, message="Error. Unsubscription from webpage " + str(wp) + " failed.\nTry again or check if you are already not subscribed with the /active command.")
+                if webpage_object.remove_chat_id(chat_id_to_remove=update.message.chat_id):
+                    send_command_reply(update, context, message="You have successfully been unsubscribed from webpage: " + str(wp))
+                else:
+                    send_command_reply(update, context, message="Error. Unsubscription from webpage " + str(wp) + " failed.\nTry again or check if you are already not subscribed with the /active command.")
+        else:
+            send_command_reply(update, context, message="Error. You need to specify which webpage you want to unsubscribe from.")
     else:
-        send_command_reply(update, context, message="Error. You need to specify which webpage you want to unsubscribe from.")
+        send_command_reply(update, context, message="This command is only available to approved users. Sorry.")
 
 
+# access level: user (1)
 def active(update, context):
-    webpages = list()
-    for wp in list(webpages_dict.keys()):
-        webpage_object = webpages_dict[wp]
-        if webpage_object.is_chat_id_active(chat_id_to_check=update.message.chat_id):
-            webpages.append(wp)
+    if chat_ids_dict.get_status(update.message.chat_id) <= 1:
+        webpages = list()
+        for wp in list(webpages_dict.keys()):
+            webpage_object = webpages_dict[wp]
+            if webpage_object.is_chat_id_active(chat_id_to_check=update.message.chat_id):
+                webpages.append(wp)
 
-    if webpages:
-        message_list = "\n- "
-        message_list += "\n- ".join(webpages)
-        send_command_reply(update, context, message="You are (still) currently subscribed to the following webpages: " + message_list)
+        if webpages:
+            message_list = "\n- "
+            message_list += "\n- ".join(webpages)
+            send_command_reply(update, context, message="You are (still) currently subscribed to the following webpages: " + message_list)
+        else:
+            send_command_reply(update, context, message="You are (now) not subscribed to any webpages.")
     else:
-        send_command_reply(update, context, message="You are (now) not subscribed to any webpages.")
+        send_command_reply(update, context, message="This command is only available to approved users. Sorry.")
 
 
+# access level: user (1)
 def stop(update, context):
-    webpages = list()
-    for wp in list(webpages_dict.keys()):
-        webpage_object = webpages_dict[wp]
-        if webpage_object.remove_chat_id(chat_id_to_remove=update.message.chat_id):
-            webpages.append(wp)
+    if chat_ids_dict.get_status(update.message.chat_id) <= 1:
+        webpages = list()
+        for wp in list(webpages_dict.keys()):
+            webpage_object = webpages_dict[wp]
+            if webpage_object.remove_chat_id(chat_id_to_remove=update.message.chat_id):
+                webpages.append(wp)
 
-    if webpages:
-        message_list = "\n- "
-        message_list += "\n- ".join(webpages)
-        send_command_reply(update, context, message="You have successfully been unsubscribed from the following webpages: " + message_list)
-        active(update, context)
-        send_command_reply(update, context, message="Goodbye.")
+        if webpages:
+            message_list = "\n- "
+            message_list += "\n- ".join(webpages)
+            send_command_reply(update, context, message="You have successfully been unsubscribed from the following webpages: " + message_list)
+            active(update, context)
+            send_command_reply(update, context, message="Goodbye.")
+        else:
+            send_command_reply(update, context, message="You were not subscribed to any webpages.\nGoodbye.")
     else:
-        send_command_reply(update, context, message="You were not subscribed to any webpages.\nGoodbye.")
+        send_command_reply(update, context, message="This command is only available to approved users. Sorry.")
 
 
+# access level: none
 def whoami(update, context):
-    if update.message.chat_id in admin_chat_ids:
+    if chat_ids_dict.get_status(update.message.chat_id) == 0:
         send_command_reply(update, context, message="Root")
-    else:
+    elif chat_ids_dict.get_status(update.message.chat_id) == 1:
         send_command_reply(update, context, message="User")
+    else:
+        send_command_reply(update, context, message="Guest")
 
 
+# access level: admin (0)
 def getpageinfo(update, context):
-    if update.message.chat_id in admin_chat_ids:
+    if chat_ids_dict.get_status(update.message.chat_id) <= 0:
         if len(context.args) == 1:
             name = str(context.args[0])
             if name in webpages_dict:
@@ -143,10 +244,13 @@ def getpageinfo(update, context):
                 send_command_reply(update, context, message="Error. The webpage " + name + " does not exist.")
         else:
             send_command_reply(update, context, message="Error. You did not provide the correct arguments for this command (format: \"/getpageinfo name).")
+    else:
+        send_command_reply(update, context, message="This command is only available to admins. Sorry.")
     
 
+# access level: admin (0)
 def admincommands(update, context):
-    if update.message.chat_id in admin_chat_ids:
+    if chat_ids_dict.get_status(update.message.chat_id) <= 0:
         command_list = ("/whoami\n- check admin status (not an inherently privileged command, anyone can check their status)\n"
                         "/admincommands\n- display this list of available admin-only commands\n"
                         "/addwebpage {name} {url} {t_sleep}\n- add a webpage to the list of available webpages\n"
@@ -157,8 +261,9 @@ def admincommands(update, context):
         send_command_reply(update, context, message="This command is only available to admins. Sorry.")
 
 
+# access level: admin (0)
 def addwebpage(update, context):
-    if update.message.chat_id in admin_chat_ids:
+    if chat_ids_dict.get_status(update.message.chat_id) <= 0:
         if len(context.args) == 3:
             name = str(context.args[0])
             url = str(context.args[1])
@@ -173,8 +278,9 @@ def addwebpage(update, context):
         send_command_reply(update, context, message="This command is only available to admins. Sorry.")
 
 
+# access level: admin (0)
 def removewebpage(update, context):
-    if update.message.chat_id in admin_chat_ids:
+    if chat_ids_dict.get_status(update.message.chat_id) <= 0:
         if len(context.args) == 1:
             name = str(context.args[0])
             if remove_webpage_function(name=name):
@@ -187,10 +293,12 @@ def removewebpage(update, context):
         send_command_reply(update, context, message="This command is only available to admins. Sorry.")
 
 
+# access level: none
 def text(update, context):
     send_command_reply(update, context, message="Sorry, I only understand commands. Check if you entered a leading slash or get a list of the available commands with /commands.")
 
 
+# access level: none
 def unknown(update, context):
     send_command_reply(update, context, message="Sorry, I did not understand that command. Check the spelling or get a list of the available commands with /commands.")
 
@@ -253,7 +361,11 @@ def init():
     global dispatcher
     global bot
 
-    # global webpages_dict  # needed here or not?, see line 20
+    # set the admins to root access level
+    for ids in admin_chat_ids:
+        add_chat_id_function(chat_id=ids, status=0)
+
+    # global webpages_dict  # needed here or not?, see line 24
 
     if platform.system() == "Linux":
         # @websiteBot_bot
@@ -269,6 +381,8 @@ def init():
 
     # --- Generally accessible commands:
     dispatcher.add_handler(CommandHandler("start", start))
+    dispatcher.add_handler(CommandHandler("apply", apply))
+    # --- Approved user accessible commands:
     dispatcher.add_handler(CommandHandler("webpages", webpages))
     dispatcher.add_handler(CommandHandler("commands", commands))
     dispatcher.add_handler(CommandHandler("subscribe", subscribe))
@@ -278,6 +392,8 @@ def init():
     # --- Privileged admin-only commands:
     # "whoami" is not inherently privileged (anyone can check their status) but we'll not shout it from the rooftops regardless
     dispatcher.add_handler(CommandHandler("whoami", whoami))
+    dispatcher.add_handler(CommandHandler("approveuser", approveuser))
+    dispatcher.add_handler(CommandHandler("denyuser", denyuser))
     dispatcher.add_handler(CommandHandler("admincommands", admincommands))
     dispatcher.add_handler(CommandHandler("addwebpage", addwebpage))
     dispatcher.add_handler(CommandHandler("getpageinfo", getpageinfo))
