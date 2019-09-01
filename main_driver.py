@@ -171,12 +171,12 @@ def preprocess_string(str_to_convert):
 
 def save_websites_dict():
     # save back to file
-    pickle.dump(webpages_dict, open("save.p", "wb"))
+    pickle.dump(webpages_dict, open("wbpgs.p", "wb"))
 
 
 def save_chat_ids_dict():
     #save back to file
-    pickle.dump(chat_ids_dict, open("save.p", "wb"))
+    pickle.dump(chat_ids_dict, open("chatids.p", "wb"))
 
 
 def add_webpage(name, url, t_sleep):
@@ -248,7 +248,7 @@ def process_webpage(logger,current_text,current_wbpg_dict,current_wbpg_name):
     current_wbpg=current_wbpg_dict[current_wbpg_name]
     # 2. hash website text
     logger.debug("lower now")
-    current_text+=". abcd. .ef "
+    # current_text+=". abcd. .ef "
     logger.debug("real hash now")
     current_hash = (hashlib.md5(current_text.encode())).hexdigest()
     logger.debug("hashed.")
@@ -411,8 +411,13 @@ def main():
 
     '''
     to add'''
-    myWebpage = Webpage("https://google.com",15)
-    webpages_dict["GoogleMain"] = myWebpage
+    myWebpage = Webpage("https://www.zeit.de/news/index",15)
+    webpages_dict["news"] = myWebpage
+
+    myWebpage2 = Webpage("http://reservation.livingscience.ch/wohnen",15)
+    webpages_dict["living"] = myWebpage2
+
+    
     
 
 
@@ -437,13 +442,13 @@ def main():
                 telegramService.send_admin_broadcast("IP address has changed, sleeping now.")
                 inf_wait_and_signal() # sleep inf time
 
-            webpages_dict_loop = webpages_dict  # so we don't mutate the list (add/remove webpage) while the loop runs
-            for current_wbpg_name in list(webpages_dict_loop):
+            # webpages_dict_loop = webpages_dict  # so we don't mutate the list (add/remove webpage) while the loop runs
+            for current_wbpg_name in list(webpages_dict):
                 # notfiy watchdog
                 alive_notifier.notify("WATCHDOG=1")  # send status: alive
 
                 try:
-                    current_wbpg = webpages_dict_loop[current_wbpg_name]
+                    current_wbpg = webpages_dict[current_wbpg_name]
 
                     current_time = datetime.datetime.now()
                     elapsed_time = current_time - current_wbpg.get_last_time_checked()
