@@ -421,8 +421,8 @@ def main():
 
     
     # to add
-    # myWebpage = Webpage("https://google.com",15)
-    myWebpage = Webpage("file:///Users/black/Downloads/livingscience%20form.htm",15)
+    myWebpage = Webpage("https://google.com",15)
+    # myWebpage = Webpage("file:///Users/black/Downloads/livingscience%20form.htm",15)
     webpages_dict["testLocal"] = myWebpage
     
     
