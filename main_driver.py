@@ -6,8 +6,6 @@ from selenium import webdriver
 from selenium.webdriver.firefox.options import Options
 from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
 from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
-
-from proc_webpg_ext import process_webpage_ext
 import re
 import hashlib # for hashing website content
 import traceback
@@ -28,9 +26,7 @@ from unidecode import unidecode  # for stripping Ümläüte
 
 # our own libraries/dependencies
 from globalConfig import (version_code, static_ip,static_ip_address,webpage_load_timeout,webpage_process_timeout)
-print("1st st")
 from loggerConfig import create_logger_main_driver
-print("1st en")
 import dp_edit_distance
 import telegramService
 import vpnCheck
@@ -39,7 +35,7 @@ import vpnCheck
 webpages_dict = {}
 chat_ids_dict = {}
 
-#multiprocessing.set_start_method('spawn', True)
+multiprocessing.set_start_method('spawn', True)
 
 
 class Webpage:
@@ -248,11 +244,11 @@ def inf_wait_and_signal():
         time.sleep(10)
 
 
-def process_webpage(logger,driver_text,current_wbpg_dict,current_wbpg_name):
+def process_webpage(logger,driver,current_wbpg_dict,current_wbpg_name):
     current_wbpg=current_wbpg_dict[current_wbpg_name]
     # 2. hash website text
     logger.debug("lower now")
-    current_text = driver_text #driver.find_element_by_tag_name("body").text #.lower()
+    current_text = driver.find_element_by_tag_name("body").text #.lower()
     current_text+=". abcd. .ef "
     logger.debug("real hash now")
     current_hash = (hashlib.md5(current_text.encode())).hexdigest()
@@ -336,10 +332,8 @@ def main():
 
 
     # 0. the selenium init stuff
-    print("calling first st")
     global logger
     logger = create_logger_main_driver()
-    print("calling first en")
     parent_directory_binaries = str(Path(__file__).resolve().parents[0])
 
     firefoxOptions = Options()
@@ -408,9 +402,6 @@ def main():
     global chat_ids_dict
     chat_ids_dict = manager_2.dict() #pickle.load(open("save.p", "rb"))
 
-    import os
-
-    print("PID: "+str(os.getpid()))
 
     logger.info("Webpages loading from file START")
     for myKey in webpages_dict:
@@ -419,13 +410,11 @@ def main():
     logger.info("Webpages loading from file END")
 
 
-    
-    # to add
-    # myWebpage = Webpage("https://google.com",15)
-    myWebpage = Webpage("file:///Users/black/Downloads/livingscience%20form.htm",15)
-    webpages_dict["testLocal"] = myWebpage
-    
-    
+    '''
+    to add
+    myWebpage = Webpage("https://google.com",15)
+    webpages_dict["GoogleMain"] = myWebpage
+    '''
 
 
     # make objects and functions available / update references in telegramService
@@ -441,8 +430,7 @@ def main():
     telegramService.escalate_admin_privileges()
 
 
-    '''try:'''
-    if True:
+    try:
         while(True):
             # sleep longer if VPN connection is down
             if ip_address != vpnCheck.get_ip():
@@ -487,23 +475,19 @@ def main():
                         logger.debug("starting thread")
                         current_wbpg_ref_dict = dict()
                         current_wbpg_ref_dict["1"] = current_wbpg
-                        
-                        driver_text = driver.find_element_by_tag_name("body").text
-                        if __name__ == '__main__':
-                            p = multiprocessing.Process(target =process_webpage_ext, args =(logger,driver_text,webpages_dict,current_wbpg_name))
-                            print("proc started")
-                            #child_process_list.append(p)
-                            #p.start()
-                            #p.join(webpage_process_timeout)
+                        p = multiprocessing.Process(target =process_webpage, args =(logger,driver,webpages_dict,current_wbpg_name))
+                        child_process_list.append(p)
+                        p.start()
+                        p.join(webpage_process_timeout)
 
-                        '''if p.is_alive():
+                        if p.is_alive():
                             logger.warning("processing wbpg "+ current_wbpg_name+": func didn't return in time. killing now.")
                             telegramService.send_admin_broadcast("[Webpage processing] timeout for wbpg "+current_wbpg_name)
                             p.terminate()
                             p.join()
                             logger.debug("prcessing wbpg killed successfully.")
                         else:
-                            logger.debug("process wbpg func returned successfully.")'''
+                            logger.debug("process wbpg func returned successfully.")
                         child_process_list.remove(p)
                 except RuntimeError as e:
                     logger.error("[website dict iteration] Problem: runtime error "+str(e))
@@ -524,7 +508,7 @@ def main():
             # sleep now
             time.sleep(10)
 
-    '''except Exception:
+    except Exception:
         logger.error("[MAIN] Problem: unknown exception. Terminating")
         logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
         traceback.print_exc()         
@@ -534,7 +518,7 @@ def main():
         telegramService.send_admin_broadcast("[MAIN] shutting down...")
         # cleanup
         process_cleanup()
-        logger.warning("Shutting down. This is last line.")'''
+        logger.warning("Shutting down. This is last line.")
 
 
 if __name__ == "__main__":
