@@ -10,6 +10,8 @@ import re
 import hashlib # for hashing website content
 import traceback
 import multiprocessing # for timeout
+import html2text
+import urllib3
 
 
 import pickle  # to save webpage list
@@ -329,6 +331,8 @@ def main():
     sleep_time = sleep time at end of while loop
     '''
 
+    #-1 the urrlib3
+    urlPool = urllib3.PoolManager(timeout=urllib3.Timeout(connect=4.0, read=2.0))
 
     # 0. the selenium init stuff
     global logger
@@ -394,7 +398,7 @@ def main():
 
     # 2. load from file
     manager_1 = multiprocessing.Manager()
-    global webpages_dict
+    # global webpages_dict
     webpages_dict = manager_1.dict() #pickle.load(open("save.p", "rb"))
 
     manager_2 = multiprocessing.Manager()
@@ -459,15 +463,16 @@ def main():
                         # 1. get website
                         try:
                             logger.debug("Getting website.")
-                            driver.get(current_wbpg.get_url())
+                            rContent = urlPool.request('GET',current_wbpg.get_url())
                             logger.debug("Got website.")
-                        except selenium.common.exceptions.TimeoutException as e:
-                            logger.error("Timeout exception. The error is: " + str(e))
+                        except urllib3.exceptions.ConnectionError as e:
+                            logger.error("Timeout exception. The error is: " + str(e.reason))
                             telegramService.send_admin_broadcast("[getting website] URL: "+str(current_wbpg.get_url())+" Problem: timeout exception")
                             continue
-                        except selenium.common.exceptions.WebDriverException as e:
-                            logger.error("Webdriver exception. The error is: " + str(e))
-                            telegramService.send_admin_broadcast("[getting website] URL: "+str(current_wbpg.get_url())+" Problem: webdriver exception")
+                        except urllib3.exceptions.MaxRetryError as e:
+                            print("Max retry error:")
+                            logger.error("Max retry exception. The error is: " + str(e.reason))
+                            telegramService.send_admin_broadcast("[getting website] URL: "+str(current_wbpg.get_url())+" Problem: max retry exception")
                             continue
                         except:
                             logger.error("An UNKNOWN exception has occured in the get website subroutine.")
@@ -477,14 +482,12 @@ def main():
 
                         # process wbpg in own thread
                         logger.debug("starting thread")
-                        current_wbpg_ref_dict = dict()
-                        current_wbpg_ref_dict["1"] = current_wbpg
-                        current_text = driver.find_element_by_tag_name("body").text #.lower()
+                        current_text = html2text.html2text(rContent.data.decode('utf-8')) #.lower()
                         p = multiprocessing.Process(target =process_webpage, args =(logger,current_text,webpages_dict,current_wbpg_name))
                         child_process_list.append(p)
                         p.start()
                         p.join(webpage_process_timeout)
-
+                        
                         if p.is_alive():
                             logger.warning("processing wbpg "+ current_wbpg_name+": func didn't return in time. killing now.")
                             telegramService.send_admin_broadcast("[Webpage processing] timeout for wbpg "+current_wbpg_name)
