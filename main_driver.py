@@ -1,16 +1,10 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-
-import selenium
-from selenium import webdriver
-from selenium.webdriver.firefox.options import Options
-from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
-from selenium.webdriver.common.desired_capabilities import DesiredCapabilities
 import re
 import hashlib # for hashing website content
 import traceback
 import multiprocessing # for timeout
-import html2text
+import html2text # for passing html to text
 import urllib3
 
 
@@ -344,30 +338,6 @@ def main():
     "javascript.enabled": False,})
     # headless makes it a pain to debug, keeps many zombie processes running in the background
     # firefoxOptions.headless = True
-    firefoxProfile = webdriver.FirefoxProfile()
-    # firefoxProfile.set_preference("browser.privatebrowsing.autostart", True)  # Enable incognito
-    firefoxProfile.set_preference("network.cookie.cookieBehavior", 2)  # Disable Cookies
-    firefoxProfile.set_preference("permissions.default.stylesheet", 2)  # Disable CSS
-    firefoxProfile.set_preference("permissions.default.image", 2)  # Disable images
-    firefoxProfile.set_preference("dom.ipc.plugins.enabled.libflashplayer.so", False)  # Disable Flash
-    # maybe usful later: firefoxProfile.set_preference("http.response.timeout", webpage_load_timeout)
-    caps = DesiredCapabilities().FIREFOX
-    # caps["pageLoadStrategy"] = "normal"  # complete
-    caps["pageLoadStrategy"] = "eager"  # interactive
-    if platform.system() == "Linux":
-        from pyvirtualdisplay import Display  # pylint: disable=import-error
-        from selenium.webdriver.firefox.firefox_profile import FirefoxProfile
-        display = Display(visible=0, size=(1024, 768))
-        display.start()
-        driver = webdriver.Firefox(options=firefoxOptions, desired_capabilities=caps, firefox_profile=firefoxProfile)
-    else:
-        driver = webdriver.Firefox(options=firefoxOptions, desired_capabilities=caps, firefox_profile=firefoxProfile, executable_path=parent_directory_binaries + "/drivers/geckodriver_" + str(platform.system()))
-    driver.set_page_load_timeout(webpage_load_timeout)
-    driver.implicitly_wait(webpage_load_timeout) # this does the real time out
-
-    driver.install_addon(parent_directory_binaries + "/extensions/ublock.xpi")
-    driver.install_addon(parent_directory_binaries + "/extensions/cookies.xpi")
-
     # 1.1 init telegram service
     telegramService.init()
     # send admin msg
