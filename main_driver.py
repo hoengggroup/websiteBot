@@ -98,11 +98,9 @@ class Webpage:
             return False
         try:
             self.chat_ids.add(chat_id_to_add)
-            save_websites_dict()
             logger.info("Added chat ID " + str(chat_id_to_add) + " to: " + str(self.url))
             return True
         except KeyError:
-            save_websites_dict()
             logger.error("Failed to add chat ID " + str(chat_id_to_add) + " to: " + str(self.url))
             return False
 
@@ -112,11 +110,9 @@ class Webpage:
             return False
         try:
             self.chat_ids.remove(chat_id_to_remove)
-            save_websites_dict()
             logger.info("Removed chat ID " + str(chat_id_to_remove) + " from: " + str(self.url))
             return True
         except KeyError:
-            save_websites_dict()
             logger.error("Failed to remove chat ID " + str(chat_id_to_remove) + " from: " + str(self.url))
             return False
 
@@ -131,10 +127,8 @@ class ChatID:
     def set_status(self, new_status):
         try:
             self.status = int(new_status)
-            save_chat_ids_dict()
             return True
         except KeyError:
-            save_chat_ids_dict()
             logger.error("Failed to set new status " + str(new_status) + " for this chat ID.")
             return False
 
@@ -164,16 +158,6 @@ def preprocess_string(str_to_convert):
     return str_list_ret #str_ret
 
 
-def save_websites_dict():
-    # save back to file
-    pickle.dump(webpages_dict, open("wbpgs.p", "wb"))
-
-
-def save_chat_ids_dict():
-    #save back to file
-    pickle.dump(chat_ids_dict, open("chatids.p", "wb"))
-
-
 def add_webpage(name, url, t_sleep):
     if name in webpages_dict:
         logger.info("Couldn't add webpage " + name + ", as a webpage with this name already exists.")
@@ -181,7 +165,6 @@ def add_webpage(name, url, t_sleep):
     try:
         new_webpage = Webpage(url=url, t_sleep=t_sleep)
         webpages_dict[name] = new_webpage
-        save_websites_dict()
         logger.info("Successfully added webpage: " + name + " with url " + str(url) + " and timeout " + str(t_sleep))
         return True
     except Exception as ex:
@@ -195,7 +178,6 @@ def remove_webpage(name):
         return False
     try:
         del webpages_dict[name]
-        save_websites_dict()
         logger.info("Successfully removed webpage: " + name)
         return True
     except Exception as ex:
@@ -210,7 +192,6 @@ def create_chat_id(chat_id, status=2):
     try:
         new_chat_id = ChatID(status=status)
         chat_ids_dict[chat_id] = new_chat_id
-        save_chat_ids_dict()
         logger.info("Successfully added chat ID: " + str(chat_id))
         return True
     except Exception as ex:
@@ -224,7 +205,6 @@ def delete_chat_id(chat_id):
         return False
     try:
         del chat_ids_dict[chat_id]
-        save_chat_ids_dict()
         logger.info("Successfully removed chat ID: " + str(chat_id))
         return True
     except Exception as ex:
@@ -339,23 +319,25 @@ def main():
         ip_address = vpnCheck.init()
 
 
-    # global webpages_dict
-    webpages_dict = dict() #pickle.load(open("save.p", "rb"))
+    global webpages_dict
+    with open('webpages.pickle', 'rb') as handle:
+        webpages_dict = pickle.load(handle)
 
     global chat_ids_dict
-    chat_ids_dict = dict() #pickle.load(open("save.p", "rb"))
+    with open('chatids.pickle', 'rb') as handle:
+        chat_ids_dict = pickle.load(handle)
 
 
-    logger.info("Webpages loading from file START")
+    logger.info("~~~Webpages loading from file START~~~")
     for myKey in webpages_dict:
         myw = webpages_dict[myKey]
         logger.info("Webpage "+myKey + ": " + str(myw))
-    logger.info("Webpages loading from file END")
+    logger.info("~~~Webpages loading from file END~~~")
 
     '''
     to add'''
-    myWebpage = Webpage("http://example.com",15)
-    webpages_dict["news"] = myWebpage
+    '''myWebpage = Webpage("http://example.com",15)
+    webpages_dict["news"] = myWebpage'''
     '''
     myWebpage = Webpage("https://www.zeit.de/news/index",15)
     webpages_dict["news"] = myWebpage'''
@@ -437,8 +419,6 @@ def main():
                     logger.error("[website dict iteration] Problem: key error "+str(e))
                     telegramService.send_admin_broadcast("[website dict iteration] Problem: key error")
                     continue
-
-                save_websites_dict()
             # notfiy watchdog
             alive_notifier.notify("WATCHDOG=1")  # send status: alive
 
@@ -452,6 +432,13 @@ def main():
         # send admin msg
         telegramService.send_admin_broadcast("[MAIN] Problem: unknown exception. Terminating")
     finally:
+        with open('webpages.pickle', 'wb') as handle:
+            pickle.dump(webpages_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            logger.info("webpages dict saved.")
+        with open('chatids.pickle', 'wb') as handle:
+            pickle.dump(chat_ids_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+            logger.info("chat ids dict saved.")
+
         telegramService.send_admin_broadcast("[MAIN] shutting down...")
         logger.warning("Shutting down. This is last line.")
 
