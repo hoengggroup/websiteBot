@@ -3,9 +3,10 @@
 import re
 import hashlib # for hashing website content
 import traceback
-import multiprocessing # for timeout
 import html2text # for passing html to text
-import urllib3
+import requests
+
+
 
 
 import pickle  # to save webpage list
@@ -21,7 +22,7 @@ from pathlib import Path
 from unidecode import unidecode  # for stripping Ümläüte
 
 # our own libraries/dependencies
-from globalConfig import (version_code, static_ip,static_ip_address,webpage_load_timeout,webpage_process_timeout)
+from globalConfig import (version_code, static_ip,static_ip_address,webpage_load_timeout)
 from loggerConfig import create_logger_main_driver
 import dp_edit_distance
 import telegramService
@@ -30,8 +31,6 @@ import vpnCheck
 
 webpages_dict = {}
 chat_ids_dict = {}
-
-multiprocessing.set_start_method('spawn', True)
 
 
 class Webpage:
@@ -241,10 +240,11 @@ def inf_wait_and_signal():
 
 
 def process_webpage(logger,current_text,current_wbpg_dict,current_wbpg_name):
+    logger.debug("starting processing webpage")
     current_wbpg=current_wbpg_dict[current_wbpg_name]
     # 2. hash website text
     logger.debug("lower now")
-    # current_text+=". abcd. .ef "
+    #current_text+=". abcd. .ef 32r"
     logger.debug("real hash now")
     current_hash = (hashlib.md5(current_text.encode())).hexdigest()
     logger.debug("hashed.")
@@ -290,29 +290,11 @@ def process_webpage(logger,current_text,current_wbpg_dict,current_wbpg_name):
 
     # 4. update time last written
     current_wbpg.update_last_time_checked()
-
-def process_cleanup():
-    try:
-        for proc in child_process_list:
-            try:
-                if proc.is_alive():
-                    logger.info("detected active proc. killing...")
-                    proc.terminate()
-                    proc.join()
-                    logger.info("...killed.")
-            except:
-                logger.error("An UNKNOWN exception has occured in the proccess cleanup inner subroutine.")
-                logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
-                telegramService.send_admin_broadcast("[PROCESS CLEANUP] unknown exception in inner subroutine")
-    except:
-        logger.error("An UNKNOWN exception has occured in the proccess cleanup outer subroutine.")
-        logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
-        telegramService.send_admin_broadcast("[PROCESS CLEANUP] unknown exception in outer subroutine")
-                          
+    logger.debug("finished processing webpage")                       
 
 
 def main():
-    #-1. init watchdog
+    #-2. init watchdog
     global alive_notifier 
     alive_notifier = sdnotify.SystemdNotifier()
     '''
@@ -325,19 +307,14 @@ def main():
     sleep_time = sleep time at end of while loop
     '''
 
-    #-1 the urrlib3
-    urlPool = urllib3.PoolManager(timeout=urllib3.Timeout(connect=4.0, read=2.0))
+    #-1. init requests
+    
 
-    # 0. the selenium init stuff
+    # 0. init logger
     global logger
     logger = create_logger_main_driver()
     parent_directory_binaries = str(Path(__file__).resolve().parents[0])
 
-    firefoxOptions = Options()
-    firefoxOptions.preferences.update({
-    "javascript.enabled": False,})
-    # headless makes it a pain to debug, keeps many zombie processes running in the background
-    # firefoxOptions.headless = True
     # 1.1 init telegram service
     telegramService.init()
     # send admin msg
@@ -361,19 +338,12 @@ def main():
     else:
         ip_address = vpnCheck.init()
 
-    # 1.3 init process list
-    global child_process_list 
-    child_process_list = []
 
-
-    # 2. load from file
-    manager_1 = multiprocessing.Manager()
     # global webpages_dict
-    webpages_dict = manager_1.dict() #pickle.load(open("save.p", "rb"))
+    webpages_dict = dict() #pickle.load(open("save.p", "rb"))
 
-    manager_2 = multiprocessing.Manager()
     global chat_ids_dict
-    chat_ids_dict = manager_2.dict() #pickle.load(open("save.p", "rb"))
+    chat_ids_dict = dict() #pickle.load(open("save.p", "rb"))
 
 
     logger.info("Webpages loading from file START")
@@ -382,14 +352,17 @@ def main():
         logger.info("Webpage "+myKey + ": " + str(myw))
     logger.info("Webpages loading from file END")
 
-
     '''
     to add'''
-    myWebpage = Webpage("https://www.zeit.de/news/index",15)
+    myWebpage = Webpage("http://example.com",15)
     webpages_dict["news"] = myWebpage
+    '''
+    myWebpage = Webpage("https://www.zeit.de/news/index",15)
+    webpages_dict["news"] = myWebpage'''
 
+    '''
     myWebpage2 = Webpage("http://reservation.livingscience.ch/wohnen",15)
-    webpages_dict["living"] = myWebpage2
+    webpages_dict["living"] = myWebpage2'''
 
     
     
@@ -410,7 +383,7 @@ def main():
 
     try:
         while(True):
-            # sleep longer if VPN connection is down
+            # sleep infinitly if VPN connection is down
             if ip_address != vpnCheck.get_ip():
                 logger.error("IP address has changed, sleeping now.")
                 telegramService.send_admin_broadcast("IP address has changed, sleeping now.")
@@ -433,7 +406,9 @@ def main():
                         # 1. get website
                         try:
                             logger.debug("Getting website.")
-                            rContent = urlPool.request('GET',current_wbpg.get_url())
+                            rContent =requests.get(current_wbpg.get_url(),timeout =webpage_load_timeout,verify = False) # TODO: fix SSL support and reset verify to True.
+                            # TODO parametrize the timeout parameter
+
                             logger.debug("Got website.")
                         except urllib3.exceptions.ConnectionError as e:
                             logger.error("Timeout exception. The error is: " + str(e.reason))
@@ -450,23 +425,10 @@ def main():
                             telegramService.send_admin_broadcast("[getting website] URL: "+str(current_wbpg.get_url())+" Problem: unknown error")
                             continue
 
-                        # process wbpg in own thread
-                        logger.debug("starting thread")
-                        current_text = html2text.html2text(rContent.data.decode('utf-8')) #.lower()
-                        p = multiprocessing.Process(target =process_webpage, args =(logger,current_text,webpages_dict,current_wbpg_name))
-                        child_process_list.append(p)
-                        p.start()
-                        p.join(webpage_process_timeout)
-                        
-                        if p.is_alive():
-                            logger.warning("processing wbpg "+ current_wbpg_name+": func didn't return in time. killing now.")
-                            telegramService.send_admin_broadcast("[Webpage processing] timeout for wbpg "+current_wbpg_name)
-                            p.terminate()
-                            p.join()
-                            logger.debug("prcessing wbpg killed successfully.")
-                        else:
-                            logger.debug("process wbpg func returned successfully.")
-                        child_process_list.remove(p)
+                        # process wbpg
+                        logger.debug("getting text")
+                        current_text = html2text.html2text(rContent.text)
+                        process_webpage(logger,current_text,webpages_dict,current_wbpg_name)
                 except RuntimeError as e:
                     logger.error("[website dict iteration] Problem: runtime error "+str(e))
                     telegramService.send_admin_broadcast("[website dict iteration] Problem: runtime error")
@@ -480,9 +442,6 @@ def main():
             # notfiy watchdog
             alive_notifier.notify("WATCHDOG=1")  # send status: alive
 
-            # cleanup
-            process_cleanup()
-
             # sleep now
             time.sleep(10)
 
@@ -494,8 +453,6 @@ def main():
         telegramService.send_admin_broadcast("[MAIN] Problem: unknown exception. Terminating")
     finally:
         telegramService.send_admin_broadcast("[MAIN] shutting down...")
-        # cleanup
-        process_cleanup()
         logger.warning("Shutting down. This is last line.")
 
 
