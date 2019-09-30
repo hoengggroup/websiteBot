@@ -223,12 +223,9 @@ def process_webpage(logger,current_text,current_wbpg_dict,current_wbpg_name):
     logger.debug("starting processing webpage")
     current_wbpg=current_wbpg_dict[current_wbpg_name]
     # 2. hash website text
-    logger.debug("lower now")
     #current_text+=". abcd. .ef 32r"
-    logger.debug("real hash now")
     current_hash = (hashlib.md5(current_text.encode())).hexdigest()
-    logger.debug("hashed.")
-    print("hashes are: current, last: "+str(current_hash)+"\t"+str(current_wbpg.get_last_hash()))
+    logger.debug("hashes are: current, last: "+str(current_hash)+"\t"+str(current_wbpg.get_last_hash()))
     # 3. if different
     if current_hash != current_wbpg.get_last_hash():
         logger.info("Website hash different. Current: " + str(current_hash) + " vs old hash: " + str(current_wbpg.get_last_hash()))
@@ -388,24 +385,30 @@ def main():
                         # 1. get website
                         try:
                             logger.debug("Getting website.")
+                            time.sleep(3)
                             rContent =requests.get(current_wbpg.get_url(),timeout =webpage_load_timeout,verify = False) # TODO: fix SSL support and reset verify to True.
-                            # TODO parametrize the timeout parameter
-
-                            logger.debug("Got website.")
-                        except urllib3.exceptions.ConnectionError as e:
-                            logger.error("Timeout exception. The error is: " + str(e.reason))
-                            telegramService.send_admin_broadcast("[getting website] URL: "+str(current_wbpg.get_url())+" Problem: timeout exception")
-                            continue
-                        except urllib3.exceptions.MaxRetryError as e:
-                            print("Max retry error:")
-                            logger.error("Max retry exception. The error is: " + str(e.reason))
-                            telegramService.send_admin_broadcast("[getting website] URL: "+str(current_wbpg.get_url())+" Problem: max retry exception")
-                            continue
+                        except requests.Timeout as e:
+                            logger.error("TimeOut Error "+str(e))
+                            telegramService.send_admin_broadcast("[getting website] URL: "+str(current_wbpg.get_url())+" Problem: Timeout error "+str(e))
+                            current_wbpg.last_error_msg = str(e)
+                            continue 
+                        except requests.ConnectionError as e:
+                            logger.error("Connection Error "+str(e))
+                            telegramService.send_admin_broadcast("[getting website] URL: "+str(current_wbpg.get_url())+" Problem: Connection error "+str(e))
+                            current_wbpg.last_error_msg = str(e)
+                            continue 
                         except:
                             logger.error("An UNKNOWN exception has occured in the get website subroutine.")
                             logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
                             telegramService.send_admin_broadcast("[getting website] URL: "+str(current_wbpg.get_url())+" Problem: unknown error")
+                            current_wbpg.last_error_msg = str("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
                             continue
+                        if rContent.status_code != 200:
+                            current_error_msg = "Status code is (unequal 0): "+str(rContent.status_code)
+                            logger.error(current_error_msg)
+                            telegramService.send_admin_broadcast("[getting website] URL: "+str(current_wbpg.get_url())+" Problem: "+current_error_msg)
+                            current_wbpg.last_error_msg = current_error_msg
+                            continue 
 
                         # process wbpg
                         logger.debug("getting text")
