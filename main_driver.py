@@ -6,9 +6,6 @@ import traceback
 import html2text # for passing html to text
 import requests
 
-
-
-
 import pickle  # to save webpage list
 import sdnotify  # for watchdog
 
@@ -385,7 +382,6 @@ def main():
                         # 1. get website
                         try:
                             logger.debug("Getting website.")
-                            time.sleep(3)
                             rContent =requests.get(current_wbpg.get_url(),timeout =webpage_load_timeout,verify = False) # TODO: fix SSL support and reset verify to True.
                         except requests.Timeout as e:
                             logger.error("TimeOut Error "+str(e))
@@ -433,7 +429,7 @@ def main():
         logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
         traceback.print_exc()         
         # send admin msg
-        telegramService.send_admin_broadcast("[MAIN] Problem: unknown exception. Terminating")
+        telegramService.send_admin_broadcast("[MAIN] Problem: unknown exception. "+str(sys.exc_info()[0])+" Terminating")
     finally:
         with open('webpages.pickle', 'wb') as handle:
             pickle.dump(webpages_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
