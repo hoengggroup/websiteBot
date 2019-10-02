@@ -118,6 +118,7 @@ dmypy.json
 
 # pickle files
 *.p
+*.pickle
 
 # RPI detection
 *.rpi
