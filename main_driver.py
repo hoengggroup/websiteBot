@@ -46,7 +46,12 @@ class Webpage:
         self.last_content = ""
 
     def __str__(self):
-        return "[url] "+str(self.url)+"\t[t_sleep] "+str(self.t_sleep)+"\t[t_last_time_checked] "+str(self.last_time_checked)+"\t[last_time_changed] "+str(self.last_time_changed) +"\t[last_error_msg] "+str(self.last_error_msg) +"\t[chat_ids] "+str(self.chat_ids)
+        return ("URL: " + str(self.url) + "\n"
+                "Sleep timer: " + str(self.t_sleep) + "\n"
+                "Last time checked: " + str(self.last_time_checked) + "\n"
+                "Last time changed: " + str(self.last_time_changed) + "\n"
+                "Last error message: " + str(self.last_error_msg) + "\n"
+                "Chat IDs: " + str(self.chat_ids))
 
     def get_chat_ids(self):
         return self.chat_ids
@@ -115,8 +120,9 @@ class Webpage:
 
 
 class ChatID:
-    def __init__(self, status):
+    def __init__(self, status, user_data):
         self.status = status  # 0 = admin, 1 = user, 2 = pending, 3 = denied
+        self.user_data = None
     
     def get_status(self):
         return self.status
@@ -129,6 +135,16 @@ class ChatID:
             logger.error("Failed to set new status " + str(new_status) + " for this chat ID.")
             return False
 
+    def get_user_data(self):
+        return self.user_data
+
+    def set_user_data(self, new_user_data):
+        try:
+            self.user_data = new_user_data
+            return True
+        except KeyError:
+            logger.error("Failed to set new user data " + str(new_user_data) + " for this chat ID.")
+            return False
 
 
 delimiters = "\n", ". "  # delimiters where to split string
@@ -182,12 +198,12 @@ def remove_webpage(name):
         return False
 
 
-def create_chat_id(chat_id, status=2):
+def create_chat_id(chat_id, status=2, user_data=None):
     if chat_id in chat_ids_dict:
         logger.info("Couldn't add chat ID " + str(chat_id) + ", as this chat ID already exists.")
         return False
     try:
-        new_chat_id = ChatID(status=status)
+        new_chat_id = ChatID(status=status, user_data=user_data)
         chat_ids_dict[chat_id] = new_chat_id
         logger.info("Successfully added chat ID: " + str(chat_id))
         return True
@@ -287,7 +303,6 @@ def main():
     # 0. init logger
     global logger
     logger = create_logger_main_driver()
-    parent_directory_binaries = str(Path(__file__).resolve().parents[0])
 
     # 1.1 init telegram service
     telegramService.init()
