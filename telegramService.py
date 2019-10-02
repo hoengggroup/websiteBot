@@ -291,10 +291,15 @@ def getpageinfo(update, context):
 # access level: admin (0)
 def admincommands(update, context):
     if chat_ids_dict[update.message.chat_id].get_status() <= 0:
-        command_list = ("/whoami\n- check admin status (not an inherently privileged command, anyone can check their status)\n"
-                        "/admincommands\n- display this list of available admin-only commands\n"
+        command_list = ("/admincommands\n- display this list of available admin-only commands\n"
                         "/addwebpage {name} {url} {t_sleep}\n- add a webpage to the list of available webpages\n"
-                        "/removewebpage {name}\n- remove a webpage from the list of available webpages\n")
+                        "/removewebpage {name}\n- remove a webpage from the list of available webpages\n"
+                        "_User Handling_:\n"
+                        "/approveuser\n"
+                        "/denyuser\n"
+                        "/getuserstatus\n"
+                        "/whoami\n- check admin status (not an inherently privileged command, anyone can check their status)\n"
+                        )
 
         send_command_reply(update, context, message="The available admin-only commands are:\n" + command_list)
     else:
