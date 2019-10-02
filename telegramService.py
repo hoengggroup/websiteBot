@@ -437,9 +437,9 @@ def init():
         bot = Bot(token="***REMOVED***")
     else:
         # @websiteBotShortTests_bot
-        updater = Updater(token="796723305:AAE_eEHg02_m2NyIFTf3Mg8nA4J70yBNO2w", use_context=True)
+        updater = Updater(token="***REMOVED***", use_context=True)
         dispatcher = updater.dispatcher
-        bot = Bot(token="796723305:AAE_eEHg02_m2NyIFTf3Mg8nA4J70yBNO2w")
+        bot = Bot(token="***REMOVED***")
 
 
     # --- Generally accessible commands (access levels 0 to 3):
