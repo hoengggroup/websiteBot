@@ -11,7 +11,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, CallbackQueryH
 from loggerConfig import create_logger_telegram
 
 
-admin_chat_ids = {***REMOVED***}#, ***REMOVED***}
+admin_chat_ids = {***REMOVED***, ***REMOVED***}
 
 num_messages = count(1)
 
@@ -50,11 +50,13 @@ def set_delete_chat_id_reference(the_delete_chat_id_reference):
 ### Telegram command handlers: user flow
 # access level: none
 def start(update, context):
-    if create_chat_id_function(update.message.chat_id, update.message.from_user):
-        send_command_reply(update, context, message="Welcome to this website-tracker bot.\nPlease tell me your name and your message to be invited with /apply {your name and message}\nUntil approval all other functions will remain inaccessible.")
+    if create_chat_id_function(chat_id=update.message.chat_id, status=2):
+        send_command_reply(update, context, message="Welcome to this website-tracker bot.\nPlease tell me your name and your message to be invited with /apply {your name and message}\nUntil approval all other functions will remain inaccessible.\nYou can stop this bot and remove your user ID from its list at any time with /stop.")
+        send_admin_broadcast(str(update.message.chat_id) + str(update.message.from_user))
     else:
         chat_ids_dict[update.message.chat_id].set_user_data(update.message.from_user)
         send_command_reply(update, context, message="You already started this service. If you are not yet approved, please continue with /apply. If you are already approved, check out the available actions with /commands. If you have already been denied, I hope you have a nice day anyway :)")
+    chat_ids_dict[update.message.chat_id].set_user_data(update.message.from_user)
 
 
 # access level: none (excluding admins and users)
@@ -70,7 +72,7 @@ def apply(update, context):
             for admins in admin_chat_ids:
                 send_general_broadcast(chat_id=admins, message=message_to_admins)
         else:
-            send_command_reply(update, context, message="Error. You need to send your name and appliction along with this command.")
+            send_command_reply(update, context, message="Sorry, you need to send your name and appliction along with this command.\nExample: \"/apply Hi, this is example_user and I would like to use this bot.\"")
     else:
         send_command_reply(update, context, message="This command is only intended for new users.")
 
@@ -86,15 +88,15 @@ def approveuser(update, context):
                 if int_ids in chat_ids_dict.keys():
                     chat_id_object = chat_ids_dict[int_ids]
                 else:
-                    send_command_reply(update, context, message="Error. Chat ID " + str(ids) + " does not exist in list.")
+                    send_command_reply(update, context, message="Error. Chat ID "+str(ids)+" does not exist in list.")
                     continue
 
                 if chat_id_object.set_status(new_status=1):
                     for admins in admin_chat_ids:
-                        send_general_broadcast(chat_id=admins, message="Chat ID " + str(ids) + " successfully approved (status set to 1).")
-                    send_general_broadcast(chat_id=ids, message="Your application to use this bot was granted. You can now display the available webpages with /webpages and the available commands with /commands")
+                        send_general_broadcast(chat_id=admins, message="Chat ID "+str(ids)+" successfully approved (status set to 1).")
+                    send_general_broadcast(chat_id=ids, message="Your application to use this bot was granted. You can now display and subscribe to available webpages with /subscriptions and see the available commands with /commands.")
                 else:
-                    send_command_reply(update, context, message="Error. Setting of new status 1 (approved) for chat ID " + str(ids) + " failed.\nPlease try again.")
+                    send_command_reply(update, context, message="Error. Setting of new status 1 (approved) for chat ID "+str(ids)+" failed.\nPlease try again.")
         else:
             send_command_reply(update, context, message="Error. You need to specify which user(s) you want to approve.")
     else:
@@ -112,15 +114,15 @@ def denyuser(update, context):
                 if int_ids in chat_ids_dict.keys():
                     chat_id_object = chat_ids_dict[int_ids]
                 else:
-                    send_command_reply(update, context, message="Error. Chat ID " + str(ids) + " does not exist in list.")
+                    send_command_reply(update, context, message="Error. Chat ID "+str(ids)+" does not exist in list.")
                     continue
 
                 if chat_id_object.set_status(new_status=3):
                     for admins in admin_chat_ids:
-                        send_general_broadcast(chat_id=admins, message="Chat ID " + str(ids) + " successfully denied (status set to 3).")
+                        send_general_broadcast(chat_id=admins, message="Chat ID "+str(ids)+" successfully denied (status set to 3).")
                     send_general_broadcast(chat_id=ids, message="Sorry, you were denied from using this bot. Goodbye.")
                 else:
-                    send_command_reply(update, context, message="Error. Setting of new status 3 (denied) for chat ID " + str(ids) + " failed.\nPlease try again.")
+                    send_command_reply(update, context, message="Error. Setting of new status 3 (denied) for chat ID "+str(ids)+" failed.\nPlease try again.")
         else:
             send_command_reply(update, context, message="Error. You need to specify which user(s) you want to deny.")
     else:
@@ -129,14 +131,12 @@ def denyuser(update, context):
 
 # access level: admin (0)
 def listusers(update, context):
-    print("list users called")
     if chat_ids_dict[update.message.chat_id].get_status() <= 0:
         for key, chat_id_object in chat_ids_dict.items():
-            print("current id: "+str(key))
-            int_ids = int(key)
+            print("Current id: " + str(key))
             status = chat_id_object.get_status()
             status_str = status_meaning(status)
-            print(status)
+            print("Status: " + str(status))
             try:
                 user_info = chat_id_object.get_user_data()
                 message = ("User ID: " + str(key) + "\n"
@@ -190,7 +190,7 @@ def commands(update, context):
                              "/getpageinfo\n- get info about a given webpage\n"
                              "/addwebpage {name} {url} {t_sleep}\n- add a webpage to the list of available webpages\n"
                              "/removewebpage {name}\n- remove a webpage from the list of available webpages")
-        send_command_reply(update, context, message="The available commands are:\n" + command_list)
+        send_command_reply(update, context, message="The available commands are:\n"+command_list)
     else:
         send_command_reply(update, context, message="This command is only available to approved users. Sorry.")
 
@@ -198,21 +198,7 @@ def commands(update, context):
 # access level: user (1)
 def subscriptions(update, context):
     if chat_ids_dict[update.message.chat_id].get_status() <= 1:
-        webpages = webpages_dict.keys()
-        webpage_objects = list()
-        subscribed = list()
-        buttons = list()
-        for i,wp in enumerate(webpages):
-            webpage_objects.append(webpages_dict[wp])
-            if webpage_objects[i].is_chat_id_active(chat_id_to_check=update.message.chat_id):
-                subscribed.append("✅")
-                buttons.append(InlineKeyboardButton(wp, callback_data="rem-"+wp))
-                buttons.append(InlineKeyboardButton(subscribed[i], callback_data="rem-"+wp))
-            else:
-                subscribed.append("❌")
-                buttons.append(InlineKeyboardButton(wp, callback_data="add-"+wp))
-                buttons.append(InlineKeyboardButton(subscribed[i], callback_data="add-"+wp))
-        reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=2))
+        reply_markup = build_subscriptions_keyboard(update.message.chat_id)
         send_command_reply(update, context, message="List of available webpages:\n✅ = subscribed, ❌= not subscribed", reply_markup=reply_markup)
     else:
         send_command_reply(update, context, message="This command is only available to approved users. Sorry.")
@@ -221,29 +207,65 @@ def subscriptions(update, context):
 # callback helper function for subscriptions()
 def button_subscriptions_add(update, context):
     query = update.callback_query
+    callback_chat_id = query['message']['chat']['id']
+    callback_message_id = query['message']['message_id']
     callback_webpage_unstripped = str(query['data'])
     callback_webpage = callback_webpage_unstripped.replace("add-", "")
     webpage_object = webpages_dict[callback_webpage]
-    callback_chat_id = query['message']['chat']['id']
     if webpage_object.add_chat_id(chat_id_to_add=callback_chat_id):
-        send_general_broadcast(chat_id=callback_chat_id, message="You have successfully been subscribed to webpage: " + str(callback_webpage))
+        reply_markup = build_subscriptions_keyboard(callback_chat_id)
+        bot.edit_message_text(text="You have successfully been subscribed to webpage: "+str(callback_webpage), chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
     else:
-        send_general_broadcast(chat_id=callback_chat_id, message="Error. Subscription to webpage " + str(callback_webpage) + " failed.\nTry again or check if you are already subscribed.")
+        reply_markup = build_subscriptions_keyboard(callback_chat_id)
+        bot.edit_message_text(text="Error. Subscription to webpage "+str(callback_webpage)+" failed.\nPlease try again.", chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
     bot.answer_callback_query(query['id'])
 
 
 # callback helper function for subscriptions()
 def button_subscriptions_remove(update, context):
     query = update.callback_query
+    callback_chat_id = query['message']['chat']['id']
+    callback_message_id = query['message']['message_id']
     callback_webpage_unstripped = str(query['data'])
     callback_webpage = callback_webpage_unstripped.replace("rem-", "")
     webpage_object = webpages_dict[callback_webpage]
-    callback_chat_id = query['message']['chat']['id']
     if webpage_object.remove_chat_id(chat_id_to_remove=callback_chat_id):
-        send_general_broadcast(chat_id=callback_chat_id, message="You have successfully been unsubscribed from webpage: " + str(callback_webpage))
+        reply_markup = build_subscriptions_keyboard(callback_chat_id)
+        bot.edit_message_text(text="You have successfully been unsubscribed from webpage: "+str(callback_webpage), chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
     else:
-        send_general_broadcast(chat_id=callback_chat_id, message="Error. Unsubscription from webpage " + str(callback_webpage) + " failed.\nTry again or check if you are already unsubscribed.")
+        reply_markup = build_subscriptions_keyboard(callback_chat_id)
+        bot.edit_message_text(text="Error. Unsubscription from webpage "+str(callback_webpage)+" failed.\nPlease try again.", chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
     bot.answer_callback_query(query['id'])
+
+
+# callback helper function for subscriptions()
+def button_subscriptions_exit(update, context):
+    query = update.callback_query
+    callback_chat_id = query['message']['chat']['id']
+    callback_message_id = query['message']['message_id']
+    bot.edit_message_text(text='Reopen this menu at any time with /subscriptions.', chat_id=callback_chat_id, message_id=callback_message_id)
+    bot.answer_callback_query(query['id'])
+
+
+# helper function for callback helpers for subscriptions()
+def build_subscriptions_keyboard(callback_chat_id):
+    webpages = webpages_dict.keys()
+    webpage_objects = list()
+    subscribed = list()
+    buttons = list()
+    for i, wp in enumerate(webpages):
+        webpage_objects.append(webpages_dict[wp])
+        if webpage_objects[i].is_chat_id_active(chat_id_to_check=callback_chat_id):
+            subscribed.append("✅")
+            buttons.append(InlineKeyboardButton(wp, callback_data="rem-"+wp))
+            buttons.append(InlineKeyboardButton(subscribed[i], callback_data="rem-"+wp))
+        else:
+            subscribed.append("❌")
+            buttons.append(InlineKeyboardButton(wp, callback_data="add-"+wp))
+            buttons.append(InlineKeyboardButton(subscribed[i], callback_data="add-"+wp))
+    buttons.append(InlineKeyboardButton("Exit menu", callback_data="exit"))
+    reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=2))
+    return reply_markup
 
 
 # access level: user (1)
@@ -258,7 +280,7 @@ def stop(update, context):
         if webpages:
             message_list = "\n- "
             message_list += "\n- ".join(webpages)
-            send_command_reply(update, context, message="You have successfully been unsubscribed from the following webpages: " + message_list)
+            send_command_reply(update, context, message="You have successfully been unsubscribed from the following webpages: "+message_list)
         else:
             send_command_reply(update, context, message="You were not subscribed to any webpages.")
     else:
@@ -304,7 +326,7 @@ def button_getpageinfo(update, context):
     callback_webpage = callback_webpage_unstripped.replace("info-", "")
     webpage_object = webpages_dict[callback_webpage]
     callback_chat_id = query['message']['chat']['id']
-    send_general_broadcast(chat_id=callback_chat_id, message="Info for webpage \"" + str(callback_webpage) + "\":\n" + str(webpage_object))
+    send_general_broadcast(chat_id=callback_chat_id, message="Info for webpage \""+str(callback_webpage)+"\":\n"+str(webpage_object))
     bot.answer_callback_query(query['id'])
 
 
@@ -314,11 +336,11 @@ def addwebpage(update, context):
         if len(context.args) == 3:
             name = str(context.args[0])
             url = str(context.args[1])
-            t_sleep =  int(context.args[2])
+            t_sleep = int(context.args[2])
             if add_webpage_function(name=name, url=url, t_sleep=t_sleep):
-                send_command_reply(update, context, message="The webpage " + name + " has successfully been added to the list.")
+                send_command_reply(update, context, message="The webpage "+str(name)+" has successfully been added to the list.")
             else:
-                send_command_reply(update, context, message="Error. Addition of webpage " + name + " failed.\nTry again or check if a webpage with the same name is already on the list with the /webpages command.")
+                send_command_reply(update, context, message="Error. Addition of webpage "+str(name)+" failed.\nTry again or check if a webpage with the same name is already on the list with the /subscriptions command.")
         else:
             send_command_reply(update, context, message="Error. You did not provide the correct arguments for this command (format: \"/addwebpage name url t_sleep\").")
     else:
@@ -331,9 +353,9 @@ def removewebpage(update, context):
         if len(context.args) == 1:
             name = str(context.args[0])
             if remove_webpage_function(name=name):
-                send_command_reply(update, context, message="The webpage " + name + " has successfully been removed from the list.")
+                send_command_reply(update, context, message="The webpage "+str(name)+" has successfully been removed from the list.")
             else:
-                send_command_reply(update, context, message="Error. Removal of webpage " + name + " failed.\nTry again or check if this webpage (with this exact spelling) even exists on the list with the /webpages command.")
+                send_command_reply(update, context, message="Error. Removal of webpage "+str(name)+" failed.\nTry again or check if this webpage (with this exact spelling) even exists on the list with the /subscriptions command.")
         else:
             send_command_reply(update, context, message="Error. You did not provide the correct arguments for this command (format: \"/removewebpage name\").")
     else:
@@ -407,7 +429,7 @@ def send_general_broadcast(chat_id, message):
 
 # access level: builtin
 def send_admin_broadcast(message):
-    admin_message = "[ADMIN BROADCAST] " + message
+    admin_message = "[ADMIN BROADCAST]\n" + message
     for adm_chat_id in admin_chat_ids:
         send_general_broadcast(chat_id=adm_chat_id, message=admin_message)
 
@@ -428,7 +450,7 @@ def init():
     global updater
     global dispatcher
     global bot
-    
+
     # global webpages_dict  # needed here or not?, see line 24
 
     if platform.system() == "Linux":
@@ -441,7 +463,6 @@ def init():
         updater = Updater(token="***REMOVED***", use_context=True)
         dispatcher = updater.dispatcher
         bot = Bot(token="***REMOVED***")
-
 
     # --- Generally accessible commands (access levels 0 to 3):
     dispatcher.add_handler(CommandHandler("start", start))
@@ -462,6 +483,7 @@ def init():
     # --- Callback helper functions:
     dispatcher.add_handler(CallbackQueryHandler(button_subscriptions_add, pattern='^add-'))
     dispatcher.add_handler(CallbackQueryHandler(button_subscriptions_remove, pattern='^rem-'))
+    dispatcher.add_handler(CallbackQueryHandler(button_subscriptions_exit, pattern='exit'))
     dispatcher.add_handler(CallbackQueryHandler(button_getpageinfo, pattern='^info-'))
     # --- Catch-all commands for unknown inputs:
     dispatcher.add_handler(MessageHandler(Filters.text, text))
