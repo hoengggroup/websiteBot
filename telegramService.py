@@ -138,13 +138,11 @@ def listusers(update, context):
             status_str = status_meaning(status)
             print(status)
             try:
-                #data = dict()
-                #chat_id_object.set_user_data(data)
-                #user_info = chat_id_object.get_user_data()
+                user_info = chat_id_object.get_user_data()
                 message = ("User ID: " + str(key) + "\n"
-                           #"First Name: " + str(user_info.first_name) + "\n"
-                           #"Last Name: " + str(user_info.last_name) + "\n"
-                           #"Username: " + str(user_info.username) + "\n"
+                           "First Name: " + str(user_info.first_name) + "\n"
+                           "Last Name: " + str(user_info.last_name) + "\n"
+                           "Username: " + str(user_info.username) + "\n"
                            "Status: " + str(status) + " (" + status_str + ")")
             except TypeError:
                 logger.error("type error user_data unreadable. Presumably uninitialized NoneType.")
