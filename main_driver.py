@@ -341,6 +341,7 @@ def main():
     for myKey in webpages_dict:
         myw = webpages_dict[myKey]
         logger.info("Webpage "+myKey + ": " + str(myw))
+        #myw.t_sleep = 10
     logger.info("~~~Webpages loading from file END~~~")
 
     '''
@@ -436,6 +437,12 @@ def main():
             # notfiy watchdog
             alive_notifier.notify("WATCHDOG=1")  # send status: alive
 
+            with open('webpages.pickle', 'wb') as handle:
+                pickle.dump(webpages_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                logger.debug("webpages dict saved.")
+            with open('chatids.pickle', 'wb') as handle:
+                pickle.dump(chat_ids_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
+                logger.debug("chat ids dict saved.")
             # sleep now
             time.sleep(10)
 
