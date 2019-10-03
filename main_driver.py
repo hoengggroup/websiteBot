@@ -395,13 +395,13 @@ def main():
                             logger.debug("Getting website.")
                             rContent = requests.get(current_wbpg.get_url(), timeout=webpage_load_timeout, verify=False)  # TODO: fix SSL support and reset verify to True.
                         except requests.Timeout as e:
-                            logger.error("TimeOut Error "+str(e))
-                            telegramService.send_admin_broadcast("[getting website] URL: "+str(current_wbpg.get_url())+" Problem: Timeout error "+str(e))
+                            logger.error("Timeout Error "+str(e))
+                            telegramService.send_admin_broadcast("[Getting website] URL: "+str(current_wbpg.get_url())+" Problem: Timeout error "+str(e))
                             current_wbpg.last_error_msg = str(e)
                             continue
                         except requests.ConnectionError as e:
                             logger.error("Connection Error "+str(e))
-                            telegramService.send_admin_broadcast("[getting website] URL: "+str(current_wbpg.get_url())+" Problem: Connection error "+str(e))
+                            telegramService.send_admin_broadcast("[Getting website] URL: "+str(current_wbpg.get_url())+" Problem: Connection error "+str(e))
                             current_wbpg.last_error_msg = str(e)
                             continue
                         except:

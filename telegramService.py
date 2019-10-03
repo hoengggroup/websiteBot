@@ -52,7 +52,6 @@ def set_delete_chat_id_reference(the_delete_chat_id_reference):
 def start(update, context):
     if create_chat_id_function(chat_id=update.message.chat_id, status=2):
         send_command_reply(update, context, message="Welcome to this website-tracker bot.\nPlease tell me your name and your message to be invited with /apply {your name and message}\nUntil approval all other functions will remain inaccessible.\nYou can stop this bot and remove your user ID from its list at any time with /stop.")
-        send_admin_broadcast(str(update.message.chat_id) + str(update.message.from_user))
     else:
         chat_ids_dict[update.message.chat_id].set_user_data(update.message.from_user)
         send_command_reply(update, context, message="You already started this service. If you are not yet approved, please continue with /apply. If you are already approved, check out the available actions with /commands. If you have already been denied, I hope you have a nice day anyway :)")
