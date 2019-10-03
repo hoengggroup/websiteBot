@@ -351,8 +351,10 @@ def main():
     # 4.1 append to dicts manually
     # Uncomment for one execution to add a new webpage to the dict (and save it into pickle in the next main loop)
     '''
-    new_website = Webpage("http://example.com", 15)
-    webpages_dict["new_name"] = new_website
+    new_website1 = Webpage("http://reservation.livingscience.ch/wohnen", 15)
+    webpages_dict["livingscience"] = new_website1
+    new_website2 = Webpage("http://news.orf.at", 15)
+    webpages_dict["news.orf.at"] = new_website2
     '''
 
     # 5.0 make objects and functions available / update references in telegramService
