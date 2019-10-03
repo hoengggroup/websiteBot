@@ -129,25 +129,28 @@ def denyuser(update, context):
 
 # access level: admin (0)
 def listusers(update, context):
+    print("list users called")
     if chat_ids_dict[update.message.chat_id].get_status() <= 0:
-        user_ids = chat_ids_dict.keys()
-        for ids in user_ids:
-            int_ids = int(ids)
-            chat_id_object = chat_ids_dict[int_ids]
+        for key, chat_id_object in chat_ids_dict.items():
+            print("current id: "+str(key))
+            int_ids = int(key)
             status = chat_id_object.get_status()
             status_str = status_meaning(status)
+            print(status)
             try:
-                user_info = chat_id_object.get_user_data()
-                message = ("User ID: " + str(user_info.id) + "\n"
-                           "First Name: " + str(user_info.first_name) + "\n"
-                           "Last Name: " + str(user_info.last_name) + "\n"
-                           "Username: " + str(user_info.username) + "\n"
+                #data = dict()
+                #chat_id_object.set_user_data(data)
+                #user_info = chat_id_object.get_user_data()
+                message = ("User ID: " + str(key) + "\n"
+                           #"First Name: " + str(user_info.first_name) + "\n"
+                           #"Last Name: " + str(user_info.last_name) + "\n"
+                           #"Username: " + str(user_info.username) + "\n"
                            "Status: " + str(status) + " (" + status_str + ")")
             except TypeError:
-                logger.error("user_data unreadable. Presumably uninitialized NoneType.")
+                logger.error("type error user_data unreadable. Presumably uninitialized NoneType.")
                 continue
             except AttributeError:
-                logger.error("user_data unreadable. Presumably uninitialized NoneType.")
+                logger.error("attribute error user_data unreadable. Presumably uninitialized NoneType.")
                 continue
             except:
                 logger.error("Unknown error. The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))

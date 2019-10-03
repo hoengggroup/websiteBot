@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-version_code = "b4.0.5"
+version_code = "b4.0.6"
 
 # debugging
 debugging_enabled = False

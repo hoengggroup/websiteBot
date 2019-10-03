@@ -341,7 +341,7 @@ def main():
     for myKey in webpages_dict:
         myw = webpages_dict[myKey]
         logger.info("Webpage "+myKey + ": " + str(myw))
-        #myw.t_sleep = 10
+        # myw.t_sleep = 10
     logger.info("~~~Webpages loading from file END~~~")
 
     '''
