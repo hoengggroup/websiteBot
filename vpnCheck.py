@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
+import sys
 import requests
 from requests import get
-import time
 
 # our libraries
 import telegramService
@@ -10,7 +10,7 @@ from loggerConfig import create_logger_vpn
 
 
 def get_ip():
-    ip_address=""
+    ip_address = ""
     try:
         response = get('https://api.nordvpn.com/vpn/check/full', timeout=15).json()
         ip_address = response['ip']
@@ -26,7 +26,7 @@ def get_ip():
         logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
         telegramService.send_admin_broadcast("[IP check] Problem: unknown error")
 
-    return ip_address # returns empty string on exception
+    return ip_address  # returns empty string on exception
 
 
 def init():
