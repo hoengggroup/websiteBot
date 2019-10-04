@@ -22,7 +22,7 @@ import telegramService
 import vpnCheck
 
 
-version_code = "b4.2.0"
+version_code = "b4.3.0"
 
 # ip modes
 static_ip = True
@@ -127,15 +127,22 @@ class ChatID:
     def __init__(self, status, user_data):
         self.status = status  # 0 = admin, 1 = user, 2 = pending, 3 = denied
         self.user_data = None
+        self.apply_name = ""
+        self.apply_message = ""
 
     def get_status(self):
         return self.status
 
     def set_status(self, new_status):
         try:
-            self.status = int(new_status)
-            logger.info("Set new status " + str(new_status) + " for this chat ID.")
-            return True
+            new_status = int(new_status)
+            if self.status != new_status:
+                self.status = new_status
+                logger.info("Set new status " + str(new_status) + " for this chat ID.")
+                return True
+            else:
+                logger.warning("The status " + str(new_status) + " is already the current status of this chat ID.")
+                return False
         except KeyError:
             logger.error("Failed to set new status " + str(new_status) + " for this chat ID.")
             return False
@@ -150,6 +157,30 @@ class ChatID:
             return True
         except KeyError:
             logger.error("Failed to set new user data " + str(new_user_data) + " for this chat ID.")
+            return False
+
+    def get_apply_name(self):
+        return self.apply_name
+
+    def set_apply_name(self, new_apply_name):
+        try:
+            self.apply_name = new_apply_name
+            logger.info("Set new apply name " + str(new_apply_name) + " for this chat ID.")
+            return True
+        except KeyError:
+            logger.error("Failed to set new apply name " + str(new_apply_name) + " for this chat ID.")
+            return False
+
+    def get_apply_message(self):
+        return self.apply_message
+
+    def set_apply_message(self, new_apply_message):
+        try:
+            self.apply_message = new_apply_message
+            logger.info("Set new apply message " + str(new_apply_message) + " for this chat ID.")
+            return True
+        except KeyError:
+            logger.error("Failed to set new apply message " + str(new_apply_message) + " for this chat ID.")
             return False
 
 

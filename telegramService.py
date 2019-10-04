@@ -5,7 +5,7 @@ import sys  # for getting detailed error msg
 from itertools import count  # for message numbering
 
 from telegram import Bot, error, InlineKeyboardButton, InlineKeyboardMarkup
-from telegram.ext import Updater, CommandHandler, MessageHandler, CallbackQueryHandler, Filters
+from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, CallbackQueryHandler, Filters
 
 # our libraries
 from loggerConfig import create_logger_telegram
@@ -14,6 +14,10 @@ from loggerConfig import create_logger_telegram
 admin_chat_ids = {***REMOVED***, ***REMOVED***}
 
 num_messages = count(1)
+
+APPLY_NAME_STATE, APPLY_MESSAGE_STATE = range(2)
+APPROVE_CHAT_ID_STATE, DENY_CHAT_ID_STATE = range(2)
+WPG_NAME_STATE, WPG_URL_STATE, WPG_T_SLEEP_STATE = range(3)
 
 
 ### Interfacing with the main_driver module
@@ -47,87 +51,219 @@ def set_delete_chat_id_reference(the_delete_chat_id_reference):
     delete_chat_id_function = the_delete_chat_id_reference
 
 
-### Telegram command handlers: user flow
+### Telegram user flow: start
 # access level: none
 def start(update, context):
     if create_chat_id_function(chat_id=update.message.chat_id, status=2):
-        send_command_reply(update, context, message="Welcome to this website-tracker bot.\nPlease tell me your name and your message to be invited with /apply {your name and message}\nUntil approval all other functions will remain inaccessible.\nYou can stop this bot and remove your user ID from its list at any time with /stop.")
+        send_command_reply(update, context, message="Welcome to this website-tracker bot.\nPlease tell me your name and your message to be invited with /apply.\nUntil approval all other functions will remain inaccessible.\nYou can stop this bot and remove your user ID from its list at any time with /stop.")
     else:
         chat_ids_dict[update.message.chat_id].set_user_data(update.message.from_user)
         send_command_reply(update, context, message="You already started this service. If you are not yet approved, please continue with /apply. If you are already approved, check out the available actions with /commands. If you have already been denied, I hope you have a nice day anyway :)")
     chat_ids_dict[update.message.chat_id].set_user_data(update.message.from_user)
 
 
+### Telegram user flow: apply
 # access level: none (excluding admins and users)
 def apply(update, context):
-    words = list()
     if chat_ids_dict[update.message.chat_id].get_status() >= 2:
-        if context.args:
-            words += list(context.args)
-            application = " ".join(str(item) for item in words)
-            message_to_admins = "Application:\n" + str(application) + "\nSent by: " + str(update.message.chat_id)
-            if chat_ids_dict[update.message.chat_id].get_status() == 3:
-                message_to_admins += "\nAttention: This user has been denied before."
-            for admins in admin_chat_ids:
-                send_general_broadcast(chat_id=admins, message=message_to_admins)
-        else:
-            send_command_reply(update, context, message="Sorry, you need to send your name and appliction along with this command.\nExample: \"/apply Hi, this is example_user and I would like to use this bot.\"")
+        update.message.reply_text("Hi. Please tell me your name/nickname/username or send /apply_cancel to stop.")
+        return APPLY_NAME_STATE
     else:
         send_command_reply(update, context, message="This command is only intended for new users.")
+        return ConversationHandler.END
 
 
+# conversation helper function for apply()
+def apply_name(update, context):
+    apply_name = str(update.message.text)
+    chat_ids_dict[update.message.chat_id].set_apply_name(apply_name)
+    send_command_reply(update, context, message="Ok, "+str(apply_name)+". Please send me your application to use this bot, which I will forward to the admins.")
+    return APPLY_MESSAGE_STATE
+
+
+# conversation helper function for apply()
+def apply_message(update, context):
+    apply_name = chat_ids_dict[update.message.chat_id].get_apply_name()
+    apply_message = str(update.message.text)
+    chat_ids_dict[update.message.chat_id].set_apply_message(apply_message)
+    message_to_admins = "Application:\n" + str(apply_message) + "\nSent by: " + str(apply_name) + " (" + str(update.message.chat_id) + ")"
+    if chat_ids_dict[update.message.chat_id].get_status() == 3:
+        message_to_admins += "\nAttention: This user has been denied before."
+    for admins in admin_chat_ids:
+        send_general_broadcast(chat_id=admins, message=message_to_admins+"\nApprove or deny with /pendingusers.")
+    send_command_reply(update, context, message="Alright, I have forwarded your message to the admins. You will hear from me when they have approved (or denied) you.")
+    return ConversationHandler.END
+
+
+# conversation helper function for apply()
+def apply_cancel(update, context):
+    chat_ids_dict[update.message.chat_id].set_apply_name("")
+    chat_ids_dict[update.message.chat_id].set_apply_message("")
+    send_command_reply(update, context, message="Bye! You can restart the application at any point with /apply.")
+    return ConversationHandler.END
+
+
+### Telegram admin flow: approve/deny pending users
+# access level: admin (0)
+def pendingusers(update, context):
+    if chat_ids_dict[update.message.chat_id].get_status() <= 0:
+        chat_ids = chat_ids_dict.keys()
+        chat_id_objects = list()
+        buttons = list()
+        for i, ids in enumerate(chat_ids):
+            int_ids = int(ids)
+            chat_id_objects.append(chat_ids_dict[int_ids])
+            if chat_id_objects[i].get_status() == 2:
+                apply_name = chat_id_objects[i].get_apply_name()
+                buttons.append(InlineKeyboardButton(apply_name+" ("+str(int_ids)+")", callback_data="user-"+str(int_ids)))
+        buttons.append(InlineKeyboardButton("Exit menu", callback_data="exit_users"))
+        reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
+        update.message.reply_text("Here is a list of users with pending applications:\nClick for details.", reply_markup=reply_markup)
+    else:
+        send_command_reply(update, context, message="This command is only available to admins. Sorry.")
+
+
+# callback helper function for pendingusers()
+def button_pendingusers_detail(update, context):
+    query = update.callback_query
+    callback_chat_id = query["message"]["chat"]["id"]
+    callback_message_id = query["message"]["message_id"]
+    callback_user_unstripped = str(query["data"])
+    callback_user = int(callback_user_unstripped.replace("user-", ""))
+    chat_id_object = chat_ids_dict[callback_user]
+    user_info = chat_id_object.get_user_data()
+    apply_name = chat_id_object.get_apply_name()
+    apply_message = chat_id_object.get_apply_message()
+    message = ("User ID: " + str(callback_user) + "\n"
+                "Status: 2 (pending)\n"
+                "First name: " + str(user_info.first_name) + "\n"
+                "Last name: " + str(user_info.last_name) + "\n"
+                "Username: " + str(user_info.username) + "\n"
+                "Name on application: " + str(apply_name) + "\n"
+                "Application: " + str(apply_message))
+    buttons = [InlineKeyboardButton("Approve", callback_data="usr_approve-"+str(callback_user)), InlineKeyboardButton("Deny", callback_data="usr_deny-"+str(callback_user))]
+    buttons.append(InlineKeyboardButton("Exit menu", callback_data="exit_users"))
+    reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
+    bot.edit_message_text(text=message+"\n\nWhat do you want to do with this user?", chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
+    bot.answer_callback_query(query["id"])
+
+
+# callback helper function for pendingusers()
+def button_pendingusers_approve(update, context):
+    query = update.callback_query
+    callback_chat_id = query["message"]["chat"]["id"]
+    callback_message_id = query["message"]["message_id"]
+    callback_user_unstripped = str(query["data"])
+    callback_user = int(callback_user_unstripped.replace("usr_approve-", ""))
+    chat_id_object = chat_ids_dict[callback_user]
+    bot.edit_message_text(text="Reopen this menu at any time with /pendingusers.\nYou can also still use /approveuser and /denyuser.", chat_id=callback_chat_id, message_id=callback_message_id)
+    if chat_id_object.set_status(new_status=1):
+        for admins in admin_chat_ids:
+            send_general_broadcast(chat_id=admins, message="Chat ID "+str(callback_user)+" successfully approved (status set to 1).")
+        send_general_broadcast(chat_id=callback_user, message="Your application to use this bot was granted. You can now display and subscribe to available webpages with /subscriptions and see the available commands with /commands.")
+    else:
+        send_command_reply(update, context, message="Error. Setting of new status 1 (approved) for chat ID "+str(callback_user)+" failed.\nThis user may already be approved.\nOtherwise, please try again.")
+    bot.answer_callback_query(query["id"])
+
+
+# callback helper function for pendingusers()
+def button_pendingusers_deny(update, context):
+    query = update.callback_query
+    callback_chat_id = query["message"]["chat"]["id"]
+    callback_message_id = query["message"]["message_id"]
+    callback_user_unstripped = str(query["data"])
+    callback_user = int(callback_user_unstripped.replace("usr_deny-", ""))
+    chat_id_object = chat_ids_dict[callback_user]
+    bot.edit_message_text(text="Reopen this menu at any time with /pendingusers.\nYou can also still use /approveuser and /denyuser.", chat_id=callback_chat_id, message_id=callback_message_id)
+    if chat_id_object.set_status(new_status=3):
+        for admins in admin_chat_ids:
+            send_general_broadcast(chat_id=admins, message="Chat ID "+str(callback_user)+" successfully denied (status set to 3).")
+        send_general_broadcast(chat_id=callback_user, message="Sorry, you were denied from using this bot. Goodbye.")
+    else:
+        send_command_reply(update, context, message="Error. Setting of new status 3 (denied) for chat ID "+str(callback_user)+" failed.\nThis user may already be denied.\nOtherwise, please try again.")
+    bot.answer_callback_query(query["id"])
+
+
+# callback helper function for pendingusers()
+def button_pendingusers_exit(update, context):
+    query = update.callback_query
+    callback_chat_id = query["message"]["chat"]["id"]
+    callback_message_id = query["message"]["message_id"]
+    bot.edit_message_text(text="Reopen this menu at any time with /pendingusers.\nYou can also still use /approveuser and /denyuser.", chat_id=callback_chat_id, message_id=callback_message_id)
+    bot.answer_callback_query(query["id"])
+
+
+### Telegram admin flow: approve users
 # access level: admin (0)
 def approveuser(update, context):
     if chat_ids_dict[update.message.chat_id].get_status() <= 0:
-        user_ids = list()
-        if context.args:
-            user_ids += list(context.args)
-            for ids in user_ids:
-                int_ids = int(ids)
-                if int_ids in chat_ids_dict.keys():
-                    chat_id_object = chat_ids_dict[int_ids]
-                else:
-                    send_command_reply(update, context, message="Error. Chat ID "+str(ids)+" does not exist in list.")
-                    continue
-
-                if chat_id_object.set_status(new_status=1):
-                    for admins in admin_chat_ids:
-                        send_general_broadcast(chat_id=admins, message="Chat ID "+str(ids)+" successfully approved (status set to 1).")
-                    send_general_broadcast(chat_id=ids, message="Your application to use this bot was granted. You can now display and subscribe to available webpages with /subscriptions and see the available commands with /commands.")
-                else:
-                    send_command_reply(update, context, message="Error. Setting of new status 1 (approved) for chat ID "+str(ids)+" failed.\nPlease try again.")
-        else:
-            send_command_reply(update, context, message="Error. You need to specify which user(s) you want to approve.")
+        update.message.reply_text("Which User ID would you like to approve? Otherwise send /user_cancel to stop.")
+        return APPROVE_CHAT_ID_STATE
     else:
         send_command_reply(update, context, message="This command is only available to admins. Sorry.")
 
 
+# conversation helper function for approveuser()
+def approve_user_helper(update, context):
+    chat_id_to_approve = update.message.text
+    try: 
+        chat_id_to_approve = int(chat_id_to_approve)
+        pass
+    except ValueError:
+        send_command_reply(update, context, message="Error. This is not a valid chat ID.")
+        return ConversationHandler.END
+    if chat_id_to_approve in chat_ids_dict.keys():
+        chat_id_object = chat_ids_dict[chat_id_to_approve]
+        if chat_id_object.set_status(new_status=1):
+            for admins in admin_chat_ids:
+                send_general_broadcast(chat_id=admins, message="Chat ID "+str(chat_id_to_approve)+" successfully approved (status set to 1).")
+            send_general_broadcast(chat_id=chat_id_to_approve, message="Your application to use this bot was granted. You can now display and subscribe to available webpages with /subscriptions and see the available commands with /commands.")
+        else:
+            send_command_reply(update, context, message="Error. Setting of new status 1 (approved) for chat ID "+str(chat_id_to_approve)+" failed.\nThis user may already be approved.\nOtherwise, please try again.")
+    else:
+        send_command_reply(update, context, message="Error. Chat ID "+str(chat_id_to_approve)+" does not exist in list.")
+    return ConversationHandler.END
+
+
+### Telegram admin flow: deny users
 # access level: admin (0)
 def denyuser(update, context):
     if chat_ids_dict[update.message.chat_id].get_status() <= 0:
-        user_ids = list()
-        if context.args:
-            user_ids += list(context.args)
-            for ids in user_ids:
-                int_ids = int(ids)
-                if int_ids in chat_ids_dict.keys():
-                    chat_id_object = chat_ids_dict[int_ids]
-                else:
-                    send_command_reply(update, context, message="Error. Chat ID "+str(ids)+" does not exist in list.")
-                    continue
-
-                if chat_id_object.set_status(new_status=3):
-                    for admins in admin_chat_ids:
-                        send_general_broadcast(chat_id=admins, message="Chat ID "+str(ids)+" successfully denied (status set to 3).")
-                    send_general_broadcast(chat_id=ids, message="Sorry, you were denied from using this bot. Goodbye.")
-                else:
-                    send_command_reply(update, context, message="Error. Setting of new status 3 (denied) for chat ID "+str(ids)+" failed.\nPlease try again.")
-        else:
-            send_command_reply(update, context, message="Error. You need to specify which user(s) you want to deny.")
+        update.message.reply_text("Which User ID would you like to deny? Otherwise send /user_cancel to stop.")
+        return DENY_CHAT_ID_STATE
     else:
         send_command_reply(update, context, message="This command is only available to admins. Sorry.")
 
 
+# conversation helper function for denyuser()
+def deny_user_helper(update, context):
+    chat_id_to_deny = update.message.text
+    try: 
+        chat_id_to_deny = int(chat_id_to_deny)
+        pass
+    except ValueError:
+        send_command_reply(update, context, message="Error. This is not a valid chat ID.")
+        return ConversationHandler.END
+    if chat_id_to_deny in chat_ids_dict.keys():
+        chat_id_object = chat_ids_dict[chat_id_to_deny]
+        if chat_id_object.set_status(new_status=3):
+            for admins in admin_chat_ids:
+                send_general_broadcast(chat_id=admins, message="Chat ID "+str(chat_id_to_deny)+" successfully denied (status set to 3).")
+            send_general_broadcast(chat_id=chat_id_to_deny, message="Sorry, you were denied from using this bot. Goodbye.")
+        else:
+            send_command_reply(update, context, message="Error. Setting of new status 3 (denied) for chat ID "+str(chat_id_to_deny)+" failed.\nThis user may already be denied.\nOtherwise, please try again.")
+    else:
+        send_command_reply(update, context, message="Error. Chat ID "+str(chat_id_to_deny)+" does not exist in list.")
+    return ConversationHandler.END
+
+
+# conversation helper function for approveuser() and denyuser()
+def user_cancel(update, context):
+    send_command_reply(update, context, message="Ok. You can approve or deny users at any point with /approveuser or /denyuser.")
+    return ConversationHandler.END
+
+
+### Telegram admin flow: list all users
 # access level: admin (0)
 def listusers(update, context):
     if chat_ids_dict[update.message.chat_id].get_status() <= 0:
@@ -138,11 +274,15 @@ def listusers(update, context):
             print("Status: " + str(status))
             try:
                 user_info = chat_id_object.get_user_data()
+                apply_name = chat_id_object.get_apply_name()
+                apply_message = chat_id_object.get_apply_message()
                 message = ("User ID: " + str(key) + "\n"
-                           "First Name: " + str(user_info.first_name) + "\n"
-                           "Last Name: " + str(user_info.last_name) + "\n"
+                           "Status: " + str(status) + " (" + status_str + ")\n"
+                           "First name: " + str(user_info.first_name) + "\n"
+                           "Last name: " + str(user_info.last_name) + "\n"
                            "Username: " + str(user_info.username) + "\n"
-                           "Status: " + str(status) + " (" + status_str + ")")
+                           "Name on application: " + str(apply_name) + "\n"
+                           "Application: " + str(apply_message))
             except TypeError:
                 logger.error("type error user_data unreadable. Presumably uninitialized NoneType.")
                 continue
@@ -171,7 +311,7 @@ def status_meaning(status):
         return "unknown"
 
 
-### Telegram command handlers: webpage flow
+### Telegram user flow: list all available commands
 # access level: admin (0) and user (1)
 def commands(update, context):
     command_list = ""
@@ -183,8 +323,9 @@ def commands(update, context):
         if chat_ids_dict[update.message.chat_id].get_status() <= 0:
             command_list += ("\n\nThe available admin-only commands are:\n"
                              "/whoami\n- check admin status (not an inherently privileged command, anyone can check their status)\n"
-                             "/approveuser {chat_id}\n- approve a user who has applied to use this bot\n"
-                             "/denyuser {chat_id}\n- deny a user who has applied to use this bot\n"
+                             "/pendingusers\n- approve or deny pending users who applied to use this bot\n"
+                             "/approveuser\n- approve any user\n"
+                             "/denyuser\n- deny any user\n"
                              "/listusers\n- get info about all users who are using this bot\n"
                              "/getpageinfo\n- get info about a given webpage\n"
                              "/addwebpage {name} {url} {t_sleep}\n- add a webpage to the list of available webpages\n"
@@ -194,6 +335,7 @@ def commands(update, context):
         send_command_reply(update, context, message="This command is only available to approved users. Sorry.")
 
 
+### Telegram user flow: list all websites and subscriptions
 # access level: user (1)
 def subscriptions(update, context):
     if chat_ids_dict[update.message.chat_id].get_status() <= 1:
@@ -206,10 +348,10 @@ def subscriptions(update, context):
 # callback helper function for subscriptions()
 def button_subscriptions_add(update, context):
     query = update.callback_query
-    callback_chat_id = query['message']['chat']['id']
-    callback_message_id = query['message']['message_id']
-    callback_webpage_unstripped = str(query['data'])
-    callback_webpage = callback_webpage_unstripped.replace("add-", "")
+    callback_chat_id = query["message"]["chat"]["id"]
+    callback_message_id = query["message"]["message_id"]
+    callback_webpage_unstripped = str(query["data"])
+    callback_webpage = callback_webpage_unstripped.replace("add_subs-", "")
     webpage_object = webpages_dict[callback_webpage]
     if webpage_object.add_chat_id(chat_id_to_add=callback_chat_id):
         reply_markup = build_subscriptions_keyboard(callback_chat_id)
@@ -217,16 +359,16 @@ def button_subscriptions_add(update, context):
     else:
         reply_markup = build_subscriptions_keyboard(callback_chat_id)
         bot.edit_message_text(text="Error. Subscription to webpage "+str(callback_webpage)+" failed.\nPlease try again.", chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
-    bot.answer_callback_query(query['id'])
+    bot.answer_callback_query(query["id"])
 
 
 # callback helper function for subscriptions()
 def button_subscriptions_remove(update, context):
     query = update.callback_query
-    callback_chat_id = query['message']['chat']['id']
-    callback_message_id = query['message']['message_id']
-    callback_webpage_unstripped = str(query['data'])
-    callback_webpage = callback_webpage_unstripped.replace("rem-", "")
+    callback_chat_id = query["message"]["chat"]["id"]
+    callback_message_id = query["message"]["message_id"]
+    callback_webpage_unstripped = str(query["data"])
+    callback_webpage = callback_webpage_unstripped.replace("rem_subs-", "")
     webpage_object = webpages_dict[callback_webpage]
     if webpage_object.remove_chat_id(chat_id_to_remove=callback_chat_id):
         reply_markup = build_subscriptions_keyboard(callback_chat_id)
@@ -234,16 +376,16 @@ def button_subscriptions_remove(update, context):
     else:
         reply_markup = build_subscriptions_keyboard(callback_chat_id)
         bot.edit_message_text(text="Error. Unsubscription from webpage "+str(callback_webpage)+" failed.\nPlease try again.", chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
-    bot.answer_callback_query(query['id'])
+    bot.answer_callback_query(query["id"])
 
 
 # callback helper function for subscriptions()
 def button_subscriptions_exit(update, context):
     query = update.callback_query
-    callback_chat_id = query['message']['chat']['id']
-    callback_message_id = query['message']['message_id']
-    bot.edit_message_text(text='Reopen this menu at any time with /subscriptions.', chat_id=callback_chat_id, message_id=callback_message_id)
-    bot.answer_callback_query(query['id'])
+    callback_chat_id = query["message"]["chat"]["id"]
+    callback_message_id = query["message"]["message_id"]
+    bot.edit_message_text(text="Reopen this menu at any time with /subscriptions.", chat_id=callback_chat_id, message_id=callback_message_id)
+    bot.answer_callback_query(query["id"])
 
 
 # helper function for callback helpers for subscriptions()
@@ -256,17 +398,18 @@ def build_subscriptions_keyboard(callback_chat_id):
         webpage_objects.append(webpages_dict[wp])
         if webpage_objects[i].is_chat_id_active(chat_id_to_check=callback_chat_id):
             subscribed.append("✅")
-            buttons.append(InlineKeyboardButton(wp, callback_data="rem-"+wp))
-            buttons.append(InlineKeyboardButton(subscribed[i], callback_data="rem-"+wp))
+            buttons.append(InlineKeyboardButton(wp, callback_data="rem_subs-"+wp))
+            buttons.append(InlineKeyboardButton(subscribed[i], callback_data="rem_subs-"+wp))
         else:
             subscribed.append("❌")
-            buttons.append(InlineKeyboardButton(wp, callback_data="add-"+wp))
-            buttons.append(InlineKeyboardButton(subscribed[i], callback_data="add-"+wp))
-    buttons.append(InlineKeyboardButton("Exit menu", callback_data="exit"))
+            buttons.append(InlineKeyboardButton(wp, callback_data="add_subs-"+wp))
+            buttons.append(InlineKeyboardButton(subscribed[i], callback_data="add_subs-"+wp))
+    buttons.append(InlineKeyboardButton("Exit menu", callback_data="exit_subs"))
     reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=2))
     return reply_markup
 
 
+### Telegram user flow: stop this bot
 # access level: user (1)
 def stop(update, context):
     if chat_ids_dict[update.message.chat_id].get_status() <= 1:
@@ -292,7 +435,7 @@ def stop(update, context):
             send_command_reply(update, context, message="Error. Your chat ID could not be removed from this bot. Please try again.")
 
 
-### Telegram command handlers: admin flow
+### Telegram user flow: whoami
 # access level: none
 def whoami(update, context):
     if chat_ids_dict[update.message.chat_id].get_status() == 0:
@@ -303,6 +446,7 @@ def whoami(update, context):
         send_command_reply(update, context, message="Guest")
 
 
+### Telegram admin flow: display info about available websites
 # access level: admin (0)
 def getpageinfo(update, context):
     if chat_ids_dict[update.message.chat_id].get_status() <= 0:
@@ -311,7 +455,7 @@ def getpageinfo(update, context):
         buttons = list()
         for wp in webpages:
             webpage_objects.append(webpages_dict[wp])
-            buttons.append(InlineKeyboardButton(wp, callback_data="info-"+wp))
+            buttons.append(InlineKeyboardButton(wp, callback_data="webpg_info-"+wp))
         reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
         send_command_reply(update, context, message="List of webpages:", reply_markup=reply_markup)
     else:
@@ -321,14 +465,15 @@ def getpageinfo(update, context):
 # callback helper function for getpageinfo()
 def button_getpageinfo(update, context):
     query = update.callback_query
-    callback_webpage_unstripped = str(query['data'])
-    callback_webpage = callback_webpage_unstripped.replace("info-", "")
+    callback_webpage_unstripped = str(query["data"])
+    callback_webpage = callback_webpage_unstripped.replace("webpg_info-", "")
     webpage_object = webpages_dict[callback_webpage]
-    callback_chat_id = query['message']['chat']['id']
+    callback_chat_id = query["message"]["chat"]["id"]
     send_general_broadcast(chat_id=callback_chat_id, message="Info for webpage \""+str(callback_webpage)+"\":\n"+str(webpage_object))
-    bot.answer_callback_query(query['id'])
+    bot.answer_callback_query(query["id"])
 
 
+### Telegram admin flow: add a website to the list
 # access level: admin (0)
 def addwebpage(update, context):
     if chat_ids_dict[update.message.chat_id].get_status() <= 0:
@@ -346,6 +491,7 @@ def addwebpage(update, context):
         send_command_reply(update, context, message="This command is only available to admins. Sorry.")
 
 
+### Telegram admin flow: remove a website from the list
 # access level: admin (0)
 def removewebpage(update, context):
     if chat_ids_dict[update.message.chat_id].get_status() <= 0:
@@ -450,8 +596,6 @@ def init():
     global dispatcher
     global bot
 
-    # global webpages_dict  # needed here or not?, see line 24
-
     if platform.system() == "Linux":
         # @websiteBot_bot
         updater = Updater(token="***REMOVED***", use_context=True)
@@ -465,25 +609,56 @@ def init():
 
     # --- Generally accessible commands (access levels 0 to 3):
     dispatcher.add_handler(CommandHandler("start", start))
-    dispatcher.add_handler(CommandHandler("apply", apply))
+    # Conversation handler ->:
+    conversation_handler_apply = ConversationHandler(
+        entry_points=[CommandHandler("apply", apply)],
+        states={
+            APPLY_NAME_STATE: [MessageHandler(Filters.text, apply_name)],
+            APPLY_MESSAGE_STATE: [MessageHandler(Filters.text, apply_message)]
+        },
+        fallbacks=[CommandHandler("apply_cancel", apply_cancel)]
+    )
+    dispatcher.add_handler(conversation_handler_apply)
     # --- Approved user accessible commands (access levels 0 and 1):
     dispatcher.add_handler(CommandHandler("commands", commands))
     dispatcher.add_handler(CommandHandler("subscriptions", subscriptions))
+    # -> Callback helpers:
+    dispatcher.add_handler(CallbackQueryHandler(button_subscriptions_add, pattern="^add_subs-"))
+    dispatcher.add_handler(CallbackQueryHandler(button_subscriptions_remove, pattern="^rem_subs-"))
+    dispatcher.add_handler(CallbackQueryHandler(button_subscriptions_exit, pattern="exit_subs"))
     dispatcher.add_handler(CommandHandler("stop", stop))
     # --- Privileged admin-only commands (only access level 0):
     # "whoami" is not inherently privileged (anyone can check their status) but we'll not shout it from the rooftops regardless
     dispatcher.add_handler(CommandHandler("whoami", whoami))
-    dispatcher.add_handler(CommandHandler("approveuser", approveuser))
-    dispatcher.add_handler(CommandHandler("denyuser", denyuser))
     dispatcher.add_handler(CommandHandler("listusers", listusers))
     dispatcher.add_handler(CommandHandler("getpageinfo", getpageinfo))
+    # -> Callback helper:
+    dispatcher.add_handler(CallbackQueryHandler(button_getpageinfo, pattern="^webpg_info-"))
     dispatcher.add_handler(CommandHandler("addwebpage", addwebpage))
     dispatcher.add_handler(CommandHandler("removewebpage", removewebpage))
-    # --- Callback helper functions:
-    dispatcher.add_handler(CallbackQueryHandler(button_subscriptions_add, pattern='^add-'))
-    dispatcher.add_handler(CallbackQueryHandler(button_subscriptions_remove, pattern='^rem-'))
-    dispatcher.add_handler(CallbackQueryHandler(button_subscriptions_exit, pattern='exit'))
-    dispatcher.add_handler(CallbackQueryHandler(button_getpageinfo, pattern='^info-'))
+    dispatcher.add_handler(CommandHandler("pendingusers", pendingusers))
+    # -> Callback helpers:
+    dispatcher.add_handler(CallbackQueryHandler(button_pendingusers_approve, pattern="^usr_approve-"))
+    dispatcher.add_handler(CallbackQueryHandler(button_pendingusers_deny, pattern="^usr_deny-"))
+    dispatcher.add_handler(CallbackQueryHandler(button_pendingusers_detail, pattern="^user-"))
+    dispatcher.add_handler(CallbackQueryHandler(button_pendingusers_exit, pattern="exit_users"))
+    # Conversation handlers ->:
+    conversation_handler_approve_user = ConversationHandler(
+        entry_points=[CommandHandler("approveuser", approveuser)],
+        states={
+            APPROVE_CHAT_ID_STATE: [MessageHandler(Filters.text, approve_user_helper)],
+        },
+        fallbacks=[CommandHandler("user_cancel", user_cancel)]
+    )
+    dispatcher.add_handler(conversation_handler_approve_user)
+    conversation_handler_deny_user = ConversationHandler(
+        entry_points=[CommandHandler("denyuser", denyuser)],
+        states={
+            DENY_CHAT_ID_STATE: [MessageHandler(Filters.text, deny_user_helper)],
+        },
+        fallbacks=[CommandHandler("user_cancel", user_cancel)]
+    )
+    dispatcher.add_handler(conversation_handler_deny_user)
     # --- Catch-all commands for unknown inputs:
     dispatcher.add_handler(MessageHandler(Filters.text, text))
     # The "unknown" handler needs to be added last because it would override any handlers added afterwards
