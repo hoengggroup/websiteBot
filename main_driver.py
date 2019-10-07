@@ -22,7 +22,7 @@ import telegramService
 import vpnCheck
 
 
-version_code = "b4.3.0"
+version_code = "b4.3.1"
 
 # ip modes
 static_ip = True
@@ -262,11 +262,16 @@ def delete_chat_id(chat_id):
         return False
 
 
-def inf_wait_and_signal():
+def inf_wait_and_signal(checking):
     logger.warning("--- sleeping infinitely ---")
     while True:
         alive_notifier.notify("WATCHDOG=1")  # send status: alive
         time.sleep(10)
+        if(checking):
+            if(vpnCheck.get_ip() == ip_address):
+                logger.info("[IP check] IP changed back to correct value. Back online")
+                telegramService.send_admin_broadcast("[IP check] IP changed back to correct value. Back online")
+                break
 
 
 def process_webpage(logger, current_text, current_wbpg_dict, current_wbpg_name):
@@ -360,7 +365,7 @@ def main():
             # wrong static ip set
             logger.error("Startup IP does not match static_ip_address in mode static_ip. Sleeping now infinitely.")
             telegramService.send_admin_broadcast("[IP check] Error on startup. Problem: startup IP does not match static_ip_address in mode static_ip. Sleeping now infinitely.")
-            inf_wait_and_signal()
+            inf_wait_and_signal(checking=False)
     else:
         ip_address = vpnCheck.init()
 
@@ -405,7 +410,7 @@ def main():
             if ip_address != vpnCheck.get_ip():
                 logger.error("IP address has changed, sleeping now.")
                 telegramService.send_admin_broadcast("IP address has changed, sleeping now.")
-                inf_wait_and_signal()
+                inf_wait_and_signal(checking = True)
 
             # webpages_dict_loop = webpages_dict  # so we don't mutate the list (add/remove webpage) while the loop runs
             for current_wbpg_name in list(webpages_dict):
