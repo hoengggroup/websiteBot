@@ -22,7 +22,7 @@ import telegramService
 import vpnCheck
 
 
-version_code = "b4.3.3.1"
+version_code = "b4.3.3.2"
 
 # ip modes
 static_ip = True
@@ -407,7 +407,7 @@ def main():
     try:
         while(True):
             # sleep infinitely if VPN connection is down
-            if ip_address != vpnCheck.get_ip():
+            if static_ip_address != vpnCheck.get_ip():
                 logger.error("IP address has changed, sleeping now.")
                 telegramService.send_admin_broadcast("IP address has changed, sleeping now.")
                 inf_wait_and_signal(checking = True)
