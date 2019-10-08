@@ -22,7 +22,7 @@ import telegramService
 import vpnCheck
 
 
-version_code = "b4.3.3"
+version_code = "b4.3.3.1"
 
 # ip modes
 static_ip = True
@@ -268,7 +268,7 @@ def inf_wait_and_signal(checking):
         alive_notifier.notify("WATCHDOG=1")  # send status: alive
         time.sleep(10)
         if(checking):
-            if(vpnCheck.get_ip() == ip_address):
+            if(vpnCheck.get_ip() == ip_astatic_ip_address):
                 logger.info("[IP check] IP changed back to correct value. Back online")
                 telegramService.send_admin_broadcast("[IP check] IP changed back to correct value. Back online")
                 break
