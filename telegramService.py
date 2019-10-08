@@ -288,7 +288,9 @@ def listusers(update, context):
                 continue
             except AttributeError:
                 logger.error("attribute error user_data unreadable. Presumably uninitialized NoneType.")
-                continue
+                message = ("User ID: " + str(key) + "\n"
+                           "Status: " + str(status) + " (" + status_str + ")\n"
+                           "---Attribute Error---")
             except:
                 logger.error("Unknown error. The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
                 continue

@@ -22,7 +22,7 @@ import telegramService
 import vpnCheck
 
 
-version_code = "b4.3.1"
+version_code = "b4.3.2"
 
 # ip modes
 static_ip = True
