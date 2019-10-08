@@ -365,7 +365,7 @@ def main():
             # wrong static ip set
             logger.error("Startup IP does not match static_ip_address in mode static_ip. Sleeping now infinitely.")
             telegramService.send_admin_broadcast("[IP check] Error on startup. Problem: startup IP does not match static_ip_address in mode static_ip. Sleeping now infinitely.")
-            inf_wait_and_signal(checking=True)
+            inf_wait_and_signal(checking = True)
     else:
         ip_address = vpnCheck.init()
 
