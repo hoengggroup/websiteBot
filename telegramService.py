@@ -10,6 +10,9 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHa
 # our libraries
 from loggerConfig import create_logger_telegram
 
+from sendPushbullet import send_push
+from sendPushbullet import filterset
+
 
 admin_chat_ids = {***REMOVED***, ***REMOVED***}
 
@@ -554,6 +557,13 @@ def send_command_reply(update, context, message, reply_markup=None):
 # access level: builtin
 def send_general_broadcast(chat_id, message):
     logger.debug("Msg to " + str(chat_id) + "; MSG: " + message)
+    for filter in filterset:
+        if filter in message:
+            logger.debug("this message is redirected.")
+            send_push("!!!ROOM!!!",message)
+            send_admin_broadcast("__") # don't put anything here that is contained in filterset -> inf loop
+            return
+
     if not(message):
         logger.warning("No message.")
         return

@@ -5,7 +5,11 @@ import pushbullet
 import sys
 
 
-filterset = {"17.515.2", "17.515.3", "17.509.2", "17.509.3"}
+filterset = {
+"17.515.2",
+"17.515.3",
+"515",
+"17.509.2", "17.509.3"}
 
 
 def send_push(header, msg):

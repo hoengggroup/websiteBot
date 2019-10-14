@@ -20,9 +20,10 @@ from loggerConfig import create_logger_main_driver
 import dp_edit_distance
 import telegramService
 import vpnCheck
+from sendPushbullet import send_push
 
 
-version_code = "b4.3.3.3"
+version_code = "b4.3.3.4"
 
 # ip modes
 static_ip = True
@@ -351,6 +352,7 @@ def main():
     ip_mode_str = "static" if static_ip else "dynamic"
     telegramService.send_admin_broadcast("Starting up.\nVersion: \t"+version_code+"\nPlatform: \t"+str(platform.system())+"\nIP mode: \t"+ip_mode_str)
     telegramService.send_admin_broadcast("Please log user data with /start.")
+    send_push("System","Starting up "+str(version_code))
 
     # 3. initialize vpn service
     if static_ip:
