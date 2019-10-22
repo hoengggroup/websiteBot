@@ -5,7 +5,7 @@ import datetime
 import pickle  # for saving dicts to file
 
 
-
+#(name TEXT PRIMARY KEY, url TEXT, t_sleep INT, last_time_checked TIMESTAMP,last_time_changed TIMESTAMP, last_error_msg TEXT)
 class Webpage:
     def __init__(self, url, t_sleep):
         self.url = url
@@ -154,6 +154,10 @@ class ChatID:
             return False
 
 
+
+
+
+
 global webpages_dict
 with open('webpages.pickle', 'rb') as handle:
     webpages_dict = pickle.load(handle)
@@ -165,6 +169,25 @@ for element in webpages_dict:
 
 conn = sqlite3.connect('my_database.sqlite',detect_types=sqlite3.PARSE_DECLTYPES |
                                            sqlite3.PARSE_COLNAMES) # those types to detect e.g. datetime
+
+now =  datetime.datetime.now()
+dataTuple = ("myWebsite","myUrl",30,now,"404 $=$ error")
+
+cur  = conn.cursor()
+cur.execute("DROP TABLE IF EXISTS table1")
+cur.execute("CREATE TABLE table1(name TEXT PRIMARY KEY, url TEXT, t_sleep INT, last_time_checked TIMESTAMP, last_error_msg TEXT)")
+#cur.execute("CREATE TABLE table1(id INT, name TEXT, price INT)")
+cur.execute("INSERT INTO table1 VALUES(?, ?, ?,?,?)", dataTuple)
+conn.commit()
+
+cur.execute("SELECT * FROM table1")
+rows = cur.fetchall()
+
+for row in rows:
+    print(type(row[3]))
+    
+
+
 cursor = conn.cursor()
 """cursor.execute('''CREATE TABLE TABLE1
         (NAME text PRIMARY KEY     NOT NULL,
@@ -181,9 +204,9 @@ sql_insert_with_params = """INSERT INTO TABLE1
 dataTuple = ("myWebsite","myUrl",30,0,"404 $=$ error")
 
 #cursor.execute(sql_insert_with_params,("myWebsite","myUrl",30,0,"404 $=$ error"))
-cursor.execute("SELECT * from ? WHERE name = ?", ("a", "b"))
+#cursor.execute("SELECT * from ? WHERE name = ?", ("a", "b"))
 
-conn.commit()
+#conn.commit()
 
 """
 cursor.execute("INSERT INTO SCHOOL (ID,NAME,AGE,ADDRESS,MARKS) \
