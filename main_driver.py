@@ -23,7 +23,7 @@ import vpnCheck
 from sendPushbullet import send_push
 
 
-version_code = "b4.3.3.4"
+version_code = "b4.3.3.5"
 
 # ip modes
 static_ip = True
@@ -45,6 +45,7 @@ class Webpage:
         self.last_error_msg = ""
 
         self.chat_ids = set()
+        self.no_update = False
 
         # used while running
         self.last_hash = ""
@@ -56,6 +57,7 @@ class Webpage:
                 "Last time checked: " + str(self.last_time_checked) + "\n"
                 "Last time changed: " + str(self.last_time_changed) + "\n"
                 "Last error message: " + str(self.last_error_msg) + "\n"
+                "No update? " + str(self.no_update) + "\n"
                 "Chat IDs: " + str(self.chat_ids))
 
     def get_url(self):
@@ -114,6 +116,8 @@ class Webpage:
         return self.last_content
 
     def update_last_content(self, new_last_content):
+        if self.no_update:
+            return
         new_last_hash = (hashlib.md5(new_last_content.encode())).hexdigest()
         print("New last hash: " + str(new_last_hash))
         if self.last_hash != new_last_hash:
@@ -408,8 +412,8 @@ def main():
 
     try:
         while(True):
-            # sleep infinitely if VPN connection is down
-            if static_ip_address != vpnCheck.get_ip():
+            # sleep infinitely if VPN connection is down on static_ip true
+            if static_ip_address != vpnCheck.get_ip() and static_ip :
                 logger.error("IP address has changed, sleeping now.")
                 telegramService.send_admin_broadcast("IP address has changed, sleeping now.")
                 inf_wait_and_signal(checking = True)
