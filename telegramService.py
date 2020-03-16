@@ -577,8 +577,8 @@ def send_general_broadcast(chat_id, message):
     try:
         bot.send_message(chat_id=chat_id, text=message, parse_mode="HTML")
         logger.debug("Message #" + str(num_this_message) + " was sent successfully.")
-    except error.NetworkError:
-        logger.error("Network error when sending message #" + str(num_this_message))
+    except error.NetworkError as e:
+        logger.error("Network error when sending message #" + str(num_this_message)+" detail:"+ str(e))
     except:
         logger.error("Unknown error when trying to send telegram message #" + str(num_this_message) + ". The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
 
