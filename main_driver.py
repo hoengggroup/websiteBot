@@ -27,7 +27,7 @@ version_code = "b4.3.3.5"
 
 # ip modes
 static_ip = True
-static_ip_address = "84.39.112.20"  # set this value if static_ip = True
+static_ip_address = "95.91.204.78"# "84.39.112.20"  # set this value if static_ip = True
 
 webpage_load_timeout = 10
 
@@ -418,6 +418,7 @@ def main():
                 telegramService.send_admin_broadcast("IP address has changed, sleeping now.")
                 inf_wait_and_signal(checking = True)
 
+            
             # webpages_dict_loop = webpages_dict  # so we don't mutate the list (add/remove webpage) while the loop runs
             for current_wbpg_name in list(webpages_dict):
                 # notify watchdog
