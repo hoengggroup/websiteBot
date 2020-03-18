@@ -23,11 +23,11 @@ import vpnCheck
 from sendPushbullet import send_push
 
 
-version_code = "b4.3.3.5"
+version_code = "b4.3.3.6"
 
 # ip modes
 static_ip = True
-static_ip_address = "95.91.204.78"# "84.39.112.20"  # set this value if static_ip = True
+static_ip_address = "217.138.216.12"# "84.39.112.20"  # set this value if static_ip = True
 
 webpage_load_timeout = 10
 
@@ -369,8 +369,9 @@ def main():
             pass
         else:
             # wrong static ip set
-            logger.error("Startup IP does not match static_ip_address in mode static_ip. Sleeping now infinitely.")
-            telegramService.send_admin_broadcast("[IP check] Error on startup. Problem: startup IP does not match static_ip_address in mode static_ip. Sleeping now infinitely.")
+            logger.error("Startup IP does not match static_ip_address in mode static_ip. Sleeping now and retrying.")
+            send_push("System","[IP check] Error on startup. Problem: startup IP does not match static_ip_address in mode static_ip. Retrying.")
+            telegramService.send_admin_broadcast("[IP check] Error on startup. Problem: startup IP does not match static_ip_address in mode static_ip. Retrying.")
             inf_wait_and_signal(checking = True)
     else:
         ip_address = vpnCheck.init()
@@ -415,6 +416,7 @@ def main():
             # sleep infinitely if VPN connection is down on static_ip true
             if static_ip_address != vpnCheck.get_ip() and static_ip :
                 logger.error("IP address has changed, sleeping now.")
+                send_push("System","IP address has changed, sleeping now.")
                 telegramService.send_admin_broadcast("IP address has changed, sleeping now.")
                 inf_wait_and_signal(checking = True)
 
