@@ -128,67 +128,6 @@ class Webpage:
         self.last_content = new_last_content
 
 
-class ChatID:
-    def __init__(self, status, user_data):
-        self.status = status  # 0 = admin, 1 = user, 2 = pending, 3 = denied
-        self.user_data = None
-        self.apply_name = ""
-        self.apply_message = ""
-
-    def get_status(self):
-        return self.status
-
-    def set_status(self, new_status):
-        try:
-            new_status = int(new_status)
-            if self.status != new_status:
-                self.status = new_status
-                logger.info("Set new status " + str(new_status) + " for this chat ID.")
-                return True
-            else:
-                logger.warning("The status " + str(new_status) + " is already the current status of this chat ID.")
-                return False
-        except KeyError:
-            logger.error("Failed to set new status " + str(new_status) + " for this chat ID.")
-            return False
-
-    def get_user_data(self):
-        return self.user_data
-
-    def set_user_data(self, new_user_data):
-        try:
-            self.user_data = new_user_data
-            logger.info("Set new user data " + str(new_user_data) + " for this chat ID.")
-            return True
-        except KeyError:
-            logger.error("Failed to set new user data " + str(new_user_data) + " for this chat ID.")
-            return False
-
-    def get_apply_name(self):
-        return self.apply_name
-
-    def set_apply_name(self, new_apply_name):
-        try:
-            self.apply_name = new_apply_name
-            logger.info("Set new apply name " + str(new_apply_name) + " for this chat ID.")
-            return True
-        except KeyError:
-            logger.error("Failed to set new apply name " + str(new_apply_name) + " for this chat ID.")
-            return False
-
-    def get_apply_message(self):
-        return self.apply_message
-
-    def set_apply_message(self, new_apply_message):
-        try:
-            self.apply_message = new_apply_message
-            logger.info("Set new apply message " + str(new_apply_message) + " for this chat ID.")
-            return True
-        except KeyError:
-            logger.error("Failed to set new apply message " + str(new_apply_message) + " for this chat ID.")
-            return False
-
-
 delimiters = "\n", ". "  # delimiters where to split string
 
 
@@ -237,33 +176,6 @@ def remove_webpage(name):
         return True
     except Exception as ex:
         logger.error("Couldn't remove webpage from webpages_dict. Error: '%s'" % ex.message)  # pylint: disable=no-member
-        return False
-
-
-def create_chat_id(chat_id, status=2, user_data=None):
-    if chat_id in chat_ids_dict:
-        logger.info("Couldn't add chat ID " + str(chat_id) + ", as this chat ID already exists.")
-        return False
-    try:
-        new_chat_id = ChatID(status=status, user_data=user_data)
-        chat_ids_dict[chat_id] = new_chat_id
-        logger.info("Successfully added chat ID " + str(chat_id) + ".")
-        return True
-    except Exception as ex:
-        logger.error("Couldn't add chat ID to chat_ids_dict. Error: '%s'" % ex.message)  # pylint: disable=no-member
-        return False
-
-
-def delete_chat_id(chat_id):
-    if chat_id not in chat_ids_dict:
-        logger.info("Couldn't remove chat ID " + str(chat_id) + ", as this chat ID does not exist.")
-        return False
-    try:
-        del chat_ids_dict[chat_id]
-        logger.info("Successfully removed chat ID " + str(chat_id) + ".")
-        return True
-    except Exception as ex:
-        logger.error("Couldn't remove chat ID from chat_ids_dict. Error: '%s'" % ex.message)  # pylint: disable=no-member
         return False
 
 
