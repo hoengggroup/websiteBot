@@ -6,7 +6,7 @@ from requests import get
 
 # our libraries
 import telegramService
-from loggerConfig import create_logger_vpn
+from loggerConfig import create_logger
 
 
 def get_ip():
@@ -31,6 +31,6 @@ def get_ip():
 
 def init():
     global logger
-    logger = create_logger_vpn()
+    logger = create_logger("vpn")
 
     return get_ip()
