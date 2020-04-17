@@ -6,130 +6,40 @@ import traceback
 import html2text  # for passing html to text
 import requests  # for internet traffic
 
-import pickle  # for saving dicts to file
 import sdnotify  # for watchdog
 
 import sys
 import platform
 import time
-import datetime
+from datetime import datetime
 from unidecode import unidecode  # for stripping Ümläüte
 
 # our own libraries/dependencies
-from loggerConfig import create_logger_main_driver
+from loggerConfig import create_logger
 import dp_edit_distance
-import telegramService
+import telegramService as tgs
 import vpnCheck
-from sendPushbullet import send_push
+#from sendPushbullet import send_push
 
 
-version_code = "b4.3.3.6"
+import databaseService as dbs
+
+
+version_code = "5.0 alpha2"
 
 # ip modes
-static_ip = True
+if platform.system() == "Linux":
+    # @websiteBot_bot
+    static_ip = True
+else:
+    # @websiteBotShortTests_bot
+    static_ip = False
 static_ip_address = "217.138.216.12"# "84.39.112.20"  # set this value if static_ip = True
 
-webpage_load_timeout = 10
-
-
-webpages_dict = {}
-chat_ids_dict = {}
-
-
-class Webpage:
-    def __init__(self, url, t_sleep):
-        self.url = url
-        self.t_sleep = t_sleep  # sleeping time in seconds
-        self.last_time_checked = datetime.datetime.min  # init with minimal datetime value (year 1 AD)
-        self.last_time_changed = datetime.datetime.min  # init with minimal datetime value (year 1 AD)
-        self.last_error_msg = ""
-
-        self.chat_ids = set()
-        self.no_update = False
-
-        # used while running
-        self.last_hash = ""
-        self.last_content = ""
-
-    def __str__(self):
-        return ("URL: " + str(self.url) + "\n"
-                "Sleep timer: " + str(self.t_sleep) + "\n"
-                "Last time checked: " + str(self.last_time_checked) + "\n"
-                "Last time changed: " + str(self.last_time_changed) + "\n"
-                "Last error message: " + str(self.last_error_msg) + "\n"
-                "No update? " + str(self.no_update) + "\n"
-                "Chat IDs: " + str(self.chat_ids))
-
-    def get_url(self):
-        return self.url
-
-    def get_t_sleep(self):
-        return self.t_sleep
-
-    def set_t_sleep(self, new_t_sleep):
-        self.t_sleep = new_t_sleep
-        logger.info("Set new t_sleep for \"" + str(self.url) + "\" to " + str(self.t_sleep) + " seconds.")
-
-    def get_last_time_checked(self):
-        return self.last_time_checked
-
-    def update_last_time_checked(self):
-        self.last_time_checked = datetime.datetime.now()
-
-    def get_chat_ids(self):
-        return self.chat_ids
-
-    def is_chat_id_active(self, chat_id_to_check):
-        if chat_id_to_check in self.chat_ids:
-            return True
-        else:
-            return False
-
-    def add_chat_id(self, chat_id_to_add):
-        if chat_id_to_add in self.chat_ids:
-            logger.info("Chat ID " + str(chat_id_to_add) + " is already subscribed to \"" + str(self.url) + "\".")
-            return False
-        try:
-            self.chat_ids.add(chat_id_to_add)
-            logger.info("Added chat ID " + str(chat_id_to_add) + " to \"" + str(self.url) + "\".")
-            return True
-        except KeyError:
-            logger.error("Failed to add chat ID " + str(chat_id_to_add) + " to: \"" + str(self.url) + "\".")
-            return False
-
-    def remove_chat_id(self, chat_id_to_remove):
-        if chat_id_to_remove not in self.chat_ids:
-            logger.info("Chat ID " + str(chat_id_to_remove) + " is already unsubscribed from \"" + str(self.url) + "\".")
-            return False
-        try:
-            self.chat_ids.remove(chat_id_to_remove)
-            logger.info("Removed chat ID " + str(chat_id_to_remove) + " from \"" + str(self.url) + "\".")
-            return True
-        except KeyError:
-            logger.error("Failed to remove chat ID " + str(chat_id_to_remove) + " from \"" + str(self.url) + "\".")
-            return False
-
-    def get_last_hash(self):
-        return self.last_hash
-
-    def get_last_content(self):
-        return self.last_content
-
-    def update_last_content(self, new_last_content):
-        if self.no_update:
-            return
-        new_last_hash = (hashlib.md5(new_last_content.encode())).hexdigest()
-        print("New last hash: " + str(new_last_hash))
-        if self.last_hash != new_last_hash:
-            self.last_time_changed = datetime.datetime.now()
-            print("Really updated last hash.")
-        self.last_hash = new_last_hash
-        print("Updated last hash: " + str(self.get_last_hash()))
-        self.last_content = new_last_content
+website_load_timeout = 10
 
 
 delimiters = "\n", ". "  # delimiters where to split string
-
 
 # process string ready for dp_edit_distance
 def preprocess_string(str_to_convert):
@@ -152,33 +62,6 @@ def preprocess_string(str_to_convert):
     return str_list_ret
 
 
-def add_webpage(name, url, t_sleep):
-    if name in webpages_dict:
-        logger.info("Couldn't add webpage \"" + str(name) + "\", as a webpage with this name already exists.")
-        return False
-    try:
-        new_webpage = Webpage(url=url, t_sleep=t_sleep)
-        webpages_dict[name] = new_webpage
-        logger.info("Successfully added webpage \"" + str(name) + "\" with url " + str(url) + " and timeout " + str(t_sleep) + ".")
-        return True
-    except Exception as ex:
-        logger.error("Couldn't add webpage to webpages_dict. Error: '%s'" % ex.message)  # pylint: disable=no-member
-        return False
-
-
-def remove_webpage(name):
-    if name not in webpages_dict:
-        logger.info("Couldn't remove webpage \"" + str(name) + "\", as this webpage does not exist.")
-        return False
-    try:
-        del webpages_dict[name]
-        logger.info("Successfully removed webpage \"" + str(name) + "\".")
-        return True
-    except Exception as ex:
-        logger.error("Couldn't remove webpage from webpages_dict. Error: '%s'" % ex.message)  # pylint: disable=no-member
-        return False
-
-
 def inf_wait_and_signal(checking):
     logger.warning("--- sleeping infinitely ---")
     while True:
@@ -187,36 +70,36 @@ def inf_wait_and_signal(checking):
         if(checking):
             if(vpnCheck.get_ip() == static_ip_address):
                 logger.info("[IP check] IP changed back to correct value. Back online")
-                telegramService.send_admin_broadcast("[IP check] IP changed back to correct value. Back online")
+                tgs.send_admin_broadcast("[IP check] IP changed back to correct value. Back online")
                 break
 
 
-def process_webpage(logger, current_text, current_wbpg_dict, current_wbpg_name):
+def process_website(logger, current_content, current_ws_name):
     # 1. startup
-    logger.debug("Starting processing of webpage.")
-    current_wbpg = current_wbpg_dict[current_wbpg_name]
+    logger.debug("Starting processing website.")
+    last_hash = dbs.db_websites_get_data(ws_name=current_ws_name, field="last_hash")
+    last_content = dbs.db_websites_get_data(ws_name=current_ws_name, field="last_content")
 
     # 2. hash website text
     # current_text+=". abcd. .ef 32r"
-    current_hash = (hashlib.md5(current_text.encode())).hexdigest()
-    logger.debug("Hashes are (current, last): " + str(current_hash) + "\t" + str(current_wbpg.get_last_hash()))
+    current_hash = (hashlib.md5(current_content.encode())).hexdigest()
+    logger.debug("Hashes are (current, last): (" + str(current_hash) + ", " + str(last_hash) + ").")
     # 3. if different
-    if current_hash != current_wbpg.get_last_hash():
-        logger.info("Website hash different. Current hash " + str(current_hash) + " vs. old hash " + str(current_wbpg.get_last_hash()))
-        logger.debug("Strings equal? " + str(current_wbpg.get_last_content() == current_text))
+    if current_hash != last_hash:
+        logger.info("Website hashes do not match. Current hash " + str(current_hash) + " vs. previous hash " + str(last_hash) + ".")
+        logger.debug("Content equal? " + str(last_content == current_content) + ".")
 
         # 3.1 determine difference using DP (O(m * n) ^^)
         logger.debug("Preprocess 1.")
-        old_words_list = preprocess_string(current_wbpg.get_last_content())
+        old_words_list = preprocess_string(last_content)
         logger.debug("Preprocess 2.")
-        new_words_list = preprocess_string(current_text)
-        msg_to_send = "CHANGES in " + current_wbpg_name + ":\n"
+        new_words_list = preprocess_string(current_content)
+        msg_to_send = "CHANGES in " + current_ws_name + ":\n"
 
         logger.debug("Calling dp_edit_distance.")
         changes = dp_edit_distance.get_edit_distance_changes(old_words_list, new_words_list)
 
         logger.info("Website word difference is: " + str(changes))
-        print("--- Changes START ---")
         for change_tupel in changes:
             if change_tupel[0] == "swap":
                 msg_to_send += "SWAP: <i>" + change_tupel[1] + "</i> TO <b>" + change_tupel[2] + "</b>\n"
@@ -229,18 +112,20 @@ def process_webpage(logger, current_text, current_wbpg_dict, current_wbpg_name):
                 for my_str in change_tupel:
                     msg_to_send += (my_str + " ")
                 msg_to_send += "\n"
-        print("--- Changes END ---")
 
         # 3.2 notify world about changes
-        for current_chat_id in current_wbpg.get_chat_ids():
-            telegramService.send_general_broadcast(current_chat_id, msg_to_send)
+        user_ids = dbs.db_subscriptions_by_website(ws_name=current_ws_name)
+        for ids in user_ids:
+            tgs.send_general_broadcast(ids, msg_to_send)
 
-        # 3.3 update variables of webpage object
-        current_wbpg.update_last_content(current_text)
+        # 3.3 update values in website table
+        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_time_updated", argument=datetime.now())
+        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_hash", argument=current_hash)
+        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_content", argument=current_content)
 
-    # 4. update time last written
-    current_wbpg.update_last_time_checked()
-    logger.debug("finished processing webpage")
+    # 4. update time last checked
+    dbs.db_websites_set_data(ws_name=current_ws_name, field="last_time_checked", argument=datetime.now())
+    logger.debug("Finished processing website.")
 
 
 def main():
@@ -249,28 +134,35 @@ def main():
     alive_notifier = sdnotify.SystemdNotifier()
 
     '''
-    max_watchdog_time = max(time_setup, webpage_loading_timeout + webpage_process_time, sleep_time)
+    max_watchdog_time = max(time_setup, website_loading_timeout + website_process_time, sleep_time)
 
     where:
     time_setup = time from here to begin of while loop
-    webpage_loading_timeout = timeout of webdriver when loading webpage
-    webpage_process_time = time it takes to process (changes) of a webpage incl. telegram sending
+    website_loading_timeout = timeout of webdriver when loading website
+    website_process_time = time it takes to process (changes) of a website incl. telegram sending
     sleep_time = sleep time at end of while loop
     '''
 
     # 1. initialize logger
     global logger
-    logger = create_logger_main_driver()
+    logger = create_logger("main")
 
-    # 2. initialize telegram service
-    telegramService.init()
+    # 2. initialize database
+    connection_state = dbs.db_connect()
+    if not connection_state:
+        logger.critical("Fatal error: Could not establish connection with database. Terminating.")
+        sys.exit()
+    else:
+        logger.info("Database connected successfully.")
+
+    # 3. initialize telegram service
+    tgs.init()
     # send admin msg
     ip_mode_str = "static" if static_ip else "dynamic"
-    telegramService.send_admin_broadcast("Starting up.\nVersion: \t"+version_code+"\nPlatform: \t"+str(platform.system())+"\nIP mode: \t"+ip_mode_str)
-    telegramService.send_admin_broadcast("Please log user data with /start.")
-    send_push("System","Starting up "+str(version_code))
+    tgs.send_admin_broadcast("Starting up.\nVersion: \t"+version_code+"\nPlatform: \t"+str(platform.system())+"\nIP mode: \t"+ip_mode_str)
+    #send_push("System","Starting up "+str(version_code))
 
-    # 3. initialize vpn service
+    # 4. initialize vpn service
     if static_ip:
         vpnCheck.init()
 
@@ -282,136 +174,91 @@ def main():
         else:
             # wrong static ip set
             logger.error("Startup IP does not match static_ip_address in mode static_ip. Sleeping now and retrying.")
-            send_push("System","[IP check] Error on startup. Problem: startup IP does not match static_ip_address in mode static_ip. Retrying.")
-            telegramService.send_admin_broadcast("[IP check] Error on startup. Problem: startup IP does not match static_ip_address in mode static_ip. Retrying.")
+            #send_push("System","[IP check] Error on startup. Problem: startup IP does not match static_ip_address in mode static_ip. Retrying.")
+            tgs.send_admin_broadcast("[IP check] Error on startup. Problem: startup IP does not match static_ip_address in mode static_ip. Retrying.")
             inf_wait_and_signal(checking = True)
     else:
         ip_address = vpnCheck.init()
 
-    # 4.0 initialize dicts from files
-    global webpages_dict
-    with open('webpages.pickle', 'rb') as handle:
-        webpages_dict = pickle.load(handle)
-
-    global chat_ids_dict
-    with open('chatids.pickle', 'rb') as handle:
-        chat_ids_dict = pickle.load(handle)
-
-    logger.info("--- Webpages loaded from pickle file START ---")
-    for key in webpages_dict:
-        website = webpages_dict[key]
-        logger.info("Webpage " + key + ": " + str(website))
-    logger.info("--- Webpages loaded from pickle file END ---")
-
-    # 4.1 append to dicts manually
-    # Uncomment for one execution to add a new webpage to the dict (and save it into pickle in the next main loop)
-    '''
-    new_website1 = Webpage("http://reservation.livingscience.ch/wohnen", 15)
-    webpages_dict["livingscience"] = new_website1
-    new_website2 = Webpage("http://news.orf.at", 15)
-    webpages_dict["news.orf.at"] = new_website2
-    '''
-
-    # 5.0 make objects and functions available / update references in telegramService
-    telegramService.set_webpages_dict_reference(webpages_dict)
-    telegramService.set_add_webpage_reference(add_webpage)
-    telegramService.set_remove_webpage_reference(remove_webpage)
-    telegramService.set_chat_ids_dict_reference(chat_ids_dict)
-    telegramService.set_create_chat_id_reference(create_chat_id)
-    telegramService.set_delete_chat_id_reference(delete_chat_id)
-
-    # 5.1 set status of pre-configured admin chat IDs to 0 for administrative access after startup
-    telegramService.escalate_admin_privileges()
-
+    # 5. main loop
     try:
         while(True):
             # sleep infinitely if VPN connection is down on static_ip true
             if static_ip_address != vpnCheck.get_ip() and static_ip :
                 logger.error("IP address has changed, sleeping now.")
-                send_push("System","IP address has changed, sleeping now.")
-                telegramService.send_admin_broadcast("IP address has changed, sleeping now.")
+                #send_push("System","IP address has changed, sleeping now.")
+                tgs.send_admin_broadcast("IP address has changed, sleeping now.")
                 inf_wait_and_signal(checking = True)
 
-            
-            # webpages_dict_loop = webpages_dict  # so we don't mutate the list (add/remove webpage) while the loop runs
-            for current_wbpg_name in list(webpages_dict):
+            for ws_id in dbs.db_websites_get_all_ids():
                 # notify watchdog
                 alive_notifier.notify("WATCHDOG=1")  # send status: alive
 
                 try:
-                    current_wbpg = webpages_dict[current_wbpg_name]
+                    current_ws_name = dbs.db_websites_get_name(ws_id)
+                    current_url = dbs.db_websites_get_data(ws_name=current_ws_name, field="url")
+                    current_time = datetime.now()
+                    elapsed_time = current_time - dbs.db_websites_get_data(ws_name=current_ws_name, field="last_time_checked")
 
-                    current_time = datetime.datetime.now()
-                    elapsed_time = current_time - current_wbpg.get_last_time_checked()
-
-                    if elapsed_time.total_seconds() > current_wbpg.get_t_sleep():
-                        logger.debug("Checking website " + current_wbpg_name + " with url: " + current_wbpg.get_url())
+                    if elapsed_time.total_seconds() > dbs.db_websites_get_data(ws_name=current_ws_name, field="time_sleep"):
+                        logger.debug("Checking website " + str(current_ws_name) + " with url: " + str(current_url))
 
                         # get website
                         try:
                             logger.debug("Getting website.")
-                            rContent = requests.get(current_wbpg.get_url(), timeout=webpage_load_timeout, verify=False)  # TODO: fix SSL support and reset verify to True.
+                            rContent = requests.get(current_url, timeout=website_load_timeout, verify=False)  # TODO: fix SSL support and reset verify to True.
                         except requests.Timeout as e:
-                            logger.error("Timeout Error "+str(e))
-                            telegramService.send_admin_broadcast("[Getting website] URL: "+str(current_wbpg.get_url())+" Problem: Timeout error "+str(e))
-                            current_wbpg.last_error_msg = str(e)
+                            logger.error("Timeout Error: "+str(e))
+                            tgs.send_admin_broadcast("[MAIN] URL: "+str(current_url)+" Problem: Timeout error "+str(e))
+                            dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=str(e))
                             continue
                         except requests.ConnectionError as e:
-                            logger.error("Connection Error "+str(e))
-                            telegramService.send_admin_broadcast("[Getting website] URL: "+str(current_wbpg.get_url())+" Problem: Connection error "+str(e))
-                            current_wbpg.last_error_msg = str(e)
+                            logger.error("Connection Error: "+str(e))
+                            tgs.send_admin_broadcast("[MAIN] URL: "+str(current_url)+" Problem: Connection error "+str(e))
+                            dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=str(e))
                             continue
                         except:
-                            logger.error("An UNKNOWN exception has occured in the get website subroutine.")
+                            logger.error("An UNKNOWN exception has occured while trying to fetch th website with URL:" + str(current_url))
                             logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
-                            telegramService.send_admin_broadcast("[Getting website] URL: " + str(current_wbpg.get_url()) + " Problem: unknown error")
-                            current_wbpg.last_error_msg = str("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+                            tgs.send_admin_broadcast("[MAIN] URL: " + str(current_url) + " Problem: unknown error")
+                            error_msg = str("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+                            dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=error_msg)
                             continue
                         if rContent.status_code != 200:
-                            current_error_msg = "Status code is (unequal 0): " + str(rContent.status_code)
-                            logger.error(current_error_msg)
-                            telegramService.send_admin_broadcast("[Getting website] URL: " + str(current_wbpg.get_url()) + " Problem: " + current_error_msg)
-                            current_wbpg.last_error_msg = current_error_msg
+                            error_msg = "Status code is (unequal 0): " + str(rContent.status_code)
+                            logger.error(error_msg)
+                            tgs.send_admin_broadcast("[MAIN] URL: " + str(current_url) + " Problem: " + error_msg)
+                            dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=error_msg)
                             continue
 
                         # process website
-                        logger.debug("Getting text.")
-                        current_text = html2text.html2text(rContent.text)
-                        process_webpage(logger, current_text, webpages_dict, current_wbpg_name)
+                        logger.debug("Getting content.")
+                        current_content = html2text.html2text(rContent.text)
+                        process_website(logger, current_content, current_ws_name)
                 except RuntimeError as e:
-                    logger.error("[Website dict iteration] Problem: runtime error " + str(e))
-                    telegramService.send_admin_broadcast("[Website dict iteration] Problem: runtime error.")
+                    logger.error("Runtime error: " + str(e))
+                    tgs.send_admin_broadcast("[MAIN] Runtime error.")
                     continue
-                except KeyError as e:
-                    logger.error("[Website dict iteration] Problem: key error " + str(e))
-                    telegramService.send_admin_broadcast("[Website dict iteration] Problem: key error.")
-                    continue
+
             # notify watchdog
             alive_notifier.notify("WATCHDOG=1")  # send status: alive
 
-            with open('webpages.pickle', 'wb') as handle:
-                pickle.dump(webpages_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-                logger.debug("Webpages dict saved.")
-            with open('chatids.pickle', 'wb') as handle:
-                pickle.dump(chat_ids_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-                logger.debug("Chat IDs dict saved.")
             # sleep now
             time.sleep(10)
 
     except Exception:
-        logger.error("[MAIN] Problem: unknown exception. Terminating")
-        logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+        logger.critical("Unknown exception. Terminating")
+        logger.critical("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
         traceback.print_exc()
-        telegramService.send_admin_broadcast("[MAIN] Problem: unknown exception.\n" + str(sys.exc_info()[0]) + "\nTerminating.")
+        tgs.send_admin_broadcast("[MAIN] Unknown exception.\n" + str(sys.exc_info()[0]) + "\nTerminating.")
     finally:
-        with open('webpages.pickle', 'wb') as handle:
-            pickle.dump(webpages_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            logger.info("Webpages dict saved.")
-        with open('chatids.pickle', 'wb') as handle:
-            pickle.dump(chat_ids_dict, handle, protocol=pickle.HIGHEST_PROTOCOL)
-            logger.info("Chat IDs dict saved.")
+        disconnection_state = dbs.db_disconnect()
+        if not disconnection_state:
+            logger.critical("Database did not disconnect successfully.")
+        else:
+            logger.info("Database disconnected successfully.")
 
-        telegramService.send_admin_broadcast("[MAIN] Shutting down...")
+        tgs.send_admin_broadcast("[MAIN] Shutting down...")
         logger.warning("Shutting down. This is the last line.")
 
 
