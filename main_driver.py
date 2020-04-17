@@ -11,6 +11,7 @@ import sdnotify  # for watchdog
 import sys
 import platform
 import time
+import random
 from datetime import datetime
 from unidecode import unidecode  # for stripping Ümläüte
 
@@ -243,8 +244,11 @@ def main():
             # notify watchdog
             alive_notifier.notify("WATCHDOG=1")  # send status: alive
 
-            # sleep now
-            time.sleep(10)
+            # sleep until next go-around in loop
+            # sleep for a random (out of five choices) prime number of seconds so no regular pattern of web requests develops
+            choice = random.choice([5, 7, 11, 13, 17])
+            logger.debug("Sleeping now for " + str(choice) + " seconds.")
+            time.sleep(choice)
 
     except Exception:
         logger.critical("Unknown exception. Terminating")
