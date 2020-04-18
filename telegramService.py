@@ -5,9 +5,10 @@ import platform  # for getting the type of system that is executing this file
 import sys  # for getting detailed error msg
 from itertools import count  # for message numbering
 from datetime import datetime  # for setting timestamps
+from functools import wraps  # for the decorator function sending the typing state
 
 ### telegam-python-bot libraries
-from telegram import Bot, error, InlineKeyboardButton, InlineKeyboardMarkup
+from telegram import Bot, error, InlineKeyboardButton, InlineKeyboardMarkup, ChatAction
 from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, CallbackQueryHandler, Filters
 
 ### our own libraries
@@ -22,8 +23,18 @@ global logger
 logger = create_logger("tg")
 
 
+# access level: builtin (decorator)
+def send_typing_action(func):
+    @wraps(func)
+    def command_func(update, context, *args, **kwargs):
+        context.bot.send_chat_action(chat_id=update.effective_message.chat_id, action=ChatAction.TYPING)
+        return func(update, context, *args, **kwargs)
+    return command_func
+
+
 ### Telegram user flow: start
 # access level: none
+@send_typing_action
 def start(update, context):
     if not dbs.db_users_exists(update.message.chat_id):
         dbs.db_users_create(tg_id=update.message.chat_id,
@@ -41,6 +52,7 @@ def start(update, context):
 
 ### Telegram user flow: apply
 # access level: none (excluding admins and users)
+@send_typing_action
 def apply(update, context):
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") >= 2:
         send_command_reply(update, context, message="Hi. Please tell me your name/nickname/username or send /applycancel to stop.")
@@ -51,6 +63,7 @@ def apply(update, context):
 
 
 # conversation helper function for apply()
+@send_typing_action
 def apply_name(update, context):
     apply_name = str(update.message.text)
     dbs.db_users_set_data(tg_id=update.message.chat_id, field="apply_name", argument=apply_name)
@@ -59,6 +72,7 @@ def apply_name(update, context):
 
 
 # conversation helper function for apply()
+@send_typing_action
 def apply_message(update, context):
     apply_name = dbs.db_users_get_data(tg_id=update.message.chat_id, field="apply_name")
     apply_message = str(update.message.text)
@@ -75,6 +89,7 @@ def apply_message(update, context):
 
 
 # conversation helper function for apply()
+@send_typing_action
 def applycancel(update, context):
     dbs.db_users_set_data(tg_id=update.message.chat_id, field="apply_name", argument="")
     dbs.db_users_set_data(tg_id=update.message.chat_id, field="apply_text", argument="")
@@ -84,6 +99,7 @@ def applycancel(update, context):
 
 ### Telegram admin flow: approve/deny pending users
 # access level: admin (0)
+@send_typing_action
 def pendingusers(update, context):
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 0:
         chat_ids = dbs.db_users_get_all_ids()
@@ -100,6 +116,7 @@ def pendingusers(update, context):
 
 
 # callback helper function for pendingusers()
+@send_typing_action
 def button_pendingusers_detail(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
@@ -123,6 +140,7 @@ def button_pendingusers_detail(update, context):
 
 
 # callback helper function for pendingusers()
+@send_typing_action
 def button_pendingusers_approve(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
@@ -140,6 +158,7 @@ def button_pendingusers_approve(update, context):
 
 
 # callback helper function for pendingusers()
+@send_typing_action
 def button_pendingusers_deny(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
@@ -157,6 +176,7 @@ def button_pendingusers_deny(update, context):
 
 
 # callback helper function for pendingusers()
+@send_typing_action
 def button_pendingusers_exit(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
@@ -167,6 +187,7 @@ def button_pendingusers_exit(update, context):
 
 ### Telegram admin flow: approve users
 # access level: admin (0)
+@send_typing_action
 def approveuser(update, context):
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 0:
         send_command_reply(update, context, message="Which User ID would you like to approve? Otherwise send /usercancel to stop.")
@@ -176,6 +197,7 @@ def approveuser(update, context):
 
 
 # conversation helper function for approveuser()
+@send_typing_action
 def approve_user_helper(update, context):
     chat_id_to_approve = update.message.text
     try: 
@@ -198,6 +220,7 @@ def approve_user_helper(update, context):
 
 ### Telegram admin flow: deny users
 # access level: admin (0)
+@send_typing_action
 def denyuser(update, context):
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 0:
         send_command_reply(update, context, message="Which User ID would you like to deny? Otherwise send /usercancel to stop.")
@@ -207,6 +230,7 @@ def denyuser(update, context):
 
 
 # conversation helper function for denyuser()
+@send_typing_action
 def deny_user_helper(update, context):
     chat_id_to_deny = update.message.text
     try: 
@@ -228,6 +252,7 @@ def deny_user_helper(update, context):
 
 
 # conversation helper function for approveuser() and denyuser()
+@send_typing_action
 def usercancel(update, context):
     send_command_reply(update, context, message="Ok. You can approve or deny users at any point with /approveuser or /denyuser.")
     return ConversationHandler.END
@@ -235,6 +260,7 @@ def usercancel(update, context):
 
 ### Telegram admin flow: list all users
 # access level: admin (0)
+@send_typing_action
 def listusers(update, context):
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 0:
         for ids in dbs.db_users_get_all_ids():
@@ -269,6 +295,7 @@ def status_meaning(status):
 
 ### Telegram user flow: list all available commands
 # access level: admin (0) and user (1)
+@send_typing_action
 def commands(update, context):
     command_list = ""
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 1:
@@ -293,6 +320,7 @@ def commands(update, context):
 
 ### Telegram user flow: list all websites and subscriptions
 # access level: user (1)
+@send_typing_action
 def subscriptions(update, context):
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 1:
         reply_markup = build_subscriptions_keyboard(update.message.chat_id)
@@ -302,6 +330,7 @@ def subscriptions(update, context):
 
 
 # callback helper function for subscriptions()
+@send_typing_action
 def button_subscriptions_add(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
@@ -318,6 +347,7 @@ def button_subscriptions_add(update, context):
 
 
 # callback helper function for subscriptions()
+@send_typing_action
 def button_subscriptions_remove(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
@@ -334,6 +364,7 @@ def button_subscriptions_remove(update, context):
 
 
 # callback helper function for subscriptions()
+@send_typing_action
 def button_subscriptions_exit(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
@@ -364,6 +395,7 @@ def build_subscriptions_keyboard(callback_chat_id):
 
 ### Telegram user flow: stop this bot
 # access level: user (1) (and none)
+@send_typing_action
 def stop(update, context):
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 1:
         active_subs = list()
@@ -389,6 +421,7 @@ def stop(update, context):
 
 ### Telegram user flow: whoami
 # access level: none
+@send_typing_action
 def whoami(update, context):
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") == 0:
         send_command_reply(update, context, message="root")
@@ -400,6 +433,7 @@ def whoami(update, context):
 
 ### Telegram admin flow: display info about available websites
 # access level: admin (0)
+@send_typing_action
 def getwebsiteinfo(update, context):
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 0:
         websites_ids = dbs.db_websites_get_all_ids()
@@ -414,6 +448,7 @@ def getwebsiteinfo(update, context):
 
 
 # callback helper function for getwebsiteinfo()
+@send_typing_action
 def button_getwebsiteinfo(update, context):
     query = update.callback_query
     callback_website_unstripped = str(query["data"])
@@ -433,6 +468,7 @@ def button_getwebsiteinfo(update, context):
 
 ### Telegram admin flow: add a website to the list
 # access level: admin (0)
+@send_typing_action
 def addwebsite(update, context):
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 0:
         if len(context.args) == 3:
@@ -458,6 +494,7 @@ def addwebsite(update, context):
 
 ### Telegram admin flow: remove a website from the list
 # access level: admin (0)
+@send_typing_action
 def removewebsite(update, context):
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 0:
         if len(context.args) == 1:
@@ -484,11 +521,13 @@ def build_menu(buttons, n_cols, header_buttons=False, footer_buttons=False):
 
 
 # access level: generic
+@send_typing_action
 def text(update, context):
     send_command_reply(update, context, message="Sorry, I only understand commands. Check if you entered a leading slash or get a list of the available commands with /commands.")
 
 
 # access level: generic
+@send_typing_action
 def unknown(update, context):
     send_command_reply(update, context, message="Sorry, I did not understand that command. Check the spelling or get a list of the available commands with /commands.")
 
