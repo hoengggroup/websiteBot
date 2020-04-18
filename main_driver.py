@@ -95,7 +95,8 @@ def process_website(logger, current_content, current_ws_name):
         old_words_list = preprocess_string(last_content)
         logger.debug("Preprocess 2.")
         new_words_list = preprocess_string(current_content)
-        msg_to_send = "CHANGES in " + current_ws_name + ":\n"
+        link_to_current_ws = dbs.db_websites_get_data(ws_name=current_ws_name, field="url")
+        msg_to_send = "Changes in website <a href=\"" + str(link_to_current_ws) + "\">" + str(current_ws_name) + "</a>:\n\n"
 
         logger.debug("Calling dp_edit_distance.")
         changes = dp_edit_distance.get_edit_distance_changes(old_words_list, new_words_list)
