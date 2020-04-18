@@ -338,10 +338,10 @@ def db_websites_get_all_ids():
 
 
 # ADD WEBSITE
-def db_websites_add(ws_name, url, time_sleep, last_time_checked, last_time_updated, last_error_msg, last_hash, last_content):
+def db_websites_add(ws_name, url, time_sleep, static_compare, last_time_checked, last_time_updated, last_error_msg, last_error_time, last_hash, last_content):
     try:
-        postgres_query = """INSERT INTO websites (ws_name, url, time_sleep, last_time_checked, last_time_updated, last_error_msg, last_hash) VALUES (%s, %s, %s, %s, %s, %s, %s) RETURNING ws_id;"""
-        query_data = (ws_name, url, time_sleep, last_time_checked, last_time_updated, last_error_msg, last_hash)
+        postgres_query = """INSERT INTO websites (ws_name, url, time_sleep, static_compare, last_time_checked, last_time_updated, last_error_msg, last_error_time, last_hash) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING ws_id;"""
+        query_data = (ws_name, url, time_sleep, static_compare, last_time_checked, last_time_updated, last_error_msg, last_error_time, last_hash)
         cur.execute(postgres_query, query_data)
         ws_id_1 = cur.fetchone()[0]
     except Exception as ex:
@@ -396,12 +396,16 @@ def db_websites_get_data(ws_name, field="all_fields"):
         postgres_query = """SELECT url FROM websites WHERE ws_id = %s;"""
     elif field=="time_sleep":
         postgres_query = """SELECT time_sleep FROM websites WHERE ws_id = %s;"""
+    elif field=="static_compare":
+        postgres_query = """SELECT static_compare FROM websites WHERE ws_id = %s;"""
     elif field=="last_time_checked":
         postgres_query = """SELECT last_time_checked FROM websites WHERE ws_id = %s;"""
     elif field=="last_time_updated":
         postgres_query = """SELECT last_time_updated FROM websites WHERE ws_id = %s;"""
     elif field=="last_error_msg":
         postgres_query = """SELECT last_error_msg FROM websites WHERE ws_id = %s;"""
+    elif field=="last_error_time":
+        postgres_query = """SELECT last_error_time FROM websites WHERE ws_id = %s;"""
     elif field=="last_hash":
         postgres_query = """SELECT last_hash FROM websites WHERE ws_id = %s;"""
     elif field=="last_content":
@@ -439,12 +443,16 @@ def db_websites_set_data(ws_name, field, argument):
         postgres_query = """UPDATE websites SET url = %s WHERE ws_id = %s;"""
     elif field=="time_sleep":
         postgres_query = """UPDATE websites SET time_sleep = %s WHERE ws_id = %s;"""
+    elif field=="static_compare":
+        postgres_query = """UPDATE websites SET static_compare = %s WHERE ws_id = %s;"""
     elif field=="last_time_checked":
         postgres_query = """UPDATE websites SET last_time_checked = %s WHERE ws_id = %s;"""
     elif field=="last_time_updated":
         postgres_query = """UPDATE websites SET last_time_updated = %s WHERE ws_id = %s;"""
     elif field=="last_error_msg":
         postgres_query = """UPDATE websites SET last_error_msg = %s WHERE ws_id = %s;"""
+    elif field=="last_error_time":
+        postgres_query = """UPDATE websites SET last_error_time = %s WHERE ws_id = %s;"""
     elif field=="last_hash":
         postgres_query = """UPDATE websites SET last_hash = %s WHERE ws_id = %s;"""
     elif field=="last_content":

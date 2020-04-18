@@ -213,11 +213,13 @@ def main():
                             logger.error("Timeout Error: "+str(e))
                             tgs.send_admin_broadcast("[MAIN] URL: "+str(current_url)+" Problem: Timeout error "+str(e))
                             dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=str(e))
+                            dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_time", argument=datetime.now())
                             continue
                         except requests.ConnectionError as e:
                             logger.error("Connection Error: "+str(e))
                             tgs.send_admin_broadcast("[MAIN] URL: "+str(current_url)+" Problem: Connection error "+str(e))
                             dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=str(e))
+                            dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_time", argument=datetime.now())
                             continue
                         except:
                             logger.error("An UNKNOWN exception has occured while trying to fetch th website with URL:" + str(current_url))
@@ -225,12 +227,14 @@ def main():
                             tgs.send_admin_broadcast("[MAIN] URL: " + str(current_url) + " Problem: unknown error")
                             error_msg = str("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
                             dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=error_msg)
+                            dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_time", argument=datetime.now())
                             continue
                         if rContent.status_code != 200:
                             error_msg = "Status code is (unequal 0): " + str(rContent.status_code)
                             logger.error(error_msg)
                             tgs.send_admin_broadcast("[MAIN] URL: " + str(current_url) + " Problem: " + error_msg)
                             dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=error_msg)
+                            dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_time", argument=datetime.now())
                             continue
 
                         # process website
