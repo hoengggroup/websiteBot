@@ -63,11 +63,13 @@ def apply_message(update, context):
     apply_name = dbs.db_users_get_data(tg_id=update.message.chat_id, field="apply_name")
     apply_message = str(update.message.text)
     dbs.db_users_set_data(tg_id=update.message.chat_id, field="apply_text", argument=apply_message)
-    message_to_admins = "Application:\n" + str(apply_message) + "\nSent by: " + str(apply_name) + " (" + str(update.message.chat_id) + ")"
+    message_to_admins = "Application:\n" + str(apply_message) + "\nSent by: " + str(apply_name) + " (" + user_id_linker(update.message.chat_id) + ")"
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") == 3:
-        message_to_admins += "\nAttention: This user has been denied before."
+        message_to_admins += "\n<i>Attention: This user has been denied before and will not be shown in the /pendingusers section. Manual approval needed using /approveuser.</i>"
+    else:
+        message_to_admins += "\nApprove or deny with /pendingusers."
     for admins in admin_chat_ids:
-        send_general_broadcast(chat_id=admins, message=message_to_admins+"\nApprove or deny with /pendingusers.")
+        send_general_broadcast(chat_id=admins, message=message_to_admins)
     send_command_reply(update, context, message="Alright, I have forwarded your message to the admins. You will hear from me when they have approved (or denied) you.")
     return ConversationHandler.END
 
@@ -89,7 +91,7 @@ def pendingusers(update, context):
         for ids in chat_ids:
             if dbs.db_users_get_data(tg_id=ids, field="status") == 2:
                 apply_name = dbs.db_users_get_data(tg_id=ids, field="apply_name")
-                buttons.append(InlineKeyboardButton(apply_name+" ("+str(ids)+")", callback_data="user-"+str(ids)))
+                buttons.append(InlineKeyboardButton(apply_name + " (" + user_id_linker(ids) + ")", callback_data="user-"+str(ids)))
         buttons.append(InlineKeyboardButton("Exit menu", callback_data="exit_users"))
         reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
         send_command_reply(update, context, message="Here is a list of users with pending applications:\nClick for details.", reply_markup=reply_markup)
@@ -105,7 +107,7 @@ def button_pendingusers_detail(update, context):
     callback_user_unstripped = str(query["data"])
     callback_user = int(callback_user_unstripped.replace("user-", ""))
     user_data = dbs.db_users_get_data(tg_id=callback_user)
-    message = ("User ID: " + str(callback_user) + "\n"
+    message = ("User ID: " + user_id_linker(callback_user) + "\n"
                "Status: 2 (pending)\n"
                "First name: " + str(user_data[2]) + "\n"
                "Last name: " + str(user_data[3]) + "\n"
@@ -130,10 +132,10 @@ def button_pendingusers_approve(update, context):
     bot.edit_message_text(text="Reopen this menu at any time with /pendingusers.\nYou can also still use /approveuser and /denyuser.", chat_id=callback_chat_id, message_id=callback_message_id)
     if dbs.db_users_set_data(tg_id=callback_user, field="status", argument=1):
         for admins in admin_chat_ids:
-            send_general_broadcast(chat_id=admins, message="Chat ID "+str(callback_user)+" successfully approved (status set to 1).")
+            send_general_broadcast(chat_id=admins, message="Chat ID "+user_id_linker(callback_user)+" successfully approved (status set to 1).")
         send_general_broadcast(chat_id=callback_user, message="Your application to use this bot was granted. You can now display and subscribe to available websites with /subscriptions and see the available commands with /commands.")
     else:
-        send_command_reply(update, context, message="Error. Setting of new status 1 (approved) for chat ID "+str(callback_user)+" failed.\nThis user may already be approved.\nOtherwise, please try again.")
+        send_command_reply(update, context, message="Error. Setting of new status 1 (approved) for chat ID "+user_id_linker(callback_user)+" failed.\nThis user may already be approved.\nOtherwise, please try again.")
     bot.answer_callback_query(query["id"])
 
 
@@ -147,10 +149,10 @@ def button_pendingusers_deny(update, context):
     bot.edit_message_text(text="Reopen this menu at any time with /pendingusers.\nYou can also still use /approveuser and /denyuser.", chat_id=callback_chat_id, message_id=callback_message_id)
     if dbs.db_users_set_data(tg_id=callback_user, field="status", argument=3):
         for admins in admin_chat_ids:
-            send_general_broadcast(chat_id=admins, message="Chat ID "+str(callback_user)+" successfully denied (status set to 3).")
+            send_general_broadcast(chat_id=admins, message="Chat ID "+user_id_linker(callback_user)+" successfully denied (status set to 3).")
         send_general_broadcast(chat_id=callback_user, message="Sorry, you were denied from using this bot. Goodbye.")
     else:
-        send_command_reply(update, context, message="Error. Setting of new status 3 (denied) for chat ID "+str(callback_user)+" failed.\nThis user may already be denied.\nOtherwise, please try again.")
+        send_command_reply(update, context, message="Error. Setting of new status 3 (denied) for chat ID "+user_id_linker(callback_user)+" failed.\nThis user may already be denied.\nOtherwise, please try again.")
     bot.answer_callback_query(query["id"])
 
 
@@ -185,12 +187,12 @@ def approve_user_helper(update, context):
     if chat_id_to_approve in dbs.db_users_get_all_ids():
         if dbs.db_users_set_data(tg_id=chat_id_to_approve, field="status", argument=1):
             for admins in admin_chat_ids:
-                send_general_broadcast(chat_id=admins, message="Chat ID "+str(chat_id_to_approve)+" successfully approved (status set to 1).")
+                send_general_broadcast(chat_id=admins, message="Chat ID "+user_id_linker(chat_id_to_approve)+" successfully approved (status set to 1).")
             send_general_broadcast(chat_id=chat_id_to_approve, message="Your application to use this bot was granted. You can now display and subscribe to available websites with /subscriptions and see the available commands with /commands.")
         else:
-            send_command_reply(update, context, message="Error. Setting of new status 1 (approved) for chat ID "+str(chat_id_to_approve)+" failed.\nThis user may already be approved.\nOtherwise, please try again.")
+            send_command_reply(update, context, message="Error. Setting of new status 1 (approved) for chat ID "+user_id_linker(chat_id_to_approve)+" failed.\nThis user may already be approved.\nOtherwise, please try again.")
     else:
-        send_command_reply(update, context, message="Error. Chat ID "+str(chat_id_to_approve)+" does not exist in list.")
+        send_command_reply(update, context, message="Error. Chat ID "+user_id_linker(chat_id_to_approve)+" does not exist in list.")
     return ConversationHandler.END
 
 
@@ -216,12 +218,12 @@ def deny_user_helper(update, context):
     if chat_id_to_deny in dbs.db_users_get_all_ids():
         if dbs.db_users_set_data(tg_id=chat_id_to_deny, field="status", argument=3):
             for admins in admin_chat_ids:
-                send_general_broadcast(chat_id=admins, message="Chat ID "+str(chat_id_to_deny)+" successfully denied (status set to 3).")
+                send_general_broadcast(chat_id=admins, message="Chat ID "+user_id_linker(chat_id_to_deny)+" successfully denied (status set to 3).")
             send_general_broadcast(chat_id=chat_id_to_deny, message="Sorry, you were denied from using this bot. Goodbye.")
         else:
-            send_command_reply(update, context, message="Error. Setting of new status 3 (denied) for chat ID "+str(chat_id_to_deny)+" failed.\nThis user may already be denied.\nOtherwise, please try again.")
+            send_command_reply(update, context, message="Error. Setting of new status 3 (denied) for chat ID "+user_id_linker(chat_id_to_deny)+" failed.\nThis user may already be denied.\nOtherwise, please try again.")
     else:
-        send_command_reply(update, context, message="Error. Chat ID "+str(chat_id_to_deny)+" does not exist in list.")
+        send_command_reply(update, context, message="Error. Chat ID "+user_id_linker(chat_id_to_deny)+" does not exist in list.")
     return ConversationHandler.END
 
 
@@ -237,7 +239,7 @@ def listusers(update, context):
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 0:
         for ids in dbs.db_users_get_all_ids():
             user_data = dbs.db_users_get_data(tg_id=ids)
-            message = ("User ID: " + str(ids) + "\n"
+            message = ("User ID: " + user_id_linker(ids) + "\n"
                        "Status: " + str(user_data[1]) + " (" + status_meaning(user_data[1]) + ")\n"
                        "First name: " + str(user_data[2]) + "\n"
                        "Last name: " + str(user_data[3]) + "\n"
@@ -389,11 +391,11 @@ def stop(update, context):
 # access level: none
 def whoami(update, context):
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") == 0:
-        send_command_reply(update, context, message="Root")
+        send_command_reply(update, context, message="root")
     elif dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") == 1:
-        send_command_reply(update, context, message="User")
+        send_command_reply(update, context, message="user")
     else:
-        send_command_reply(update, context, message="Guest")
+        send_command_reply(update, context, message="guest")
 
 
 ### Telegram admin flow: display info about available websites
@@ -489,6 +491,13 @@ def text(update, context):
 # access level: generic
 def unknown(update, context):
     send_command_reply(update, context, message="Sorry, I did not understand that command. Check the spelling or get a list of the available commands with /commands.")
+
+
+# access level: builtin
+def user_id_linker(chat_id):
+    # this only works for users who have set an @username for themselves, otherwise the link url is discarded by the telegram api
+    # the link text will not be affected in any case, so we might as well try sending with the link url attached
+    return "<a href=\"tg://user?id=" + str(chat_id) + "\">" + str(chat_id) + "</a>"
 
 
 # access level: builtin
