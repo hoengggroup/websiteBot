@@ -1,21 +1,21 @@
 # -*- coding: utf-8 -*-
 
 ### python builtins
-import platform  # for getting the type of system that is executing this file
-import sys  # for getting detailed error msg
-from itertools import count  # for message numbering
 from datetime import datetime  # for setting timestamps
 from functools import wraps  # for the decorator function sending the typing state
+from itertools import count  # for message numbering
+import platform  # for getting the type of system that is executing this file
+import sys  # for getting detailed error msg
 
-### telegam-python-bot libraries
+### external libraries
 from telegram import Bot, error, InlineKeyboardButton, InlineKeyboardMarkup, ChatAction
 from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, CallbackQueryHandler, Filters
 
 ### our own libraries
 from loggerConfig import create_logger
 import databaseService as dbs
-#from sendPushbullet import send_push
-#from sendPushbullet import filterset
+#TODO: from sendPushbullet import send_push
+#TODO: from sendPushbullet import filterset
 
 
 # logging
@@ -564,13 +564,14 @@ def send_command_reply(update, context, message, reply_markup=None):
         logger.debug("Message #" + str(num_this_message) + " to " + str(update.message.chat_id) + " was sent successfully.")
     except error.NetworkError as e:
         logger.error("Network error when sending message #" + str(num_this_message) + " to " + str(update.message.chat_id) + ". Details: " + str(e))
-    except:
+    except Exception:
         logger.error("Unknown error when trying to send message #" + str(num_this_message) + " to " + str(update.message.chat_id) + ". The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
 
 
 # access level: builtin
 def send_general_broadcast(chat_id, message):
     logger.debug("Message to " + str(chat_id) + ":\n" + message)
+    #TODO:
     '''
     for filter in filterset:
         if filter in message:
@@ -589,7 +590,7 @@ def send_general_broadcast(chat_id, message):
         logger.debug("Message #" + str(num_this_message) + " to " + str(chat_id) + " was sent successfully.")
     except error.NetworkError as e:
         logger.error("Network error when sending message #" + str(num_this_message) + " to " + str(chat_id) + ". Details: " + str(e))
-    except:
+    except Exception:
         logger.error("Unknown error when trying to send message #" + str(num_this_message) + " to " + str(chat_id) + ". The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
 
 

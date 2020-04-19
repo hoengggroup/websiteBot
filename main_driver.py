@@ -1,51 +1,44 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-import re  # for regex
+
+### python builtins
+from datetime import datetime  # for timestamps
 import hashlib  # for hashing website content
-import traceback
 import html2text  # for passing html to text
+import platform  # for checking the system we are running on
+import random  # for deciding how long to sleep for
+import re  # for regex
 import requests  # for internet traffic
+import sys  # for errors and terminating
+import time  # for sleeping
+import traceback  # for logging the full traceback
 
-import sdnotify  # for watchdog
-
-import sys
-import platform
-import time
-import random
-from datetime import datetime
+### external libraries
+import sdnotify  # for the watchdog
 from unidecode import unidecode  # for stripping Ümläüte
 
-# our own libraries/dependencies
+### our own libraries
 from loggerConfig import create_logger
 import dp_edit_distance
-import telegramService as tgs
-import vpnCheck
-#from sendPushbullet import send_push
-
-
 import databaseService as dbs
+import telegramService as tgs
+import vpnCheck as vpns
+#TODO: from sendPushbullet import send_push
 
 
-version_code = "5.0 alpha2"
-
-# ip modes
-if platform.system() == "Linux":
-    # @websiteBot_bot
-    static_ip = True
-else:
-    # @websiteBotShortTests_bot
-    static_ip = False
-static_ip_address = "217.138.216.12"# "84.39.112.20"  # set this value if static_ip = True
-
+version_code = "5.0 alpha3"
 website_load_timeout = 10
 
+# logging
+global logger
+logger = create_logger("main")
 
-delimiters = "\n", ". "  # delimiters where to split string
 
 # process string ready for dp_edit_distance
 def preprocess_string(str_to_convert):
     # 0. prepare delimiters
-    regexPattern = '|'.join(map(re.escape, delimiters))  # auto create regex pattern from delimiter list (above)
+    delimiters = "\n", ". "  # delimiters where to split string
+    regexPattern = '|'.join(map(re.escape, delimiters))  # auto create regex pattern from delimiter list
 
     # 1. strip all non-ascii characters
     str_non_unicode = unidecode(str(str_to_convert))
@@ -63,15 +56,17 @@ def preprocess_string(str_to_convert):
     return str_list_ret
 
 
-def inf_wait_and_signal(checking):
-    logger.warning("--- sleeping infinitely ---")
+def vpn_wait(checking):
+    logger.warning("Suspending operations until VPN connection is re-established.")
     while True:
         alive_notifier.notify("WATCHDOG=1")  # send status: alive
         time.sleep(10)
-        if(checking):
-            if(vpnCheck.get_ip() == static_ip_address):
-                logger.info("[IP check] IP changed back to correct value. Back online")
-                tgs.send_admin_broadcast("[IP check] IP changed back to correct value. Back online")
+        if checking:
+            if vpns.init(mode="re-establish"):
+                logger.info("VPN connection has been re-established successfully. Back online.")
+                # the first Telegram message after a network change appears to always time out, so send a dummy message before actually starting back up
+                tgs.send_admin_broadcast("This is the first message after the VPN reconnected. Usually causes a NetworkError because of a timeout due to the changed connection.\nDisregard.")
+                tgs.send_admin_broadcast("VPN connection has been re-established successfully. Back online.")
                 break
 
 
@@ -131,25 +126,17 @@ def process_website(logger, current_content, current_ws_name):
 
 
 def main():
-    # 0. initialize watchdog
+    # 1. initialize watchdog
     global alive_notifier
     alive_notifier = sdnotify.SystemdNotifier()
-
-    '''
-    max_watchdog_time = max(time_setup, website_loading_timeout + website_process_time, sleep_time)
-
+    ''' max_watchdog_time = max(time_setup, website_loading_timeout + website_process_time, sleep_time)
     where:
     time_setup = time from here to begin of while loop
     website_loading_timeout = timeout of webdriver when loading website
     website_process_time = time it takes to process (changes) of a website incl. telegram sending
-    sleep_time = sleep time at end of while loop
-    '''
+    sleep_time = sleep time at end of while loop '''
 
-    # 1. initialize logger
-    global logger
-    logger = create_logger("main")
-
-    # 2. initialize database
+    # 2. initialize database service
     connection_state = dbs.db_connect()
     if not connection_state:
         logger.critical("Fatal error: Could not establish connection with database. Terminating.")
@@ -159,38 +146,37 @@ def main():
 
     # 3. initialize telegram service
     tgs.init()
-    # send admin msg
-    ip_mode_str = "static" if static_ip else "dynamic"
-    tgs.send_admin_broadcast("Starting up.\nVersion: \t"+version_code+"\nPlatform: \t"+str(platform.system())+"\nIP mode: \t"+ip_mode_str)
-    #send_push("System","Starting up "+str(version_code))
 
     # 4. initialize vpn service
-    if static_ip:
-        vpnCheck.init()
-
-        # initialize and check if configuration is correct
-        if static_ip_address == vpnCheck.init():
-            # configuration correct
-            ip_address = static_ip_address
-            pass
+    if platform.system() == "Linux":
+        # @websiteBot_bot
+        assert_vpn = True
+        vpn_state = vpns.init()
+        if not vpn_state:
+            logger.critical("Fatal error: Could not validate connection with VPN. Terminating.")
+            sys.exit()
         else:
-            # wrong static ip set
-            logger.error("Startup IP does not match static_ip_address in mode static_ip. Sleeping now and retrying.")
-            #send_push("System","[IP check] Error on startup. Problem: startup IP does not match static_ip_address in mode static_ip. Retrying.")
-            tgs.send_admin_broadcast("[IP check] Error on startup. Problem: startup IP does not match static_ip_address in mode static_ip. Retrying.")
-            inf_wait_and_signal(checking = True)
+            logger.info("VPN connection validated successfully.")
     else:
-        ip_address = vpnCheck.init()
+        # @websiteBotShortTests_bot
+        assert_vpn = False
 
-    # 5. main loop
+    # 5. inform admins about startup
+    assert_vpn_str = "True" if assert_vpn else "False"
+    tgs.send_admin_broadcast("Starting up.\nVersion: \t"+version_code+"\nPlatform: \t"+str(platform.system())+"\nAssert VPN: \t"+assert_vpn_str)
+    #TODO: send_push("System","Starting up "+str(version_code))
+
+    # 6. main loop
     try:
         while(True):
-            # sleep infinitely if VPN connection is down on static_ip true
-            if static_ip_address != vpnCheck.get_ip() and static_ip :
-                logger.error("IP address has changed, sleeping now.")
-                #send_push("System","IP address has changed, sleeping now.")
-                tgs.send_admin_broadcast("IP address has changed, sleeping now.")
-                inf_wait_and_signal(checking = True)
+            # sleep until VPN connection is re-established if VPN connection is down (if assert_vpn==True)
+            if assert_vpn and not vpns.is_vpn_active():
+                logger.warning("VPN status has changed, suspending operations until VPN connection is re-established.")
+                # the first Telegram message after a network change appears to always time out, so send a dummy message before actually starting the re-connection checker
+                tgs.send_admin_broadcast("This is the first message after the VPN disconnected. Usually causes a NetworkError because of a timeout due to the changed connection.\nDisregard.")
+                tgs.send_admin_broadcast("VPN status has changed, suspending operations until VPN connection is re-established.")
+                #TODO: send_push("System","VPN status has changed, suspending operations until VPN connection is re-established.")
+                vpn_wait(checking=True)
 
             for ws_id in dbs.db_websites_get_all_ids():
                 # notify watchdog
@@ -221,16 +207,16 @@ def main():
                             dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=str(e))
                             dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_time", argument=datetime.now())
                             continue
-                        except:
-                            logger.error("An UNKNOWN exception has occured while trying to fetch th website with URL:" + str(current_url))
+                        except Exception:
+                            logger.error("An UNKNOWN exception has occured while trying to fetch the website with URL:" + str(current_url))
                             logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
-                            tgs.send_admin_broadcast("[MAIN] URL: " + str(current_url) + " Problem: unknown error")
+                            tgs.send_admin_broadcast("[MAIN] URL: " + str(current_url) + " Problem: Unknown error.")
                             error_msg = str("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
                             dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=error_msg)
                             dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_time", argument=datetime.now())
                             continue
                         if rContent.status_code != 200:
-                            error_msg = "Status code is (unequal 0): " + str(rContent.status_code)
+                            error_msg = "Status code is (unequal 200): " + str(rContent.status_code)
                             logger.error(error_msg)
                             tgs.send_admin_broadcast("[MAIN] URL: " + str(current_url) + " Problem: " + error_msg)
                             dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=error_msg)
@@ -267,7 +253,7 @@ def main():
         else:
             logger.info("Database disconnected successfully.")
 
-        tgs.send_admin_broadcast("[MAIN] Shutting down...")
+        tgs.send_admin_broadcast("Shutting down...")
         logger.warning("Shutting down. This is the last line.")
 
 

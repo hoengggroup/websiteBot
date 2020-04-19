@@ -1,8 +1,9 @@
-#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
+### external libraries
 import psycopg2
-from psycopg2 import errorcodes
+
+### our own libraries
 from loggerConfig import create_logger
 
 
@@ -14,7 +15,7 @@ my_host = "localhost"
 my_port = "5432"
 
 
-# Logging
+# logging
 global logger
 logger = create_logger("db")
 
@@ -22,62 +23,62 @@ logger = create_logger("db")
 # Amazing (self-created ;)) error handler
 def db_exc_handler(excp, conn):
     logger.error("Error code: " + str(excp.pgcode))
-    if (excp.pgcode == errorcodes.CONNECTION_EXCEPTION) or (excp.pgcode == errorcodes.CONNECTION_FAILURE):
+    if (excp.pgcode == psycopg2.errorcodes.CONNECTION_EXCEPTION) or (excp.pgcode == psycopg2.errorcodes.CONNECTION_FAILURE):
         logger.error("Connection error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.DATA_CORRUPTED:
+    elif excp.pgcode == psycopg2.errorcodes.DATA_CORRUPTED:
         logger.error("Data corruption error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.DATA_EXCEPTION:
+    elif excp.pgcode == psycopg2.errorcodes.DATA_EXCEPTION:
         logger.error("Data error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.DATATYPE_MISMATCH:
+    elif excp.pgcode == psycopg2.errorcodes.DATATYPE_MISMATCH:
         logger.error("Datatype mismatch error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.DATETIME_FIELD_OVERFLOW:
+    elif excp.pgcode == psycopg2.errorcodes.DATETIME_FIELD_OVERFLOW:
         logger.error("Datetime overflow error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.IN_FAILED_SQL_TRANSACTION:
+    elif excp.pgcode == psycopg2.errorcodes.IN_FAILED_SQL_TRANSACTION:
         logger.error("In failed transaction error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.INTERNAL_ERROR:
+    elif excp.pgcode == psycopg2.errorcodes.INTERNAL_ERROR:
         logger.error("Internal error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.IO_ERROR:
+    elif excp.pgcode == psycopg2.errorcodes.IO_ERROR:
         logger.error("IO error. Details: " + str(excp))
-    elif (excp.pgcode == errorcodes.NO_DATA) or (excp.pgcode == errorcodes.NO_DATA_FOUND):
+    elif (excp.pgcode == psycopg2.errorcodes.NO_DATA) or (excp.pgcode == psycopg2.errorcodes.NO_DATA_FOUND):
         logger.error("No data error. Details: " + str(excp))
-    elif (excp.pgcode == errorcodes.NOT_NULL_VIOLATION) or (excp.pgcode == errorcodes.NULL_VALUE_NOT_ALLOWED):
+    elif (excp.pgcode == psycopg2.errorcodes.NOT_NULL_VIOLATION) or (excp.pgcode == psycopg2.errorcodes.NULL_VALUE_NOT_ALLOWED):
         logger.error("Not null error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.PROHIBITED_SQL_STATEMENT_ATTEMPTED:
+    elif excp.pgcode == psycopg2.errorcodes.PROHIBITED_SQL_STATEMENT_ATTEMPTED:
         logger.error("Prohibited statement error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.PROTOCOL_VIOLATION:
+    elif excp.pgcode == psycopg2.errorcodes.PROTOCOL_VIOLATION:
         logger.error("Protocol violation error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.RAISE_EXCEPTION:
+    elif excp.pgcode == psycopg2.errorcodes.RAISE_EXCEPTION:
         logger.error("Raise exception error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.RESERVED_NAME:
+    elif excp.pgcode == psycopg2.errorcodes.RESERVED_NAME:
         logger.error("Reserved name error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.SQL_ROUTINE_EXCEPTION:
+    elif excp.pgcode == psycopg2.errorcodes.SQL_ROUTINE_EXCEPTION:
         logger.error("Routine exception error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.SQL_STATEMENT_NOT_YET_COMPLETE:
+    elif excp.pgcode == psycopg2.errorcodes.SQL_STATEMENT_NOT_YET_COMPLETE:
         logger.error("Statement not yet complete error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.SYNTAX_ERROR:
+    elif excp.pgcode == psycopg2.errorcodes.SYNTAX_ERROR:
         logger.error("Syntax error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.SYSTEM_ERROR:
+    elif excp.pgcode == psycopg2.errorcodes.SYSTEM_ERROR:
         logger.error("System error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.TOO_MANY_ARGUMENTS:
+    elif excp.pgcode == psycopg2.errorcodes.TOO_MANY_ARGUMENTS:
         logger.error("Too many arguments error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.TOO_MANY_COLUMNS:
+    elif excp.pgcode == psycopg2.errorcodes.TOO_MANY_COLUMNS:
         logger.error("Too many columns error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.TOO_MANY_ROWS:
+    elif excp.pgcode == psycopg2.errorcodes.TOO_MANY_ROWS:
         logger.error("Too many rows error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.UNDEFINED_COLUMN:
+    elif excp.pgcode == psycopg2.errorcodes.UNDEFINED_COLUMN:
         logger.error("Undefined column error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.UNDEFINED_OBJECT:
+    elif excp.pgcode == psycopg2.errorcodes.UNDEFINED_OBJECT:
         logger.error("Undefined object error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.UNDEFINED_TABLE:
+    elif excp.pgcode == psycopg2.errorcodes.UNDEFINED_TABLE:
         logger.error("Undefined table error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.UNIQUE_VIOLATION:
+    elif excp.pgcode == psycopg2.errorcodes.UNIQUE_VIOLATION:
         logger.error("Unique violation error / Key error. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.WARNING:
+    elif excp.pgcode == psycopg2.errorcodes.WARNING:
         logger.error("Warning. Details: " + str(excp))
-    elif excp.pgcode == errorcodes.WRONG_OBJECT_TYPE:
+    elif excp.pgcode == psycopg2.errorcodes.WRONG_OBJECT_TYPE:
         logger.error("Wrong object type error. Details: " + str(excp))
     else:
-        logger.error("Unkown error code " + str(excp.pgcode) + ". Lookup: " + errorcodes.lookup(excp.pgcode))
+        logger.error("Unkown error code " + str(excp.pgcode) + ". Lookup: " + psycopg2.errorcodes.lookup(excp.pgcode))
 
 
 ### DATABASE MANAGEMENT
