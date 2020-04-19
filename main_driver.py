@@ -22,7 +22,7 @@ from loggerConfig import create_logger
 import dp_edit_distance
 import databaseService as dbs
 import telegramService as tgs
-import vpnCheck as vpns
+import vpnService as vpns
 #TODO: from sendPushbullet import send_push
 
 
