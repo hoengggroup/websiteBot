@@ -12,7 +12,7 @@ from telegram import Bot, error, InlineKeyboardButton, InlineKeyboardMarkup, Cha
 from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, CallbackQueryHandler, Filters
 
 ### our own libraries
-from loggerConfig import create_logger
+from loggerService import create_logger
 import databaseService as dbs
 #TODO: from sendPushbullet import send_push
 #TODO: from sendPushbullet import filterset

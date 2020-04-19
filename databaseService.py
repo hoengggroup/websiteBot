@@ -4,7 +4,7 @@
 import psycopg2
 
 ### our own libraries
-from loggerConfig import create_logger
+from loggerService import create_logger
 
 
 # DATABASE PARAMETERS

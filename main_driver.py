@@ -18,7 +18,7 @@ import sdnotify  # for the watchdog
 from unidecode import unidecode  # for stripping Ümläüte
 
 ### our own libraries
-from loggerConfig import create_logger
+from loggerService import create_logger
 import dp_edit_distance
 import databaseService as dbs
 import telegramService as tgs

@@ -5,7 +5,7 @@ import requests  # for internet traffic
 import sys  # for errors
 
 ### our own libraries
-from loggerConfig import create_logger
+from loggerService import create_logger
 import telegramService as tgs
 
 
