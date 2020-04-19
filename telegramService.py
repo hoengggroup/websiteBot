@@ -14,8 +14,7 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHa
 ### our own libraries
 from loggerService import create_logger
 import databaseService as dbs
-#TODO: from sendPushbullet import send_push
-#TODO: from sendPushbullet import filterset
+#TODO: from pushbulletService import send_push, filterset
 
 
 # logging

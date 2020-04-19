@@ -23,7 +23,7 @@ import dp_edit_distance
 import databaseService as dbs
 import telegramService as tgs
 import vpnService as vpns
-#TODO: from sendPushbullet import send_push
+#TODO: from pushbulletService import send_push
 
 
 version_code = "5.0 alpha3"
