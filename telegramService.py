@@ -452,11 +452,10 @@ def button_getwebsiteinfo(update, context):
     message = ("Website ID: " + str(website_data[0]) + "\n"
                "URL: " + str(website_data[2]) + "\n"
                "Time sleep: " + str(website_data[3]) + "\n"
-               "Static compare mode: " + str(website_data[4]) + "\n"
-               "Last time checked: " + str(website_data[5]) + "\n"
-               "Last time updated: " + str(website_data[6]) + "\n"
-               "Last error message: " + str(website_data[7]) + "\n"
-               "Last error time: " + str(website_data[8]) + "\n"
+               "Last time checked: " + str(website_data[4]) + "\n"
+               "Last time updated: " + str(website_data[5]) + "\n"
+               "Last error message: " + str(website_data[6]) + "\n"
+               "Last error time: " + str(website_data[7]) + "\n"
                "Subscriptions: " + str(dbs.db_subscriptions_by_website(ws_name=callback_website)) + "\n")
     send_general_broadcast(chat_id=callback_chat_id, message="Info for website \""+str(callback_website)+"\":\n"+message)
     bot.answer_callback_query(query["id"])
@@ -474,7 +473,6 @@ def addwebsite(update, context):
             if dbs.db_websites_add(ws_name=ws_name,
                                    url=url,
                                    time_sleep=time_sleep,
-                                   static_compare=False,
                                    last_time_checked=datetime.min,
                                    last_time_updated=datetime.min,
                                    last_error_msg=None,
