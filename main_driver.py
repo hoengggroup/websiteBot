@@ -1,24 +1,22 @@
-##!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 ### python builtins
 from datetime import datetime  # for timestamps
 import hashlib  # for hashing website content
+from os import listdir  # for detecting the rpi dummy file
+from os.path import isfile, join, dirname,realpath  # for detecting the rpi dummy file
 import platform  # for checking the system we are running on
 import random  # for deciding how long to sleep for
 import re  # for regex
 import sys  # for errors and terminating
 import time  # for sleeping
 import traceback  # for logging the full traceback
-from os import listdir # to detect rpi file
-from os.path import isfile, join, dirname,realpath # to detect rpi file
 
 ### external libraries
 import html2text  # for passing html to text
 import requests  # for internet traffic
 import sdnotify  # for the watchdog
 from unidecode import unidecode  # for stripping Ümläüte
-
 
 ### our own libraries
 from loggerService import create_logger
@@ -79,9 +77,9 @@ def process_website(logger, current_content, current_ws_name):
     last_content = dbs.db_websites_get_data(ws_name=current_ws_name, field="last_content")
 
     # 2. hash website text
-    # current_text+=". abcd. .ef 32r"
     current_hash = (hashlib.md5(current_content.encode())).hexdigest()
     logger.debug("Hashes are (current, last): (" + str(current_hash) + ", " + str(last_hash) + ").")
+
     # 3. if different
     if current_hash != last_hash:
         logger.info("Website hashes do not match. Current hash " + str(current_hash) + " vs. previous hash " + str(last_hash) + ".")
@@ -149,16 +147,15 @@ def main():
     # 3. initialize telegram service
     tgs.init()
 
-    # 4.1 detect if on rpi 
+    # 4. detect deployment (check if we are running on rpi)
     dir_path = dirname(realpath(__file__))
     if([f for f in listdir(dir_path) if (isfile(join(dir_path, f)) and f.endswith('.rpi'))] != []):
         on_rpi = True
     else:
         on_rpi = False
+    logger.info("Running on RPI: " + str(on_rpi))
 
-    logger.info("Running on RPI?"+str(on_rpi))
-
-    # 4.2 initialize vpn service
+    # 5. initialize vpn service
     if on_rpi:
         # @websiteBot_bot
         assert_vpn = True
@@ -172,12 +169,11 @@ def main():
         # @websiteBotShortTests_bot
         assert_vpn = False
 
-    # 5. inform admins about startup
-    assert_vpn_str = "True" if assert_vpn else "False"
-    tgs.send_admin_broadcast("Starting up.\nVersion: \t"+version_code+"\nPlatform: \t"+str(platform.system())+"\nAssert VPN: \t"+assert_vpn_str+"\nDeployed?: \t"+str(on_rpi))
+    # 6. inform admins about startup
+    tgs.send_admin_broadcast("Starting up.\nVersion: \t"+version_code+"\nPlatform: \t"+str(platform.system())+"\nAssert VPN: \t"+str(assert_vpn)+"\nDeployed: \t"+str(on_rpi))
     #TODO: send_push("System","Starting up "+str(version_code))
 
-    # 6. main loop
+    # 7. main loop
     try:
         while(True):
             # sleep until VPN connection is re-established if VPN connection is down (if assert_vpn==True)
