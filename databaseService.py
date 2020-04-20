@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 ### external libraries
-import psycopg2
-import psycopg2.errorcodes
+import psycopg2  # for interacting with PostgreSQL databases
+import psycopg2.errorcodes  # ...its errorcodes module must be imported seperately
 
 ### our own libraries
 from loggerService import create_logger
@@ -17,7 +17,6 @@ my_port = "5432"
 
 
 # logging
-global logger
 logger = create_logger("db")
 
 
