@@ -158,14 +158,13 @@ def db_users_create(tg_id, status, first_name, last_name, username, apply_name, 
 
 # DELETE USER
 def db_users_delete(tg_id):
-    postgres_queries = ["""DELETE FROM users WHERE tg_id = %s;"""]
-    for postgres_query in postgres_queries:
-        try:
-            cur.execute(postgres_query, (tg_id,))  # turn tg_id into a tuple to avoid a TypeError
-        except Exception as ex:
-            conn.rollback()
-            db_exc_handler(ex, conn)
-            return False
+    try:
+        postgres_query = """DELETE FROM users WHERE tg_id = %s;"""
+        cur.execute(postgres_query, (tg_id,))  # turn tg_id into a tuple to avoid a TypeError
+    except Exception as ex:
+        conn.rollback()
+        db_exc_handler(ex, conn)
+        return False
     logger.info("Successfully deleted user "+str(tg_id)+".")
     conn.commit()
     return True
@@ -351,8 +350,8 @@ def db_websites_add(ws_name, url, time_sleep, last_time_checked, last_time_updat
         db_exc_handler(ex, conn)
         return False
     try:
-        postgres_query = """INSERT INTO websites_content (ws_id,update_time, hash,last_content) VALUES (%s,%s,%s, %s) RETURNING ws_id;"""
-        query_data = (ws_id_1, last_time_updated,None, last_content)
+        postgres_query = """INSERT INTO websites_content (ws_id, update_time, hash, last_content) VALUES (%s, %s, %s, %s) RETURNING ws_id;"""
+        query_data = (ws_id_1, last_time_updated, None, last_content)
         cur.execute(postgres_query, query_data)
         ws_id_2 = cur.fetchone()[0]
     except Exception as ex:
@@ -371,14 +370,13 @@ def db_websites_add(ws_name, url, time_sleep, last_time_checked, last_time_updat
 # REMOVE WEBSITE
 def db_websites_remove(ws_name):
     ws_id = db_websites_get_id(ws_name)
-    posgres_queries = ["""DELETE FROM websites WHERE ws_id = %s;"""]
-    for postgres_query in posgres_queries:
-        try:
-            cur.execute(postgres_query, (ws_id,))  # turn ws_id into a tuple to avoid a TypeError
-        except Exception as ex:
-            conn.rollback()
-            db_exc_handler(ex, conn)
-            return False
+    try:
+        postgres_query = """DELETE FROM websites WHERE ws_id = %s;"""
+        cur.execute(postgres_query, (ws_id,))  # turn ws_id into a tuple to avoid a TypeError
+    except Exception as ex:
+        conn.rollback()
+        db_exc_handler(ex, conn)
+        return False
     logger.info("Successfully deleted website \""+str(ws_name)+"\".")
     conn.commit()
     return True
