@@ -16,7 +16,7 @@ def get_edit_distance_changes(text_old, text_new):
             
         if(len(text_new)==0):
             return [('deleted all',str(text_old),'')]
-        raise Exception('this case is mathematically proven to be impossible by boolean logic. For details, see https://en.wikipedia.org/wiki/George_Boole')
+        raise Exception('This case is mathematically proven to be impossible by boolean logic. For details, see https://en.wikipedia.org/wiki/George_Boole')
 
     # now, we are sure that both text new/old have >= 1 entry
     ## init
