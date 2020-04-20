@@ -344,7 +344,6 @@ def db_websites_add(ws_name, url, time_sleep, static_compare, last_time_checked,
     try:
         postgres_query = """INSERT INTO websites (ws_name, url, time_sleep, static_compare, last_time_checked, last_time_updated, last_error_msg, last_error_time, last_hash) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING ws_id;"""
         query_data = (ws_name, url, time_sleep, static_compare, last_time_checked, last_time_updated, last_error_msg, last_error_time, last_hash)
-        print(query_data)
         cur.execute(postgres_query, query_data)
         ws_id_1 = cur.fetchone()[0]
     except Exception as ex:

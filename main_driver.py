@@ -10,14 +10,14 @@ import re  # for regex
 import sys  # for errors and terminating
 import time  # for sleeping
 import traceback  # for logging the full traceback
+from os import listdir # to detect rpi file
+from os.path import isfile, join, dirname,realpath # to detect rpi file
 
 ### external libraries
 import html2text  # for passing html to text
 import requests  # for internet traffic
 import sdnotify  # for the watchdog
 from unidecode import unidecode  # for stripping Ümläüte
-from os import listdir # to detect rpi file
-from os.path import isfile, join, dirname,realpath # to detect rpi file
 
 
 ### our own libraries
