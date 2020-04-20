@@ -32,6 +32,7 @@ import vpnService as vpns
 version_code = "5.0 alpha3"
 website_load_timeout = 10
 
+global on_rpi
 on_rpi = False # if .rpi file exists
 
 # logging
@@ -156,6 +157,8 @@ def main():
     dir_path = dirname(realpath(__file__))
     if([f for f in listdir(dir_path) if (isfile(join(dir_path, f)) and f.endswith('.rpi'))] != []):
         on_rpi = True
+    else: 
+        on_rpi = False
     logger.info("Running on RPI?"+str(on_rpi))
 
     # 4.2 initialize vpn service
@@ -174,7 +177,7 @@ def main():
 
     # 5. inform admins about startup
     assert_vpn_str = "True" if assert_vpn else "False"
-    tgs.send_admin_broadcast("Starting up.\nVersion: \t"+version_code+"\nPlatform: \t"+str(platform.system())+"\nAssert VPN: \t"+assert_vpn_str)
+    tgs.send_admin_broadcast("Starting up.\nVersion: \t"+version_code+"\nPlatform: \t"+str(platform.system())+"\nAssert VPN: \t"+assert_vpn_str+"\nDeployed?: \t"+str(on_rpi))
     #TODO: send_push("System","Starting up "+str(version_code))
 
     # 6. main loop
