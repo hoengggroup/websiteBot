@@ -1,21 +1,24 @@
-#!/usr/bin/env python3
+##!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 
 ### python builtins
 from datetime import datetime  # for timestamps
 import hashlib  # for hashing website content
-import html2text  # for passing html to text
 import platform  # for checking the system we are running on
 import random  # for deciding how long to sleep for
 import re  # for regex
-import requests  # for internet traffic
 import sys  # for errors and terminating
 import time  # for sleeping
 import traceback  # for logging the full traceback
 
 ### external libraries
+import html2text  # for passing html to text
+import requests  # for internet traffic
 import sdnotify  # for the watchdog
 from unidecode import unidecode  # for stripping Ümläüte
+from os import listdir # to detect rpi file
+from os.path import isfile, join, dirname,realpath # to detect rpi file
+
 
 ### our own libraries
 from loggerService import create_logger
@@ -28,6 +31,8 @@ import vpnService as vpns
 
 version_code = "5.0 alpha3"
 website_load_timeout = 10
+
+on_rpi = False # if .rpi file exists
 
 # logging
 global logger
@@ -147,8 +152,14 @@ def main():
     # 3. initialize telegram service
     tgs.init()
 
-    # 4. initialize vpn service
-    if platform.system() == "Linux":
+    # 4.1 detect if on rpi 
+    dir_path = dirname(realpath(__file__))
+    if([f for f in listdir(dir_path) if (isfile(join(dir_path, f)) and f.endswith('.rpi'))] != []):
+        on_rpi = True
+    logger.info("Running on RPI?"+str(on_rpi))
+
+    # 4.2 initialize vpn service
+    if on_rpi:
         # @websiteBot_bot
         assert_vpn = True
         vpn_state = vpns.init()

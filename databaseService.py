@@ -2,6 +2,7 @@
 
 ### external libraries
 import psycopg2
+import psycopg2.errorcodes
 
 ### our own libraries
 from loggerService import create_logger
