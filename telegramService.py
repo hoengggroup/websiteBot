@@ -18,7 +18,6 @@ import databaseService as dbs
 
 
 # logging
-global logger
 logger = create_logger("tg")
 
 

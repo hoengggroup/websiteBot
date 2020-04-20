@@ -1,8 +1,10 @@
 # -*- coding: utf-8 -*-
 
 ### python builtins
-import requests  # for internet traffic
 import sys  # for errors
+
+### external libraries
+import requests  # for internet traffic
 
 ### our own libraries
 from loggerService import create_logger
@@ -10,7 +12,6 @@ import telegramService as tgs
 
 
 # logging
-global logger
 logger = create_logger("vpn")
 
 
