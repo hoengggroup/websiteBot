@@ -4,7 +4,6 @@
 from datetime import datetime  # for setting timestamps
 from functools import wraps  # for the decorator function sending the typing state
 from itertools import count  # for message numbering
-import platform  # for getting the type of system that is executing this file
 import sys  # for getting detailed error msg
 
 ### external libraries
@@ -599,12 +598,12 @@ def send_admin_broadcast(message):
 
 ### Main function
 # this needs to be called from main_driver to init the telegram service
-def init():
+def init(on_rpi):
     global updater
     global dispatcher
     global bot
 
-    if platform.system() == "Linux":
+    if on_rpi:
         # @websiteBot_bot
         token = dbs.db_credentials_get_bot_token("websiteBot_bot")
         updater = Updater(token=token, use_context=True)

@@ -144,16 +144,16 @@ def main():
     else:
         logger.info("Database connected successfully.")
 
-    # 3. initialize telegram service
-    tgs.init()
-
-    # 4. detect deployment (check if we are running on rpi)
+    # 3. detect deployment (check if we are running on rpi)
     dir_path = dirname(realpath(__file__))
     if([f for f in listdir(dir_path) if (isfile(join(dir_path, f)) and f.endswith('.rpi'))] != []):
         on_rpi = True
     else:
         on_rpi = False
     logger.info("Running on RPI: " + str(on_rpi))
+
+    # 4. initialize telegram service
+    tgs.init(on_rpi)
 
     # 5. initialize vpn service
     if on_rpi:
