@@ -37,6 +37,12 @@ class ModuleFilterVPN(logging.Filter):
         return True
 
 
+class ModuleFilterGeneric(logging.Filter):
+    def filter(self, record):
+        record.module_tag = "[OTHER]:"
+        return True
+
+
 def create_logger(module):
     # create logger
     logger = logging.getLogger(str(module)+"_log")
@@ -62,11 +68,10 @@ def create_logger(module):
     elif module == "vpn":
         logger.addFilter(ModuleFilterVPN())
     else:
-        del logger
-        return
+        logger.addFilter(ModuleFilterGeneric())
 
     # create (custom) formatter and add it to the handlers
-    formatter = WrappedFixedIndentingLog("%(asctime)s - %(levelname)-8s - %(module_tag)-7s %(message)s", width=192, indent=45)
+    formatter = WrappedFixedIndentingLog("%(asctime)s - %(levelname)-8s - %(module_tag)-8s %(message)s", width=192, indent=45)
     fh.setFormatter(formatter)
     fh2.setFormatter(formatter)
     ch.setFormatter(formatter)
