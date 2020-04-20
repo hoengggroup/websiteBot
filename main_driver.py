@@ -32,11 +32,7 @@ import vpnService as vpns
 version_code = "5.0 alpha3"
 website_load_timeout = 10
 
-global on_rpi
-on_rpi = False # if .rpi file exists
-
 # logging
-global logger
 logger = create_logger("main")
 
 
@@ -157,8 +153,9 @@ def main():
     dir_path = dirname(realpath(__file__))
     if([f for f in listdir(dir_path) if (isfile(join(dir_path, f)) and f.endswith('.rpi'))] != []):
         on_rpi = True
-    else: 
+    else:
         on_rpi = False
+
     logger.info("Running on RPI?"+str(on_rpi))
 
     # 4.2 initialize vpn service
