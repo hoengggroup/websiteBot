@@ -116,9 +116,10 @@ def process_website(logger, current_content, current_ws_name):
             tgs.send_general_broadcast(ids, msg_to_send)
 
         # 3.3 update values in website table
-        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_time_updated", argument=datetime.now())
+        last_time_updated = datetime.now()
+        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_time_updated", argument=last_time_updated)
         dbs.db_websites_set_data(ws_name=current_ws_name, field="last_hash", argument=current_hash)
-        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_content", argument=current_content)
+        dbs.db_websites_set_content_data(ws_name=current_ws_name,update_time=last_time_updated,hash=current_hash,content=current_content)
 
     # 4. update time last checked
     dbs.db_websites_set_data(ws_name=current_ws_name, field="last_time_checked", argument=datetime.now())
@@ -232,7 +233,7 @@ def main():
 
                         # process website
                         logger.debug("Getting content.")
-                        current_content = html2text.html2text(rContent.text)
+                        current_content = unidecode(html2text.html2text(rContent.text))
                         process_website(logger, current_content, current_ws_name)
                 except RuntimeError as e:
                     logger.error("Runtime error: " + str(e))

@@ -88,6 +88,7 @@ def db_connect():
     global cur
     try:
         conn = psycopg2.connect(database=my_database, user=my_user, password=my_password, host=my_host, port=my_port)
+        conn.set_client_encoding('UNICODE')
         conn.autocommit = False
         logger.info("Successfully connected to database.")
     except Exception as ex:
@@ -350,8 +351,8 @@ def db_websites_add(ws_name, url, time_sleep, last_time_checked, last_time_updat
         db_exc_handler(ex, conn)
         return False
     try:
-        postgres_query = """INSERT INTO websites_content (ws_id, last_content) VALUES (%s, %s) RETURNING ws_id;"""
-        query_data = (ws_id_1, last_content)
+        postgres_query = """INSERT INTO websites_content (ws_id,update_time, hash,last_content) VALUES (%s,%s,%s, %s) RETURNING ws_id;"""
+        query_data = (ws_id_1, last_time_updated,None, last_content)
         cur.execute(postgres_query, query_data)
         ws_id_2 = cur.fetchone()[0]
     except Exception as ex:
@@ -428,6 +429,27 @@ def db_websites_get_data(ws_name, field="all_fields"):
         return None
 
 
+# GET WEBSITE CONTENT
+def db_websites_get_content(ws_name,ws_hash):
+    ws_id = db_websites_get_id(ws_name)
+    if not ws_id:
+        logger.debug("websites_get_data: Website \""+str(ws_name)+"\" does not exist.")
+        return None
+    # TODO Prevent here agains sql injections?
+    postgres_query = """select last_content from websites_content where ws_id = %s and hash = %s;"""
+
+
+    try:
+        cur.execute(postgres_query, (ws_id,))  # turn ws_id into a tuple to avoid a TypeError
+        website_data = cur.fetchall()
+        conn.commit()
+        return [item for t in website_data for item in t]  # returns a list
+    except Exception as ex:
+        conn.rollback()
+        db_exc_handler(ex, conn)
+        return None
+
+
 # SET WEBSITE DATA
 def db_websites_set_data(ws_name, field, argument):
     ws_id = db_websites_get_id(ws_name)
@@ -450,8 +472,6 @@ def db_websites_set_data(ws_name, field, argument):
         postgres_query = """UPDATE websites SET last_error_time = %s WHERE ws_id = %s;"""
     elif field=="last_hash":
         postgres_query = """UPDATE websites SET last_hash = %s WHERE ws_id = %s;"""
-    elif field=="last_content":
-        postgres_query = """UPDATE websites_content SET last_content = %s WHERE ws_id = %s;"""
     else:
         logger.debug("websites_set_data: Data field \""+str(field)+"\" does not match any columns. No action taken.")
         return False
@@ -467,6 +487,26 @@ def db_websites_set_data(ws_name, field, argument):
     except Exception as ex:
         conn.rollback()
         db_exc_handler(ex, conn)
+        return False
+
+
+# SET WEBSITE DATA CONTENT
+def db_websites_set_content_data(ws_name, update_time,hash,content):
+    ws_id = db_websites_get_id(ws_name)
+    if not ws_id:
+        logger.debug("websites_set_data: Website \""+str(ws_name)+"\" does not exist.")
+        return False
+    postgres_query = """INSERT INTO websites_content (ws_id,update_time, hash,last_content) VALUES (%s,%s,%s,%s) RETURNING ws_id;"""
+    query_data = (ws_id, update_time,hash, content)
+    try:
+        cur.execute(postgres_query, query_data) 
+        conn.commit()
+        logger.debug("Successfully updated website data content. Ws name: "+str(ws_name))
+        return True
+    except Exception as ex:
+        conn.rollback()
+        db_exc_handler(ex, conn)
+        logger.debug("Error on update website data content. Ws name: "+str(ws_name)+" args hash: "+str(hash))
         return False
 
 
