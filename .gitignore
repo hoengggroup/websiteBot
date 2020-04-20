@@ -121,7 +121,7 @@ dmypy.json
 *.pickle
 
 # RPI detection
-*.rpi
+#*.rpi
 
 
 
