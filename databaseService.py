@@ -157,7 +157,7 @@ def db_users_create(tg_id, status, first_name, last_name, username, apply_name, 
 
 # DELETE USER
 def db_users_delete(tg_id):
-    postgres_queries = ["""DELETE FROM subscriptions WHERE tg_id = %s;""", """DELETE FROM users WHERE tg_id = %s;"""]
+    postgres_queries = ["""DELETE FROM users WHERE tg_id = %s;"""]
     for postgres_query in postgres_queries:
         try:
             cur.execute(postgres_query, (tg_id,))  # turn tg_id into a tuple to avoid a TypeError
@@ -370,9 +370,7 @@ def db_websites_add(ws_name, url, time_sleep, last_time_checked, last_time_updat
 # REMOVE WEBSITE
 def db_websites_remove(ws_name):
     ws_id = db_websites_get_id(ws_name)
-    posgres_queries = ["""DELETE FROM subscriptions WHERE ws_id = %s;""",
-                       """DELETE FROM websites WHERE ws_id = %s;""",
-                       """DELETE FROM websites_content WHERE ws_id = %s;"""]
+    posgres_queries = ["""DELETE FROM websites WHERE ws_id = %s;"""]
     for postgres_query in posgres_queries:
         try:
             cur.execute(postgres_query, (ws_id,))  # turn ws_id into a tuple to avoid a TypeError
