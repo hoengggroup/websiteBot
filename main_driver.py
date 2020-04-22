@@ -27,7 +27,7 @@ import vpnService as vpns
 #TODO: from pushbulletService import send_push
 
 
-version_code = "5.0 alpha3"
+version_code = "5.0 rc1"
 website_load_timeout = 10
 
 # logging
@@ -73,8 +73,9 @@ def vpn_wait(checking):
 def process_website(logger, current_content, current_ws_name):
     # 1. startup
     logger.debug("Starting processing website.")
+    last_time_updated = dbs.db_websites_get_data(ws_name=current_ws_name, field="last_time_updated")
     last_hash = dbs.db_websites_get_data(ws_name=current_ws_name, field="last_hash")
-    last_content = dbs.db_websites_get_data(ws_name=current_ws_name, field="last_content")
+    last_content = dbs.db_websites_get_content(ws_name=current_ws_name, last_time_updated=last_time_updated, last_hash=last_hash)
 
     # 2. hash website text
     current_hash = (hashlib.md5(current_content.encode())).hexdigest()
@@ -116,10 +117,10 @@ def process_website(logger, current_content, current_ws_name):
             tgs.send_general_broadcast(ids, msg_to_send)
 
         # 3.3 update values in website table
-        last_time_updated = datetime.now()
-        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_time_updated", argument=last_time_updated)
+        current_time_updated = datetime.now()
+        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_time_updated", argument=current_time_updated)
         dbs.db_websites_set_data(ws_name=current_ws_name, field="last_hash", argument=current_hash)
-        dbs.db_websites_set_content_data(ws_name=current_ws_name,update_time=last_time_updated,hash=current_hash,content=current_content)
+        dbs.db_websites_add_content(ws_name=current_ws_name, last_time_updated=current_time_updated, last_hash=current_hash, last_content=current_content)
 
     # 4. update time last checked
     dbs.db_websites_set_data(ws_name=current_ws_name, field="last_time_checked", argument=datetime.now())
@@ -176,6 +177,7 @@ def main():
 
     # 7. main loop
     try:
+        error_state = False
         while(True):
             # sleep until VPN connection is re-established if VPN connection is down (if assert_vpn==True)
             if assert_vpn and not vpns.is_vpn_active():
@@ -190,55 +192,59 @@ def main():
                 # notify watchdog
                 alive_notifier.notify("WATCHDOG=1")  # send status: alive
 
-                try:
-                    current_ws_name = dbs.db_websites_get_name(ws_id)
-                    current_url = dbs.db_websites_get_data(ws_name=current_ws_name, field="url")
-                    current_time = datetime.now()
-                    elapsed_time = current_time - dbs.db_websites_get_data(ws_name=current_ws_name, field="last_time_checked")
+                current_ws_name = dbs.db_websites_get_name(ws_id)
+                current_url = dbs.db_websites_get_data(ws_name=current_ws_name, field="url")
+                current_time = datetime.now()
+                elapsed_time = current_time - dbs.db_websites_get_data(ws_name=current_ws_name, field="last_time_checked")
 
-                    if elapsed_time.total_seconds() > dbs.db_websites_get_data(ws_name=current_ws_name, field="time_sleep"):
-                        logger.debug("Checking website " + str(current_ws_name) + " with url: " + str(current_url))
+                if elapsed_time.total_seconds() > dbs.db_websites_get_data(ws_name=current_ws_name, field="time_sleep"):
+                    logger.debug("Checking website " + str(current_ws_name) + " with url: " + str(current_url))
 
-                        # get website
-                        try:
-                            logger.debug("Getting website.")
-                            rContent = requests.get(current_url, timeout=website_load_timeout, verify=False)  # TODO: fix SSL support and reset verify to True.
-                        except requests.Timeout as e:
-                            logger.error("Timeout Error: "+str(e))
+                    # get website
+                    try:
+                        logger.debug("Getting website.")
+                        rContent = requests.get(current_url, timeout=website_load_timeout, verify=False)  # TODO: fix SSL support and reset verify to True.
+                        error_state = False
+                    except requests.Timeout as e:
+                        logger.error("Timeout Error: "+str(e))
+                        if not error_state:
                             tgs.send_admin_broadcast("[MAIN] URL: "+str(current_url)+" Problem: Timeout error "+str(e))
-                            dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=str(e))
-                            dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_time", argument=datetime.now())
-                            continue
-                        except requests.ConnectionError as e:
-                            logger.error("Connection Error: "+str(e))
+                            error_state = True
+                        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=str(e))
+                        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_time", argument=datetime.now())
+                        continue
+                    except requests.ConnectionError as e:
+                        logger.error("Connection Error: "+str(e))
+                        if not error_state:
                             tgs.send_admin_broadcast("[MAIN] URL: "+str(current_url)+" Problem: Connection error "+str(e))
-                            dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=str(e))
-                            dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_time", argument=datetime.now())
-                            continue
-                        except Exception:
-                            logger.error("An UNKNOWN exception has occured while trying to fetch the website with URL:" + str(current_url))
-                            logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+                            error_state = True
+                        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=str(e))
+                        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_time", argument=datetime.now())
+                        continue
+                    except Exception:
+                        logger.error("An UNKNOWN exception has occured while trying to fetch the website with URL:" + str(current_url))
+                        logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+                        if not error_state:
                             tgs.send_admin_broadcast("[MAIN] URL: " + str(current_url) + " Problem: Unknown error.")
-                            error_msg = str("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
-                            dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=error_msg)
-                            dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_time", argument=datetime.now())
-                            continue
-                        if rContent.status_code != 200:
-                            error_msg = "Status code is (unequal 200): " + str(rContent.status_code)
-                            logger.error(error_msg)
+                            error_state = True
+                        error_msg = str("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
+                        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=error_msg)
+                        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_time", argument=datetime.now())
+                        continue
+                    if rContent.status_code != 200:
+                        error_msg = "Status code is (unequal 200): " + str(rContent.status_code)
+                        logger.error(error_msg)
+                        if not error_state:
                             tgs.send_admin_broadcast("[MAIN] URL: " + str(current_url) + " Problem: " + error_msg)
-                            dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=error_msg)
-                            dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_time", argument=datetime.now())
-                            continue
+                            error_state = True
+                        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=error_msg)
+                        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_time", argument=datetime.now())
+                        continue
 
-                        # process website
-                        logger.debug("Getting content.")
-                        current_content = unidecode(html2text.html2text(rContent.text))
-                        process_website(logger, current_content, current_ws_name)
-                except RuntimeError as e:
-                    logger.error("Runtime error: " + str(e))
-                    tgs.send_admin_broadcast("[MAIN] Runtime error.")
-                    continue
+                    # process website
+                    logger.debug("Getting content.")
+                    current_content = unidecode(html2text.html2text(rContent.text))
+                    process_website(logger, current_content, current_ws_name)
 
             # notify watchdog
             alive_notifier.notify("WATCHDOG=1")  # send status: alive

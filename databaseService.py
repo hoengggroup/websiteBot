@@ -245,7 +245,10 @@ def db_users_get_data(tg_id, field="all_fields"):
         else:
             user_data = cur.fetchone()
             conn.commit()
-            return user_data[0]  # returns one item
+            if user_data:
+                return user_data[0]  # returns one item
+            else:
+                return None  # or None if the data does not exist
     except Exception as ex:
         conn.rollback()
         db_exc_handler(ex, conn)
@@ -275,7 +278,7 @@ def db_users_set_data(tg_id, field, argument):
         logger.debug("users_set_data: Data field \""+str(field)+"\" does not match any columns. No action taken.")
         return False
     try:
-        cur.execute(postgres_query, (argument, tg_id,))  # turn tg_id into a tuple to avoid a TypeError
+        cur.execute(postgres_query, (argument, tg_id))
         logger.info("Successfully changed data field \""+str(field)+"\" in users table to "+str(argument)+".")
         conn.commit()
         return True
@@ -350,8 +353,8 @@ def db_websites_add(ws_name, url, time_sleep, last_time_checked, last_time_updat
         db_exc_handler(ex, conn)
         return False
     try:
-        postgres_query = """INSERT INTO websites_content (ws_id, update_time, hash, last_content) VALUES (%s, %s, %s, %s) RETURNING ws_id;"""
-        query_data = (ws_id_1, last_time_updated, None, last_content)
+        postgres_query = """INSERT INTO websites_content (ws_id, last_time_updated, last_hash, last_content) VALUES (%s, %s, %s, %s) RETURNING ws_id;"""
+        query_data = (ws_id_1, last_time_updated, last_hash, last_content)
         cur.execute(postgres_query, query_data)
         ws_id_2 = cur.fetchone()[0]
     except Exception as ex:
@@ -404,11 +407,7 @@ def db_websites_get_data(ws_name, field="all_fields"):
         postgres_query = """SELECT last_error_time FROM websites WHERE ws_id = %s;"""
     elif field=="last_hash":
         postgres_query = """SELECT last_hash FROM websites WHERE ws_id = %s;"""
-    elif field=="last_content":
-        postgres_query = """SELECT last_content FROM websites_content WHERE ws_id = %s;"""
     else:
-        # we are only interested in last_content (saved in the websites_content table) in specific cases...
-        # ...so we only return it (on its own) if specifically requested with a corresponding "field" argument
         postgres_query = """SELECT * FROM websites WHERE ws_id = %s;"""
         return_list = True
     try:
@@ -420,7 +419,10 @@ def db_websites_get_data(ws_name, field="all_fields"):
         else:
             website_data = cur.fetchone()
             conn.commit()
-            return website_data[0]  # returns one item
+            if website_data:
+                return website_data[0]  # returns one item
+            else:
+                return None  # or None if the data does not exist
     except Exception as ex:
         conn.rollback()
         db_exc_handler(ex, conn)
@@ -428,20 +430,21 @@ def db_websites_get_data(ws_name, field="all_fields"):
 
 
 # GET WEBSITE CONTENT
-def db_websites_get_content(ws_name,ws_hash):
+def db_websites_get_content(ws_name, last_time_updated, last_hash):
     ws_id = db_websites_get_id(ws_name)
     if not ws_id:
-        logger.debug("websites_get_data: Website \""+str(ws_name)+"\" does not exist.")
+        logger.debug("websites_get_content: Website \""+str(ws_name)+"\" does not exist.")
         return None
-    # TODO Prevent here agains sql injections?
-    postgres_query = """select last_content from websites_content where ws_id = %s and hash = %s;"""
-
-
+    postgres_query = """SELECT last_content FROM websites_content WHERE ws_id = %s AND last_time_updated = %s AND last_hash = %s;"""
+    query_data = (ws_id, last_time_updated, last_hash)
     try:
-        cur.execute(postgres_query, (ws_id,))  # turn ws_id into a tuple to avoid a TypeError
-        website_data = cur.fetchall()
+        cur.execute(postgres_query, query_data)
+        website_content = cur.fetchone()
         conn.commit()
-        return [item for t in website_data for item in t]  # returns a list
+        if website_content:
+            return website_content[0]  # returns one item
+        else:
+            return None  # or None if the data does not exist
     except Exception as ex:
         conn.rollback()
         db_exc_handler(ex, conn)
@@ -474,12 +477,8 @@ def db_websites_set_data(ws_name, field, argument):
         logger.debug("websites_set_data: Data field \""+str(field)+"\" does not match any columns. No action taken.")
         return False
     try:
-        cur.execute(postgres_query, (argument, ws_id,))  # turn ws_id into a tuple to avoid a TypeError
-        if field == "last_content":
-            # do not crowd the log with verbatim output of last_content
-            logger.info("Successfully changed data field \"last_content\" in websites_content table.")
-        else:
-            logger.info("Successfully changed data field \""+str(field)+"\" in websites table to "+str(argument)+".")
+        cur.execute(postgres_query, (argument, ws_id))
+        logger.info("Successfully changed data field \""+str(field)+"\" to "+str(argument)+" for website "+str(ws_name)+".")
         conn.commit()
         return True
     except Exception as ex:
@@ -488,23 +487,22 @@ def db_websites_set_data(ws_name, field, argument):
         return False
 
 
-# SET WEBSITE DATA CONTENT
-def db_websites_set_content_data(ws_name, update_time,hash,content):
+# ADD WEBSITE CONTENT
+def db_websites_add_content(ws_name, last_time_updated, last_hash, last_content):
     ws_id = db_websites_get_id(ws_name)
     if not ws_id:
-        logger.debug("websites_set_data: Website \""+str(ws_name)+"\" does not exist.")
+        logger.debug("websites_add_content: Website \""+str(ws_name)+"\" does not exist.")
         return False
-    postgres_query = """INSERT INTO websites_content (ws_id,update_time, hash,last_content) VALUES (%s,%s,%s,%s) RETURNING ws_id;"""
-    query_data = (ws_id, update_time,hash, content)
+    postgres_query = """INSERT INTO websites_content (ws_id, last_time_updated, last_hash, last_content) VALUES (%s, %s, %s, %s) RETURNING ws_id;"""
+    query_data = (ws_id, last_time_updated, last_hash, last_content)
     try:
-        cur.execute(postgres_query, query_data) 
+        cur.execute(postgres_query, query_data)
+        logger.info("Successfully added website content for website "+str(ws_name)+".")
         conn.commit()
-        logger.debug("Successfully updated website data content. Ws name: "+str(ws_name))
         return True
     except Exception as ex:
         conn.rollback()
         db_exc_handler(ex, conn)
-        logger.debug("Error on update website data content. Ws name: "+str(ws_name)+" args hash: "+str(hash))
         return False
 
 
