@@ -506,6 +506,24 @@ def db_websites_add_content(ws_name, last_time_updated, last_hash, last_content)
         return False
 
 
+# DELETE WEBSITE CONTENT
+def db_websites_delete_content(ws_name):
+    ws_id = db_websites_get_id(ws_name)
+    if not ws_id:
+        logger.debug("websites_delete_content: Website \""+str(ws_name)+"\" does not exist.")
+        return False
+    postgres_query = """DELETE FROM websites_content WHERE ws_id = %s;"""
+    try:
+        cur.execute(postgres_query, (ws_id,))  # turn ws_id into a tuple to avoid a TypeError
+        logger.info("Successfully removed all previous website content for website "+str(ws_name)+".")
+        conn.commit()
+        return True
+    except Exception as ex:
+        conn.rollback()
+        db_exc_handler(ex, conn)
+        return False
+
+
 ### SUBSCIRIPTIONS TABLE
 # GET SUBSCRIPTIONS BY WEBSITE
 def db_subscriptions_by_website(ws_name):

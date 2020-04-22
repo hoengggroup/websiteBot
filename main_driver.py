@@ -29,6 +29,7 @@ import vpnService as vpns
 
 version_code = "5.0 rc1"
 website_load_timeout = 10
+keep_website_history = True
 
 # logging
 logger = create_logger("main")
@@ -120,6 +121,8 @@ def process_website(logger, current_content, current_ws_name):
         current_time_updated = datetime.now()
         dbs.db_websites_set_data(ws_name=current_ws_name, field="last_time_updated", argument=current_time_updated)
         dbs.db_websites_set_data(ws_name=current_ws_name, field="last_hash", argument=current_hash)
+        if not keep_website_history:
+            dbs.db_websites_delete_content(ws_name=current_ws_name)
         dbs.db_websites_add_content(ws_name=current_ws_name, last_time_updated=current_time_updated, last_hash=current_hash, last_content=current_content)
 
     # 4. update time last checked
