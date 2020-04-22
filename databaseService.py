@@ -1,5 +1,8 @@
 # -*- coding: utf-8 -*-
 
+### python builtins
+import inspect  # for getting the calling function's name in the error handler
+
 ### external libraries
 import psycopg2  # for interacting with PostgreSQL databases
 import psycopg2.errorcodes  # ...its errorcodes module must be imported seperately
@@ -22,7 +25,7 @@ logger = create_logger("db")
 
 # Amazing (self-created ;)) error handler
 def db_exc_handler(excp, conn):
-    logger.error("Error code: " + str(excp.pgcode))
+    logger.error("Database error in function " + str(inspect.stack()[1].function) + "\nError code: " + str(excp.pgcode))
     if (excp.pgcode == psycopg2.errorcodes.CONNECTION_EXCEPTION) or (excp.pgcode == psycopg2.errorcodes.CONNECTION_FAILURE):
         logger.error("Connection error. Details: " + str(excp))
     elif excp.pgcode == psycopg2.errorcodes.DATA_CORRUPTED:
