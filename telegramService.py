@@ -13,7 +13,6 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHa
 ### our own libraries
 from loggerService import create_logger
 import databaseService as dbs
-#TODO: from pushbulletService import send_push, filterset
 
 
 # logging
@@ -566,15 +565,6 @@ def send_command_reply(update, context, message, reply_markup=None):
 # access level: builtin
 def send_general_broadcast(chat_id, message):
     logger.debug("Message to " + str(chat_id) + ":\n" + message)
-    #TODO:
-    '''
-    for filter in filterset:
-        if filter in message:
-            logger.debug("this message is redirected.")
-            send_push("!!!ROOM!!!",message)
-            send_admin_broadcast("__") # don't put anything here that is contained in filterset -> inf loop
-            return
-    '''
     if not(message):
         logger.warning("Empty message to " + str(chat_id) + ". Not sent.")
         return

@@ -24,7 +24,6 @@ import dp_edit_distance
 import databaseService as dbs
 import telegramService as tgs
 import vpnService as vpns
-#TODO: from pushbulletService import send_push
 
 
 version_code = "5.0 rc1"
@@ -176,7 +175,6 @@ def main():
 
     # 6. inform admins about startup
     tgs.send_admin_broadcast("Starting up.\nVersion: \t"+version_code+"\nPlatform: \t"+str(platform.system())+"\nAssert VPN: \t"+str(assert_vpn)+"\nDeployed: \t"+str(on_rpi))
-    #TODO: send_push("System","Starting up "+str(version_code))
 
     # 7. main loop
     try:
@@ -188,7 +186,6 @@ def main():
                 # the first Telegram message after a network change appears to always time out, so send a dummy message before actually starting the re-connection checker
                 tgs.send_admin_broadcast("This is the first message after the VPN disconnected. Usually causes a NetworkError because of a timeout due to the changed connection.\nDisregard.")
                 tgs.send_admin_broadcast("VPN status has changed, suspending operations until VPN connection is re-established.")
-                #TODO: send_push("System","VPN status has changed, suspending operations until VPN connection is re-established.")
                 vpn_wait(checking=True)
 
             for ws_id in dbs.db_websites_get_all_ids():
