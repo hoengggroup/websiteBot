@@ -14,7 +14,7 @@ from loggerService import create_logger
 # DATABASE PARAMETERS
 my_database = "websitebot_db"
 my_user = "websitebot"
-my_password = ""
+my_password = "webSiteBotPostGresQL"
 my_host = "localhost"
 my_port = "5432"
 
