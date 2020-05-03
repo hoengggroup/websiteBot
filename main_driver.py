@@ -26,7 +26,7 @@ import telegramService as tgs
 import vpnService as vpns
 
 
-version_code = "5.0 rc1"
+version_code = "5.0.1"
 website_load_timeout = 10
 keep_website_history = True
 
