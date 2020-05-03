@@ -40,7 +40,6 @@ headers = {
 }
 
 
-
 # process string ready for dp_edit_distance
 def preprocess_string(str_to_convert):
     # 0. prepare delimiters
@@ -210,7 +209,7 @@ def main():
                     # get website
                     try:
                         logger.debug("Getting website.")
-                        rContent = requests.get(current_url, timeout=website_load_timeout,headers = headers, verify=False)
+                        rContent = requests.get(current_url, timeout=website_load_timeout, headers=headers, verify=False)
                         error_state = False
                     except requests.Timeout as e:
                         logger.error("Timeout Error: "+str(e))

@@ -1,7 +1,7 @@
-#######################!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 
 # This is a file to test the getting subroutine of the system
-# Please link any changes to the get method and header to the main_driver.py
+# Please upstream any changes to the get method and header to the main_driver.py
 # Parameters should always be synced
 
 import requests  # for internet traffic
@@ -14,6 +14,6 @@ headers = {
 current_url = "https://www.ds3lab.com/dmdb-2020/"
 website_load_timeout = 10
 
-rContent = requests.get(current_url, timeout=website_load_timeout,headers = headers,verify = False)
+rContent = requests.get(current_url, timeout=website_load_timeout, headers=headers, verify=False)
 print(rContent.status_code)
-print(rContent.text[:min(200,len(rContent.text))]) # print only first part
+print(rContent.text[:min(200, len(rContent.text))])  # print only first part
