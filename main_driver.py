@@ -33,6 +33,13 @@ keep_website_history = True
 # logging
 logger = create_logger("main")
 
+# the headers for all requests
+headers = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:75.0) Gecko/20100101 Firefox/74.0',
+    'Accept': 'text/html'
+}
+
+
 
 # process string ready for dp_edit_distance
 def preprocess_string(str_to_convert):
@@ -203,7 +210,7 @@ def main():
                     # get website
                     try:
                         logger.debug("Getting website.")
-                        rContent = requests.get(current_url, timeout=website_load_timeout, verify=False)  # TODO: fix SSL support and reset verify to True.
+                        rContent = requests.get(current_url, timeout=website_load_timeout,headers = headers, verify=False)
                         error_state = False
                     except requests.Timeout as e:
                         logger.error("Timeout Error: "+str(e))
