@@ -18,6 +18,10 @@ import databaseService as dbs
 # logging
 logger = create_logger("tg")
 
+# terminating
+def exit_cleanup_tg():
+    updater.stop()
+
 
 # access level: builtin (decorator)
 def send_typing_action(func):
@@ -515,13 +519,19 @@ def build_menu(buttons, n_cols, header_buttons=False, footer_buttons=False):
 
 # access level: generic
 @send_typing_action
-def text(update, context):
+def sql_semicolon(update, context):
+    send_command_reply(update, context, message="Sorry, semicolons are not allowed for security reasons. Please try again without it.")
+
+
+# access level: generic
+@send_typing_action
+def unknown_text(update, context):
     send_command_reply(update, context, message="Sorry, I only understand commands. Check if you entered a leading slash or get a list of the available commands with /commands.")
 
 
 # access level: generic
 @send_typing_action
-def unknown(update, context):
+def unknown_command(update, context):
     send_command_reply(update, context, message="Sorry, I did not understand that command. Check the spelling or get a list of the available commands with /commands.")
 
 
@@ -619,6 +629,8 @@ def init(on_rpi):
     APPROVE_CHAT_ID_STATE, DENY_CHAT_ID_STATE = range(2)
     WS_NAME_STATE, WS_URL_STATE, WS_TIME_SLEEP_STATE = range(3)
 
+    # --- Filter out semicolons for SQL safety (before anything else):
+    dispatcher.add_handler(MessageHandler(Filters.regex(";"), sql_semicolon))
     # --- Generally accessible commands (access levels 0 to 3):
     dispatcher.add_handler(CommandHandler("start", start))
     # Conversation handler ->:
@@ -671,12 +683,8 @@ def init(on_rpi):
         fallbacks=[CommandHandler("usercancel", usercancel)]
     )
     dispatcher.add_handler(conversation_handler_deny_user)
-    # --- Catch-all commands for unknown inputs:
-    dispatcher.add_handler(MessageHandler(Filters.text & (~ Filters.command), text))
-    # The "unknown" handler needs to be added last because it would override any handlers added afterwards
-    dispatcher.add_handler(MessageHandler(Filters.command, unknown))
+    # --- Catch-all for unknown inputs (need to be added last):
+    dispatcher.add_handler(MessageHandler(Filters.text & (~ Filters.command), unknown_text))
+    dispatcher.add_handler(MessageHandler(Filters.command, unknown_command))
 
     updater.start_polling()
-
-    # Use this command in the python console to clean up the Telegram service when using an IDE that does not handle it well:
-    # updater.stop()

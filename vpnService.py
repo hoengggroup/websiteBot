@@ -1,14 +1,8 @@
 # -*- coding: utf-8 -*-
 
-### python builtins
-import sys  # for errors
-
-### external libraries
-import requests  # for internet traffic
-
 ### our own libraries
 from loggerService import create_logger
-import telegramService as tgs
+import requestsService as rqs
 
 
 # logging
@@ -16,43 +10,23 @@ logger = create_logger("vpn")
 
 
 def get_nordvpn_api():
-    ip_address_nordvpn_tmp = ""
-    status_nordvpn_tmp = ""
-    try:
-        response_nordvpn = requests.get("https://api.nordvpn.com/vpn/check/full", timeout=15).json()
+    ip_address_nordvpn_tmp = None
+    status_nordvpn_tmp = None
+    response_nordvpn = rqs.get_url(url="https://api.nordvpn.com/vpn/check/full").json()
+    if response_nordvpn:
         ip_address_nordvpn_tmp = response_nordvpn["ip"]
         status_nordvpn_tmp = response_nordvpn["status"]
         logger.debug("The IP address according to NordVPN is " + ip_address_nordvpn_tmp + " and the status is \"" + status_nordvpn_tmp + "\".")
-    except requests.exceptions.RequestException as e:
-        logger.error("A RequestException has occured while attempting to access the NordVPN API.")
-        logger.error("The error is: " + str(e))
-        tgs.send_admin_broadcast("[VPNSERVICE] Problem: A RequestException has occured.")
-        pass
-    except Exception:
-        logger.error("An UNKNOWN exception has occured while attempting to access the NordVPN API.")
-        logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
-        tgs.send_admin_broadcast("[VPNSERVICE] Problem: An unknown error has occured.")
-        pass
-    return ip_address_nordvpn_tmp, status_nordvpn_tmp  # returns empty strings on exception
+    return ip_address_nordvpn_tmp, status_nordvpn_tmp  # returns None if request fails
 
 
 def get_ipify_api():
-    ip_address_ipify_tmp = ""
-    try:
-        response_ipify = requests.get("https://api.ipify.org?format=json", timeout=15).json()
+    ip_address_ipify_tmp = None
+    response_ipify = rqs.get_url(url="https://api.ipify.org?format=json").json()
+    if response_ipify:
         ip_address_ipify_tmp = response_ipify["ip"]
         logger.debug("The IP address according to Ipify is " + ip_address_ipify_tmp + ".")
-    except requests.exceptions.RequestException as e:
-        logger.error("A RequestException has occured while attempting to access the Ipify API.")
-        logger.error("The error is: " + str(e))
-        tgs.send_admin_broadcast("[VPNSERVICE] Problem: A RequestException has occured.")
-        pass
-    except Exception:
-        logger.error("An UNKNOWN exception has occured while attempting to access the Ipify API.")
-        logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
-        tgs.send_admin_broadcast("[VPNSERVICE] Problem: An unknown error has occured.")
-        pass
-    return ip_address_ipify_tmp  # returns an empty string on exception
+    return ip_address_ipify_tmp  # returns None if request fails
 
 
 def is_vpn_active():

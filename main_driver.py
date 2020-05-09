@@ -4,18 +4,18 @@
 from datetime import datetime  # for timestamps
 import hashlib  # for hashing website content
 from os import listdir  # for detecting the rpi dummy file
-from os.path import isfile, join, dirname,realpath  # for detecting the rpi dummy file
+from os.path import isfile, join, dirname, realpath  # for detecting the rpi dummy file
 import platform  # for checking the system we are running on
 import random  # for deciding how long to sleep for
 import re  # for regex
+from signal import signal, SIGABRT, SIGINT, SIGTERM  # for cleanup on exit/termination
 import sys  # for errors and terminating
 import time  # for sleeping
 import traceback  # for logging the full traceback
 
 ### external libraries
 import html2text  # for passing html to text
-import requests  # for internet traffic
-import sdnotify  # for the watchdog
+import sdnotify  # for the systemctl watchdog
 from unidecode import unidecode  # for stripping Ümläüte
 
 ### our own libraries
@@ -23,21 +23,32 @@ from loggerService import create_logger
 import dp_edit_distance
 import databaseService as dbs
 import telegramService as tgs
+import requestsService as rqs
 import vpnService as vpns
 
 
-version_code = "5.0.1"
-website_load_timeout = 10
+# MAIN PARAMETERS
+version_code = "5.1 beta1"
 keep_website_history = True
+
 
 # logging
 logger = create_logger("main")
 
-# the headers for all requests
-headers = {
-    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:75.0) Gecko/20100101 Firefox/74.0',
-    'Accept': 'text/html'
-}
+#termination handler
+def exit_cleanup(*args):
+    disconnection_state = dbs.db_disconnect()
+    if not disconnection_state:
+        logger.critical("Database did not disconnect successfully.")
+    else:
+        logger.info("Database disconnected successfully.")
+    tgs.send_admin_broadcast("Shutdown complete.")
+    tgs.exit_cleanup_tg()
+    logger.warning("Shutdown complete. This is the last line.")
+    sys.exit(1)
+
+for sig in (SIGABRT, SIGINT, SIGTERM):
+    signal(sig, exit_cleanup)
 
 
 # process string ready for dp_edit_distance
@@ -62,18 +73,35 @@ def preprocess_string(str_to_convert):
     return str_list_ret
 
 
-def vpn_wait(checking):
-    logger.warning("Suspending operations until VPN connection is re-established.")
+def vpn_wait():
+    logger.warning("VPN connection could not be validated. Suspending operations until VPN connection is re-validated.")
+    retry_counter = 0
     while True:
         alive_notifier.notify("WATCHDOG=1")  # send status: alive
         time.sleep(10)
-        if checking:
+        if retry_counter < 2:
             if vpns.init(mode="re-establish"):
-                logger.info("VPN connection has been re-established successfully. Back online.")
-                # the first Telegram message after a network change appears to always time out, so send a dummy message before actually starting back up
-                tgs.send_admin_broadcast("This is the first message after the VPN reconnected. Usually causes a NetworkError because of a timeout due to the changed connection.\nDisregard.")
-                tgs.send_admin_broadcast("VPN connection has been re-established successfully. Back online.")
+                logger.info("VPN connection has been re-validated successfully. Back online.")
+                retry_counter = 0
                 break
+        elif retry_counter == 2:
+            if vpns.init(mode="re-establish"):
+                logger.info("VPN connection has been re-validated successfully. Back online.")
+                retry_counter = 0
+                break
+            else:
+                # the first Telegram message after a network change appears to usually time out, so send a dummy message first
+                tgs.send_admin_broadcast("This is the first message after the VPN disconnected. Might cause a NetworkError in telegramService.\nDisregard.")
+                tgs.send_admin_broadcast("VPN has disconnected, and the connection could not be re-validated immediately. Operations are suspended since disconnecting and until VPN connection is re-established.")
+        if retry_counter > 2:
+            if vpns.init(mode="re-establish"):
+                logger.info("VPN connection has been re-validated successfully. Back online.")
+                # the first Telegram message after a network change appears to usually time out, so send a dummy message first
+                tgs.send_admin_broadcast("This is the first message after the VPN reconnected. Might cause a NetworkError in telegramService.\nDisregard.")
+                tgs.send_admin_broadcast("VPN connection has been re-validated successfully. Back online.")
+                retry_counter = 0
+                break
+        retry_counter += 1
 
 
 def process_website(logger, current_content, current_ws_name):
@@ -139,18 +167,17 @@ def main():
     # 1. initialize watchdog
     global alive_notifier
     alive_notifier = sdnotify.SystemdNotifier()
-    ''' max_watchdog_time = max(time_setup, website_loading_timeout + website_process_time, sleep_time)
-    where:
-    time_setup = time from here to begin of while loop
-    website_loading_timeout = timeout of webdriver when loading website
-    website_process_time = time it takes to process (changes) of a website incl. telegram sending
-    sleep_time = sleep time at end of while loop '''
+    # Set max_watchdog_time in service to max(time_setup, website_loading_timeout + website_process_time, sleep_time) where:
+    #     time_setup = time from here to begin of while loop
+    #     website_loading_timeout = timeout setting for loading websites
+    #     website_process_time = time it takes to process (changes) of websites (incl. telegram communications)
+    #     sleep_time = sleep time at end of while loop
 
     # 2. initialize database service
     connection_state = dbs.db_connect()
     if not connection_state:
-        logger.critical("Fatal error: Could not establish connection with database. Terminating.")
-        sys.exit()
+        logger.critical("Fatal error: Could not establish connection with database. Exiting.")
+        sys.exit(1)
     else:
         logger.info("Database connected successfully.")
 
@@ -171,8 +198,8 @@ def main():
         assert_vpn = True
         vpn_state = vpns.init()
         if not vpn_state:
-            logger.critical("Fatal error: Could not validate connection with VPN. Terminating.")
-            sys.exit()
+            logger.critical("Fatal error: Could not validate connection with VPN. Exiting.")
+            exit_cleanup()
         else:
             logger.info("VPN connection validated successfully.")
     else:
@@ -184,15 +211,10 @@ def main():
 
     # 7. main loop
     try:
-        error_state = False
         while(True):
             # sleep until VPN connection is re-established if VPN connection is down (if assert_vpn==True)
             if assert_vpn and not vpns.is_vpn_active():
-                logger.warning("VPN status has changed, suspending operations until VPN connection is re-established.")
-                # the first Telegram message after a network change appears to always time out, so send a dummy message before actually starting the re-connection checker
-                tgs.send_admin_broadcast("This is the first message after the VPN disconnected. Usually causes a NetworkError because of a timeout due to the changed connection.\nDisregard.")
-                tgs.send_admin_broadcast("VPN status has changed, suspending operations until VPN connection is re-established.")
-                vpn_wait(checking=True)
+                vpn_wait()
 
             for ws_id in dbs.db_websites_get_all_ids():
                 # notify watchdog
@@ -207,49 +229,15 @@ def main():
                     logger.debug("Checking website " + str(current_ws_name) + " with url: " + str(current_url))
 
                     # get website
-                    try:
-                        logger.debug("Getting website.")
-                        rContent = requests.get(current_url, timeout=website_load_timeout, headers=headers, verify=False)
-                        error_state = False
-                    except requests.Timeout as e:
-                        logger.error("Timeout Error: "+str(e))
-                        if not error_state:
-                            tgs.send_admin_broadcast("[MAIN] URL: "+str(current_url)+" Problem: Timeout error "+str(e))
-                            error_state = True
-                        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=str(e))
-                        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_time", argument=datetime.now())
-                        continue
-                    except requests.ConnectionError as e:
-                        logger.error("Connection Error: "+str(e))
-                        if not error_state:
-                            tgs.send_admin_broadcast("[MAIN] URL: "+str(current_url)+" Problem: Connection error "+str(e))
-                            error_state = True
-                        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=str(e))
-                        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_time", argument=datetime.now())
-                        continue
-                    except Exception:
-                        logger.error("An UNKNOWN exception has occured while trying to fetch the website with URL:" + str(current_url))
-                        logger.error("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
-                        if not error_state:
-                            tgs.send_admin_broadcast("[MAIN] URL: " + str(current_url) + " Problem: Unknown error.")
-                            error_state = True
-                        error_msg = str("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
-                        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=error_msg)
-                        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_time", argument=datetime.now())
-                        continue
-                    if rContent.status_code != 200:
-                        error_msg = "Status code is (unequal 200): " + str(rContent.status_code)
-                        logger.error(error_msg)
-                        if not error_state:
-                            tgs.send_admin_broadcast("[MAIN] URL: " + str(current_url) + " Problem: " + error_msg)
-                            error_state = True
-                        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_msg", argument=error_msg)
-                        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_error_time", argument=datetime.now())
-                        continue
+                    response = rqs.get_url(url=current_url, ws_name=current_ws_name)
 
                     # process website
-                    logger.debug("Getting content.")
-                    current_content = unidecode(html2text.html2text(rContent.text))
+                    if not response:
+                        logger.warning("Response data is empty for " + str(current_url) + ". Skipping.")
+                        continue
+
+                    logger.debug("Extracting content from response data.")
+                    current_content = unidecode(html2text.html2text(response.text))
                     process_website(logger, current_content, current_ws_name)
 
             # notify watchdog
@@ -260,21 +248,12 @@ def main():
             choice = random.choice([5, 7, 11, 13, 17])
             logger.debug("Pausing main loop now for " + str(choice) + " seconds.")
             time.sleep(choice)
-
     except Exception:
-        logger.critical("Unknown exception. Terminating")
+        logger.critical("Unknown exception. Exiting.")
         logger.critical("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
         traceback.print_exc()
-        tgs.send_admin_broadcast("[MAIN] Unknown exception.\n" + str(sys.exc_info()[0]) + "\nTerminating.")
-    finally:
-        disconnection_state = dbs.db_disconnect()
-        if not disconnection_state:
-            logger.critical("Database did not disconnect successfully.")
-        else:
-            logger.info("Database disconnected successfully.")
-
-        tgs.send_admin_broadcast("Shutting down...")
-        logger.warning("Shutting down. This is the last line.")
+        tgs.send_admin_broadcast("Unknown exception in main loop.\nExiting.")
+        exit_cleanup()
 
 
 if __name__ == "__main__":

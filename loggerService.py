@@ -25,6 +25,12 @@ class ModuleFilterDB(logging.Filter):
         return True
 
 
+class ModuleFilterREQ(logging.Filter):
+    def filter(self, record):
+        record.module_tag = "[REQ]:"
+        return True
+
+
 class ModuleFilterTG(logging.Filter):
     def filter(self, record):
         record.module_tag = "[TG]:"
@@ -63,6 +69,8 @@ def create_logger(module):
         logger.addFilter(ModuleFilterMain())
     elif module == "db":
         logger.addFilter(ModuleFilterDB())
+    elif module == "req":
+        logger.addFilter(ModuleFilterREQ())
     elif module == "tg":
         logger.addFilter(ModuleFilterTG())
     elif module == "vpn":
