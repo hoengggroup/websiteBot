@@ -115,7 +115,6 @@ def pendingusers(update, context):
 
 
 # callback helper function for pendingusers()
-@send_typing_action
 def button_pendingusers_detail(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
@@ -139,7 +138,6 @@ def button_pendingusers_detail(update, context):
 
 
 # callback helper function for pendingusers()
-@send_typing_action
 def button_pendingusers_approve(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
@@ -156,7 +154,6 @@ def button_pendingusers_approve(update, context):
 
 
 # callback helper function for pendingusers()
-@send_typing_action
 def button_pendingusers_deny(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
@@ -173,7 +170,6 @@ def button_pendingusers_deny(update, context):
 
 
 # callback helper function for pendingusers()
-@send_typing_action
 def button_pendingusers_exit(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
@@ -325,7 +321,6 @@ def subscriptions(update, context):
 
 
 # callback helper function for subscriptions()
-@send_typing_action
 def button_subscriptions_add(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
@@ -342,7 +337,6 @@ def button_subscriptions_add(update, context):
 
 
 # callback helper function for subscriptions()
-@send_typing_action
 def button_subscriptions_remove(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
@@ -359,7 +353,6 @@ def button_subscriptions_remove(update, context):
 
 
 # callback helper function for subscriptions()
-@send_typing_action
 def button_subscriptions_exit(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
