@@ -12,19 +12,21 @@ logger = create_logger("vpn")
 def get_nordvpn_api():
     ip_address_nordvpn_tmp = None
     status_nordvpn_tmp = None
-    response_nordvpn = rqs.get_url(url="https://api.nordvpn.com/vpn/check/full").json()
+    response_nordvpn = rqs.get_url(url="https://api.nordvpn.com/vpn/check/full")
     if response_nordvpn:
-        ip_address_nordvpn_tmp = response_nordvpn["ip"]
-        status_nordvpn_tmp = response_nordvpn["status"]
+        response_nordvpn_json = response_nordvpn.json()
+        ip_address_nordvpn_tmp = response_nordvpn_json["ip"]
+        status_nordvpn_tmp = response_nordvpn_json["status"]
         logger.debug("The IP address according to NordVPN is " + ip_address_nordvpn_tmp + " and the status is \"" + status_nordvpn_tmp + "\".")
     return ip_address_nordvpn_tmp, status_nordvpn_tmp  # returns None if request fails
 
 
 def get_ipify_api():
     ip_address_ipify_tmp = None
-    response_ipify = rqs.get_url(url="https://api.ipify.org?format=json").json()
+    response_ipify = rqs.get_url(url="https://api.ipify.org?format=json")
     if response_ipify:
-        ip_address_ipify_tmp = response_ipify["ip"]
+        response_ipify_json = response_ipify.json()
+        ip_address_ipify_tmp = response_ipify_json["ip"]
         logger.debug("The IP address according to Ipify is " + ip_address_ipify_tmp + ".")
     return ip_address_ipify_tmp  # returns None if request fails
 
