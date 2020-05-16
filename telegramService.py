@@ -45,7 +45,7 @@ def start(update, context):
                             apply_name=None,
                             apply_text=None,
                             apply_date=datetime.now())
-        send_command_reply(update, context, message="Welcome to this website-tracker bot.\nPlease tell me your name and your message to be invited with /apply.\nUntil approval all other functions will remain inaccessible.\nYou can stop this bot and remove your user ID from its list at any time with /stop.")
+        send_command_reply(update, context, message="Welcome to this website-tracker bot.\nPlease tell me your name and your message to be invited with /apply.\nUntil approval all other functions will remain inaccessible.\nYou can stop this bot and remove your user ID from its database at any time with /stop.")
     else:
         send_command_reply(update, context, message="You already started this service. If you are not yet approved, please continue with /apply. If you are already approved, check out the available actions with /commands. If you have already been denied, I hope you have a nice day anyway :)")
 
@@ -65,7 +65,11 @@ def apply(update, context):
 # conversation helper function for apply()
 @send_typing_action
 def apply_name(update, context):
-    apply_name = str(update.message.text)
+    try:
+        apply_name = convert_less_than_greater_than(str(update.message.text))
+    except ValueError:
+        send_command_reply(update, context, message="Error while converting your message to a string. It should be impossible to see this error.")
+        return ConversationHandler.END
     dbs.db_users_set_data(tg_id=update.message.chat_id, field="apply_name", argument=apply_name)
     send_command_reply(update, context, message="Ok, "+str(apply_name)+". Please send me your application to use this bot, which I will forward to the admins.")
     return APPLY_MESSAGE_STATE
@@ -75,7 +79,12 @@ def apply_name(update, context):
 @send_typing_action
 def apply_message(update, context):
     apply_name = dbs.db_users_get_data(tg_id=update.message.chat_id, field="apply_name")
-    apply_message = str(update.message.text)
+    try:
+        apply_message = convert_less_than_greater_than(str(update.message.text))
+    except ValueError:
+        send_command_reply(update, context, message="Error while converting your message to a string. It should be impossible to see this error.")
+        dbs.db_users_set_data(tg_id=update.message.chat_id, field="apply_name", argument="")
+        return ConversationHandler.END
     dbs.db_users_set_data(tg_id=update.message.chat_id, field="apply_text", argument=apply_message)
     message_to_admins = "Application:\n" + str(apply_message) + "\nSent by: " + str(apply_name) + " (" + user_id_linker(update.message.chat_id) + ")"
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") == 3:
@@ -193,9 +202,8 @@ def approveuser(update, context):
 @send_typing_action
 def approve_user_helper(update, context):
     chat_id_to_approve = update.message.text
-    try: 
+    try:
         chat_id_to_approve = int(chat_id_to_approve)
-        pass
     except ValueError:
         send_command_reply(update, context, message="Error. This is not a valid chat ID.")
         return ConversationHandler.END
@@ -206,7 +214,7 @@ def approve_user_helper(update, context):
         else:
             send_command_reply(update, context, message="Error. Setting of new status 1 (approved) for chat ID "+user_id_linker(chat_id_to_approve)+" failed.\nThis user may already be approved.\nOtherwise, please try again.")
     else:
-        send_command_reply(update, context, message="Error. Chat ID "+user_id_linker(chat_id_to_approve)+" does not exist in list.")
+        send_command_reply(update, context, message="Error. Chat ID "+user_id_linker(chat_id_to_approve)+" does not exist in database.")
     return ConversationHandler.END
 
 
@@ -225,9 +233,8 @@ def denyuser(update, context):
 @send_typing_action
 def deny_user_helper(update, context):
     chat_id_to_deny = update.message.text
-    try: 
+    try:
         chat_id_to_deny = int(chat_id_to_deny)
-        pass
     except ValueError:
         send_command_reply(update, context, message="Error. This is not a valid chat ID.")
         return ConversationHandler.END
@@ -238,7 +245,7 @@ def deny_user_helper(update, context):
         else:
             send_command_reply(update, context, message="Error. Setting of new status 3 (denied) for chat ID "+user_id_linker(chat_id_to_deny)+" failed.\nThis user may already be denied.\nOtherwise, please try again.")
     else:
-        send_command_reply(update, context, message="Error. Chat ID "+user_id_linker(chat_id_to_deny)+" does not exist in list.")
+        send_command_reply(update, context, message="Error. Chat ID "+user_id_linker(chat_id_to_deny)+" does not exist in database.")
     return ConversationHandler.END
 
 
@@ -461,9 +468,13 @@ def button_getwebsiteinfo(update, context):
 def addwebsite(update, context):
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 0:
         if len(context.args) == 3:
-            ws_name = str(context.args[0])
-            url = str(context.args[1])
-            time_sleep = int(context.args[2])
+            try:
+                ws_name = convert_less_than_greater_than(str(context.args[0]))
+                url = str(context.args[1])
+                time_sleep = int(context.args[2])
+            except ValueError:
+                send_command_reply(update, context, message="Error while parsing your arguments. Check the format and try again.")
+                return
             if dbs.db_websites_add(ws_name=ws_name,
                                    url=url,
                                    time_sleep=time_sleep,
@@ -475,7 +486,7 @@ def addwebsite(update, context):
                                    last_content=None):
                 send_command_reply(update, context, message="The website "+str(ws_name)+" has successfully been added to the list.")
             else:
-                send_command_reply(update, context, message="Error. Addition of website "+str(ws_name)+" failed.\nTry again or check if a website with the same name is already on the list with the /subscriptions command.")
+                send_command_reply(update, context, message="Error. Addition of website "+str(ws_name)+" failed.\nTry again or check if a website with the same name or url is already in the database with the /subscriptions command.")
         else:
             send_command_reply(update, context, message="Error. You did not provide the correct arguments for this command (format: \"/addwebsite name url t_sleep\").")
     else:
@@ -488,11 +499,18 @@ def addwebsite(update, context):
 def removewebsite(update, context):
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 0:
         if len(context.args) == 1:
-            ws_name = str(context.args[0])
-            if dbs.db_websites_remove(ws_name=ws_name):
-                send_command_reply(update, context, message="The website "+str(ws_name)+" has successfully been removed from the list.")
+            try:
+                ws_name = convert_less_than_greater_than(str(context.args[0]))
+            except ValueError:
+                send_command_reply(update, context, message="Error while converting your message to a string. It should be impossible to see this error.")
+                return
+            if dbs.db_websites_get_id(ws_name=ws_name):
+                if dbs.db_websites_remove(ws_name=ws_name):
+                    send_command_reply(update, context, message="The website "+str(ws_name)+" has successfully been removed from the database.")
+                else:
+                    send_command_reply(update, context, message="Error. Removal of website "+str(ws_name)+" failed.\nTry again or check if this website (with this exact spelling) even exists in the database with the /subscriptions command.")
             else:
-                send_command_reply(update, context, message="Error. Removal of website "+str(ws_name)+" failed.\nTry again or check if this website (with this exact spelling) even exists on the list with the /subscriptions command.")
+                send_command_reply(update, context, message="Error. This website does not exist in the database.")
         else:
             send_command_reply(update, context, message="Error. You did not provide the correct arguments for this command (format: \"/removewebsite name\").")
     else:
@@ -512,12 +530,6 @@ def build_menu(buttons, n_cols, header_buttons=False, footer_buttons=False):
 
 # access level: generic
 @send_typing_action
-def sql_semicolon(update, context):
-    send_command_reply(update, context, message="Sorry, semicolons are not allowed for security reasons. Please try again without it.")
-
-
-# access level: generic
-@send_typing_action
 def unknown_text(update, context):
     send_command_reply(update, context, message="Sorry, I only understand commands. Check if you entered a leading slash or get a list of the available commands with /commands.")
 
@@ -526,6 +538,12 @@ def unknown_text(update, context):
 @send_typing_action
 def unknown_command(update, context):
     send_command_reply(update, context, message="Sorry, I did not understand that command. Check the spelling or get a list of the available commands with /commands.")
+
+
+# access level: builtin
+def convert_less_than_greater_than(unstripped_string):
+    stripped_string = unstripped_string.replace("<", "&lt;").replace(">", "&gt;")
+    return stripped_string
 
 
 # access level: builtin
@@ -622,8 +640,6 @@ def init(on_rpi):
     APPROVE_CHAT_ID_STATE, DENY_CHAT_ID_STATE = range(2)
     WS_NAME_STATE, WS_URL_STATE, WS_TIME_SLEEP_STATE = range(3)
 
-    # --- Filter out semicolons for SQL safety (before anything else):
-    dispatcher.add_handler(MessageHandler(Filters.regex(";"), sql_semicolon))
     # --- Generally accessible commands (access levels 0 to 3):
     dispatcher.add_handler(CommandHandler("start", start))
     # Conversation handler ->:
