@@ -14,7 +14,7 @@ import time  # for sleeping
 import traceback  # for logging the full traceback
 
 ### external libraries
-import html2text  # for passing html to text
+import html2text  # converting html to text
 import sdnotify  # for the systemctl watchdog
 from unidecode import unidecode  # for stripping Ümläüte
 
