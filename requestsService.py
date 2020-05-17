@@ -17,7 +17,7 @@ import telegramService as tgs
 my_timeout = 10
 my_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:75.0) Gecko/20100101 Firefox/74.0',
               'Accept': 'text/html'}
-my_verify = False
+my_verify = True
 
 
 # prevent sending repeated errors via telegram (on a per-url basis)
