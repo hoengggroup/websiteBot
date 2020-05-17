@@ -1,0 +1,17 @@
+[Unit]
+Description=Website Bot
+After=network-online.target
+
+[Service]
+Type=simple
+User=pi
+ExecStart=/home/pi/websitebot.sh -v de
+WatchdogSec=300s
+StartLimitBurst=3
+StartLimitInterval=10min
+NotifyAccess=all
+Restart=always
+RemainAfterExit=no
+
+[Install]
+WantedBy=multi-user.target

@@ -7,5 +7,8 @@ systemctl list-units --type=service
 Reset restart-fail-counter:
 systemctl reset-failed fail2ban.service
 
+Join output of service:
+journalctl -f -u websitebot.service
+
 If there is a network problem, usually the vpn service has to be restarted:
  sudo systemctl restart openvpn.service
