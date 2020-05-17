@@ -120,5 +120,6 @@ fi
 if [ "$restart_flag" = false ]; then
     printf "Starting bot in directory: ${bot_directory}\n"
     get_ip
-    python3 ${bot_directory}main_driver.py
+    cd ${bot_directory}
+    python3 main_driver.py
 fi
