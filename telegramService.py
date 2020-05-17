@@ -109,13 +109,20 @@ def applycancel(update, context):
 # access level: admin (0)
 @send_typing_action
 def pendingusers(update, context):
+    print("in function")
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 0:
         chat_ids = dbs.db_users_get_all_ids()
         buttons = list()
         for ids in chat_ids:
+            print("in user loop")
             if dbs.db_users_get_data(tg_id=ids, field="status") == 2:
+                print("pending user")
                 apply_name = dbs.db_users_get_data(tg_id=ids, field="apply_name")
-                buttons.append(InlineKeyboardButton(apply_name + " (" + str(ids) + ")", callback_data="user-"+str(ids)))
+                try:
+                    buttons.append(InlineKeyboardButton(apply_name + " (" + str(ids) + ")", callback_data="user-"+str(ids)))
+                except Exception as e:
+                    logger.warning("Exception!" + str(e))
+                    return
         buttons.append(InlineKeyboardButton("Exit menu", callback_data="exit_users"))
         reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
         send_command_reply(update, context, message="Here is a list of users with pending applications:\nClick for details.", reply_markup=reply_markup)
