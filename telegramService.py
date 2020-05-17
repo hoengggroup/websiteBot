@@ -534,9 +534,11 @@ def error_callback(update, context):
     try:
         raise context.error
     except TelegramError as e:
-        logger.warning("TelegramException (in error callback function)!" + str(e))
+        logger.error("TelegramException!" + str(e))
+        send_admin_broadcast("Error: " + convert_less_than_greater_than(str(e)))
     except Exception as e:
-        logger.warning("Exception (in error callback function)!" + str(e))
+        logger.error("Exception!" + str(e))
+        send_admin_broadcast("Error: " + convert_less_than_greater_than(str(e)))
 
 
 # access level: generic
