@@ -1,5 +1,5 @@
 Edit a service:
- sudo systemctl edit --full websitebot.service
+sudo systemctl edit --full websitebot.service
 
 List all services:
 systemctl list-units --type=service
@@ -9,6 +9,3 @@ systemctl reset-failed fail2ban.service
 
 Join output of service:
 journalctl -f -u websitebot.service
-
-If there is a network problem, usually the vpn service has to be restarted:
- sudo systemctl restart openvpn.service
