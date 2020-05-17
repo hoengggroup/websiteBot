@@ -36,11 +36,6 @@ restart_bot() {
         sync_github
         github_flag=false
     fi
-    if [ "$vpn_flag" = true ]; then
-        sudo pkill openvpn
-        connect_vpn
-        vpn_flag=false
-    fi
     printf 'Restarting websitebot service. Wait for output of service status.\n'
     sudo systemctl start websitebot.service
     sleep 2
@@ -105,6 +100,7 @@ while getopts 'rgv:d:h' flag; do
 done
 
 if [ "$restart_flag" = true ]; then
+    vpn_flag=false
     restart_bot
 fi
 
