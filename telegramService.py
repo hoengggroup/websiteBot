@@ -528,6 +528,13 @@ def build_menu(buttons, n_cols, header_buttons=False, footer_buttons=False):
     return menu
 
 
+def error_callback(update, context):
+    try:
+        raise context.error
+    except Exception as e:
+        logger.warning("Exception!" + str(e))
+
+
 # access level: generic
 @send_typing_action
 def unknown_text(update, context):
@@ -695,5 +702,7 @@ def init(on_rpi):
     # --- Catch-all for unknown inputs (need to be added last):
     dispatcher.add_handler(MessageHandler(Filters.text & (~ Filters.command), unknown_text))
     dispatcher.add_handler(MessageHandler(Filters.command, unknown_command))
+
+    dispatcher.add_error_handler(error_callback)
 
     updater.start_polling()
