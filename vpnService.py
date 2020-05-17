@@ -23,10 +23,9 @@ def get_nordvpn_api():
 
 def get_ipify_api():
     ip_address_ipify_tmp = None
-    response_ipify = rqs.get_url(url="https://api.ipify.org?format=json")
+    response_ipify = rqs.get_url(url="https://api.ipify.org")
     if response_ipify:
-        response_ipify_json = response_ipify.json()
-        ip_address_ipify_tmp = response_ipify_json["ip"]
+        ip_address_ipify_tmp = response_ipify
         logger.debug("The IP address according to Ipify is " + ip_address_ipify_tmp + ".")
     return ip_address_ipify_tmp  # returns None if request fails
 
