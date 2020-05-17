@@ -25,7 +25,7 @@ def get_ipify_api():
     ip_address_ipify_tmp = None
     response_ipify = rqs.get_url(url="https://api.ipify.org")
     if response_ipify:
-        ip_address_ipify_tmp = str(response_ipify.content)
+        ip_address_ipify_tmp = str(response_ipify.content).decode()
         logger.debug("The IP address according to Ipify is " + ip_address_ipify_tmp + ".")
     return ip_address_ipify_tmp  # returns None if request fails
 
