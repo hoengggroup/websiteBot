@@ -15,6 +15,8 @@ from loggerService import create_logger
 import databaseService as dbs
 
 
+from telegram.error import TelegramError
+
 # logging
 logger = create_logger("tg")
 
@@ -122,8 +124,7 @@ def pendingusers(update, context):
                     buttons.append(InlineKeyboardButton(apply_name + " (" + str(ids) + ")", callback_data="user-"+str(ids)))
                 except Exception as e:
                     logger.warning("Exception (in try-except)!" + str(e))
-                    raise IndexError("test")
-                    return
+                    raise TelegramError("test")
         buttons.append(InlineKeyboardButton("Exit menu", callback_data="exit_users"))
         reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
         send_command_reply(update, context, message="Here is a list of users with pending applications:\nClick for details.", reply_markup=reply_markup)
@@ -539,6 +540,8 @@ def build_menu(buttons, n_cols, header_buttons=False, footer_buttons=False):
 def error_callback(update, context):
     try:
         raise context.error
+    except TelegramError as e:
+        logger.warning("TelegramException (in error callback function)!" + str(e))
     except Exception as e:
         logger.warning("Exception (in error callback function)!" + str(e))
 
