@@ -37,6 +37,7 @@ restart_bot() {
         github_flag=false
     fi
     if [ "$vpn_flag" = true ]; then
+        sudo pkill openvpn
         connect_vpn
         vpn_flag=false
     fi
@@ -119,7 +120,4 @@ if [ "$restart_flag" = false ]; then
     printf "Starting bot in directory: ${bot_directory}\n"
     get_ip
     python3 ${bot_directory}main_driver.py
-    printf 'Started bot. Running python3 processes:\n'
-    ps -ef | grep python3
-    printf 'End of script.\n'
 fi
