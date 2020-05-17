@@ -121,7 +121,8 @@ def pendingusers(update, context):
                 try:
                     buttons.append(InlineKeyboardButton(apply_name + " (" + str(ids) + ")", callback_data="user-"+str(ids)))
                 except Exception as e:
-                    logger.warning("Exception!" + str(e))
+                    logger.warning("Exception (in try-except)!" + str(e))
+                    raise IndexError("test")
                     return
         buttons.append(InlineKeyboardButton("Exit menu", callback_data="exit_users"))
         reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
@@ -539,7 +540,7 @@ def error_callback(update, context):
     try:
         raise context.error
     except Exception as e:
-        logger.warning("Exception!" + str(e))
+        logger.warning("Exception (in error callback function)!" + str(e))
 
 
 # access level: generic
