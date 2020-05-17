@@ -113,6 +113,7 @@ if [ "$github_flag" = true ]; then
 fi
 
 if [ "$vpn_flag" = true ]; then
+    sudo pkill openvpn
     connect_vpn
 fi
 
