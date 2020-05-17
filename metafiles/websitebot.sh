@@ -3,21 +3,26 @@
 restart_flag=false
 github_flag=false
 vpn_flag=false
+directory_flag=false
 temp_directory='/home/pi/temp/'
 vpn_directory='/etc/openvpn/'
-vpn_pattern='ch'
 vpn_suffix='.tcp443.ovpn'
 bot_directory='/home/pi/oldShatterhand/oldShatterhand/'
 help_text="\
-Usage: $(basename $0) [-r] [-g] [-v VPN_PATTERN] [-d BOT_DIRECTORY]
+Usage: $(basename "$0") [-r] [-g] [-v VPN_PATTERN] [-d BOT_DIRECTORY]
+  start the bot using python3.8 (primarily for the systemctl service)
+
+Disallowed combination of options:
+  -r with anything except -g
 
 Options:
-  -r                  restart the bot service
-  -g                  clone the bot's code from GitHub
+  -r                  restart the bot's systemctl service instead of starting the bot directly
+                      (primarily for manual intervention)
+  -g                  clone the bot's code from GitHub before (re-)starting
   -v <VPN_PATTERN>    connect to VPN before starting the bot using a configuration matching VPN_PATTERN
-                      defaults to configurations containing 'ch'
-  -d <BOT_DIRECTORY>  run the bot from the specified directory
-                      defaults to '/home/pi/oldShatterhand/oldShatterhand/'
+  -d <BOT_DIRECTORY>  start the bot from the specified directory
+                      (defaults to '/home/pi/oldShatterhand/oldShatterhand/')
+  -h                  display this help text
 "
 
 print_usage() {
@@ -34,7 +39,6 @@ restart_bot() {
     printf 'websitebot service stopped.\n'
     if [ "$github_flag" = true ]; then
         sync_github
-        github_flag=false
     fi
     printf 'Restarting websitebot service. Wait for output of service status.\n'
     sudo systemctl start websitebot.service
@@ -44,7 +48,7 @@ restart_bot() {
 
 sync_github() {
     printf 'Cloning from GitHub.\n'
-    git clone git@github.com:niklasbogensperger/websiteBot.git $temp_directory
+    git clone git@github.com:hoengggroup/websiteBot.git $temp_directory
     rsync -av $temp_directory $bot_directory
     rm -rf $temp_directory
     printf 'Successfully cloned from GitHub.\n'
@@ -54,7 +58,6 @@ connect_vpn() {
     printf 'Connecting to VPN.\n'
     get_ip
     connection_success=false
-
     for i in $(curl --silent https://api.nordvpn.com/server/stats | jq --slurp --raw-output --arg vpn_pattern "$vpn_pattern" '.[] | to_entries | map(select(.key | contains($vpn_pattern))) | sort_by(.value.percent) | limit(10;.[]) | [.key] | "\(.[0])"'); do
         config="${vpn_directory}${i}${vpn_suffix}"
         if sudo openvpn --config $config --auth-user-pass ${vpn_directory}auth.txt --daemon; then
@@ -93,27 +96,32 @@ while getopts 'rgv:d:h' flag; do
         g) github_flag=true ;;
         v) vpn_flag=true
            vpn_pattern="${OPTARG}" ;;
-        d) bot_directory="${OPTARG}" ;;
-        *) print_usage  # -h flag does not raise error here because it is also specified as a flag above
-        exit 1 ;;
+        d) directory_flag=true
+           bot_directory="${OPTARG}" ;;
+        h) print_usage
+           exit 0 ;;
+        *) print_usage
+           exit 1 ;;
     esac
 done
 
 if [ "$restart_flag" = true ]; then
-    vpn_flag=false
+    if [ "$vpn_flag" = true ]; then
+        printf 'Warning: Disregarding -v option. Please do not use -v when restarting with -r, as the VPN is handled by the service when it is restarted.\n'
+    fi
+    if [ "$directory_flag" = true ]; then
+        printf 'Warning: Disregarding -d option. Please do not use -d when restarting with -r, as the default directory is always used by the service when it is restarted.\n'
+    fi
     restart_bot
-fi
-
-if [ "$github_flag" = true ]; then
-    sync_github
-fi
-
-if [ "$vpn_flag" = true ]; then
-    sudo pkill openvpn
-    connect_vpn
-fi
-
-if [ "$restart_flag" = false ]; then
+    exit 0
+else
+    if [ "$github_flag" = true ]; then
+        sync_github
+    fi
+    if [ "$vpn_flag" = true ]; then
+        sudo pkill openvpn
+        connect_vpn
+    fi
     printf "Starting bot in directory: ${bot_directory}\n"
     get_ip
     cd ${bot_directory}
