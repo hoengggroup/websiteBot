@@ -28,7 +28,7 @@ import vpnService as vpns
 
 
 # MAIN PARAMETERS
-version_code = "5.1 beta1"
+version_code = "5.2"
 keep_website_history = True
 
 
@@ -44,6 +44,7 @@ def exit_cleanup(*args):
         logger.info("Database disconnected successfully.")
     tgs.send_admin_broadcast("Shutdown complete.")
     tgs.exit_cleanup_tg()
+    logger.info("Telegram bot stopped successfully.")
     logger.warning("Shutdown complete. This is the last line.")
     sys.exit(1)
 

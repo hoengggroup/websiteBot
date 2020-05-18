@@ -22,7 +22,9 @@ logger = create_logger("tg")
 
 # terminating
 def exit_cleanup_tg():
+    logger.info("Stopping telegram bot instances.")
     updater.stop()
+    logger.info("Successfully stopped telegram bot instances.")
 
 
 # access level: builtin (decorator)
@@ -101,9 +103,9 @@ def apply_message(update, context):
 # conversation helper function for apply()
 @send_typing_action
 def applycancel(update, context):
-    dbs.db_users_set_data(tg_id=update.message.chat_id, field="apply_name", argument="")
-    dbs.db_users_set_data(tg_id=update.message.chat_id, field="apply_text", argument="")
-    send_command_reply(update, context, message="Bye! You can restart the application at any point with /apply.")
+    dbs.db_users_set_data(tg_id=update.message.chat_id, field="apply_name", argument=None)
+    dbs.db_users_set_data(tg_id=update.message.chat_id, field="apply_text", argument=None)
+    send_command_reply(update, context, message="Application cancelled. You can restart the application at any point with /apply. You can also completely stop using this bot with /stop.")
     return ConversationHandler.END
 
 
@@ -112,12 +114,11 @@ def applycancel(update, context):
 @send_typing_action
 def pendingusers(update, context):
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 0:
-        chat_ids = dbs.db_users_get_all_ids()
+        chat_ids = dbs.db_users_get_pending_ids()
         buttons = list()
         for ids in chat_ids:
-            if dbs.db_users_get_data(tg_id=ids, field="status") == 2:
-                apply_name = dbs.db_users_get_data(tg_id=ids, field="apply_name")
-                buttons.append(InlineKeyboardButton(apply_name + " (" + str(ids) + ")", callback_data="user-"+str(ids)))
+            apply_name = dbs.db_users_get_data(tg_id=ids, field="apply_name")
+            buttons.append(InlineKeyboardButton(str(apply_name) + " (" + str(ids) + ")", callback_data="user-"+str(ids)))
         buttons.append(InlineKeyboardButton("Exit menu", callback_data="exit_users"))
         reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
         send_command_reply(update, context, message="Here is a list of users with pending applications:\nClick for details.", reply_markup=reply_markup)
@@ -401,6 +402,7 @@ def stop(update, context):
             ws_name = dbs.db_websites_get_name(ids)
             active_subs.append(ws_name)
         if active_subs:
+            active_subs.sort()
             message_list = "\n- "
             message_list += "\n- ".join(active_subs)
             send_command_reply(update, context, message="Your previous subscriptions were: "+message_list)
@@ -530,17 +532,6 @@ def build_menu(buttons, n_cols, header_buttons=False, footer_buttons=False):
     return menu
 
 
-def error_callback(update, context):
-    try:
-        raise context.error
-    except TelegramError as e:
-        logger.error("TelegramException!" + str(e))
-        send_admin_broadcast("Error: " + convert_less_than_greater_than(str(e)))
-    except Exception as e:
-        logger.error("Exception!" + str(e))
-        send_admin_broadcast("Error: " + convert_less_than_greater_than(str(e)))
-
-
 # access level: generic
 @send_typing_action
 def unknown_text(update, context):
@@ -618,6 +609,18 @@ def send_admin_broadcast(message):
     admin_message = "[ADMIN BROADCAST]\n" + message
     for adm_chat_id in admin_chat_ids:
         send_general_broadcast(chat_id=adm_chat_id, message=admin_message)
+
+
+# access level: builtin
+def error_callback(update, context):
+    try:
+        raise context.error
+    except TelegramError as e:
+        logger.error("A Telegram-specific error has occured in the telegram bot: " + str(e))
+        send_admin_broadcast("A Telegram-specific error has occured in the telegram bot: " + convert_less_than_greater_than(str(e)))
+    except Exception as e:
+        logger.error("An exception has occured in the telegram bot: " + str(e))
+        send_admin_broadcast("An exception has occured in the telegram bot: " + convert_less_than_greater_than(str(e)))
 
 
 ### Main function
@@ -708,7 +711,7 @@ def init(on_rpi):
     # --- Catch-all for unknown inputs (need to be added last):
     dispatcher.add_handler(MessageHandler(Filters.text & (~ Filters.command), unknown_text))
     dispatcher.add_handler(MessageHandler(Filters.command, unknown_command))
-
+    # --- Handler for errors and exceptions in all bot functions
     dispatcher.add_error_handler(error_callback)
 
     updater.start_polling()

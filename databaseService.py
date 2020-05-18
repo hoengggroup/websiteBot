@@ -190,7 +190,21 @@ def db_users_exists(tg_id):
 # GET LIST OF USER IDS
 def db_users_get_all_ids():
     try:
-        postgres_query = """SELECT tg_id FROM users;"""
+        postgres_query = """SELECT tg_id FROM users WHERE apply_text IS NOT NULL ORDER BY status, apply_date;"""
+        cur.execute(postgres_query)
+        ids = cur.fetchall()
+        conn.commit()
+        return [item for t in ids for item in t]  # returns a list
+    except Exception as ex:
+        conn.rollback()
+        db_exc_handler(ex, conn)
+        return None
+
+
+# GET LIST OF PENDING USER IDS
+def db_users_get_pending_ids():
+    try:
+        postgres_query = """SELECT tg_id FROM users WHERE apply_text IS NOT NULL AND status = 2 ORDER BY apply_date;"""
         cur.execute(postgres_query)
         ids = cur.fetchall()
         conn.commit()
@@ -333,7 +347,7 @@ def db_websites_get_name(ws_id):
 # GET LIST OF WEBSITE IDS
 def db_websites_get_all_ids():
     try:
-        postgres_query = """SELECT ws_id FROM websites;"""
+        postgres_query = """SELECT ws_id FROM websites ORDER BY ws_name;"""
         cur.execute(postgres_query)
         ids = cur.fetchall()
         conn.commit()
@@ -535,7 +549,7 @@ def db_subscriptions_by_website(ws_name):
         logger.debug("subscriptions_by_website: Website \""+str(ws_name)+"\" does not exist.")
         return None
     try:
-        postgres_query = """SELECT tg_id FROM subscriptions WHERE ws_id = %s;"""
+        postgres_query = """SELECT tg_id FROM subscriptions WHERE ws_id = %s ORDER BY tg_id;"""
         cur.execute(postgres_query, (ws_id,))  # turn ws_id into a tuple to avoid a TypeError
         subscribers = cur.fetchall()
         conn.commit()
@@ -552,7 +566,7 @@ def db_subscriptions_by_user(tg_id):
         logger.debug("subscriptions_by_user: User "+str(tg_id)+" does not exist.")
         return None
     try:
-        postgres_query = """SELECT ws_id FROM subscriptions WHERE tg_id = %s;"""
+        postgres_query = """SELECT ws_id FROM subscriptions WHERE tg_id = %s ORDER BY ws_id;"""
         cur.execute(postgres_query, (tg_id,))  # turn tg_id into a tuple to avoid a TypeError
         websites_ids = cur.fetchall()
         conn.commit()
