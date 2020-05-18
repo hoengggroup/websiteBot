@@ -71,7 +71,7 @@ def get_url(url, ws_name=None):
         logger.error("An unknown RequestException has occured while getting " + str(url))
         logger.error("The error is: " + str(e))
         if not error_states[url]:
-            tgs.send_admin_broadcast("A unknown RequestException has occured while getting " + str(url))
+            tgs.send_admin_broadcast("An unknown RequestException has occured while getting " + str(url))
             error_states[url] = True
         if ws_name:
             dbs.db_websites_set_data(ws_name=ws_name, field="last_error_msg", argument=str(e))
