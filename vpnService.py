@@ -25,7 +25,7 @@ def get_icanhazip_api():
     ip_address_icanhazip_tmp = None
     response_icanhazip = rqs.get_url(url="https://icanhazip.com/")
     if response_icanhazip:
-        ip_address_icanhazip_tmp = response_icanhazip.text
+        ip_address_icanhazip_tmp = response_icanhazip.text.strip()
         logger.debug("The IP address according to Icanhazip is " + ip_address_icanhazip_tmp + ".")
     return ip_address_icanhazip_tmp  # returns None if request fails
 
