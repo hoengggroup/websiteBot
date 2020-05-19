@@ -30,7 +30,7 @@ print_usage() {
 }
 
 get_ip() {
-    printf "The current IP address is: $(curl --silent https://api.ipify.org)\n"
+    printf "The current IP address is: $(curl --silent https://icanhazip.com/)\n"
 }
 
 restart_bot() {

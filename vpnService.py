@@ -21,19 +21,19 @@ def get_nordvpn_api():
     return ip_address_nordvpn_tmp, status_nordvpn_tmp  # returns None if request fails
 
 
-def get_ipify_api():
-    ip_address_ipify_tmp = None
-    response_ipify = rqs.get_url(url="https://api.ipify.org")
-    if response_ipify:
-        ip_address_ipify_tmp = response_ipify.text
-        logger.debug("The IP address according to Ipify is " + ip_address_ipify_tmp + ".")
-    return ip_address_ipify_tmp  # returns None if request fails
+def get_icanhazip_api():
+    ip_address_icanhazip_tmp = None
+    response_icanhazip = rqs.get_url(url="https://icanhazip.com/")
+    if response_icanhazip:
+        ip_address_icanhazip_tmp = response_icanhazip.text
+        logger.debug("The IP address according to Icanhazip is " + ip_address_icanhazip_tmp + ".")
+    return ip_address_icanhazip_tmp  # returns None if request fails
 
 
 def is_vpn_active():
     ip_address_nordvpn_tmp, status_nordvpn_tmp = get_nordvpn_api()
-    ip_address_ipify_tmp = get_ipify_api()
-    if (ip_address_ipify == ip_address_ipify_tmp) and (ip_address_nordvpn == ip_address_nordvpn_tmp):
+    ip_address_icanhazip_tmp = get_icanhazip_api()
+    if (ip_address_icanhazip == ip_address_icanhazip_tmp) and (ip_address_nordvpn == ip_address_nordvpn_tmp):
         if status_nordvpn_tmp == status_nordvpn:
             logger.debug("VPN is active.")
         else:
@@ -46,21 +46,21 @@ def is_vpn_active():
 
 def init(mode="init"):
     if mode=="init":
-        global ip_address_nordvpn, status_nordvpn, ip_address_ipify
+        global ip_address_nordvpn, status_nordvpn, ip_address_icanhazip
 
     # check both APIs twice to be extra sure
     # ...also because the "status" (protected or unprotected) field in the NordVPN API is still not 100% reliable
     # ...that is why only one of the status_nordvpn variables need to equal "Protected" to validate the VPN connection
     ip_address_nordvpn_1, status_nordvpn_1 = get_nordvpn_api()
-    ip_address_ipify_1 = get_ipify_api()
+    ip_address_icanhazip_1 = get_icanhazip_api()
     ip_address_nordvpn_2, status_nordvpn_2 = get_nordvpn_api()
-    ip_address_ipify_2 = get_ipify_api()
+    ip_address_icanhazip_2 = get_icanhazip_api()
 
-    if ((ip_address_ipify_1 == ip_address_ipify_2) and (ip_address_nordvpn_1 == ip_address_nordvpn_2) and (ip_address_ipify_1 == ip_address_nordvpn_1)
+    if ((ip_address_icanhazip_1 == ip_address_icanhazip_2) and (ip_address_nordvpn_1 == ip_address_nordvpn_2) and (ip_address_icanhazip_1 == ip_address_nordvpn_1)
         and ((status_nordvpn_1 == "Protected") or (status_nordvpn_2 == "Protected"))):
         ip_address_nordvpn = ip_address_nordvpn_1
         status_nordvpn = "Protected"
-        ip_address_ipify = ip_address_ipify_1
+        ip_address_icanhazip = ip_address_icanhazip_1
         if mode=="re-establish":
             logger.info("Successfully validated re-established connection with VPN.")
         else:
