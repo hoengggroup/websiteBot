@@ -12,7 +12,7 @@ Furthermore, this bot is currently invitation-only after application (start the 
 ## Use / Installation
 #### If you want to use this one:
 - Start a chat with ```@websiteBot_bot``` on Telegram.
-- The bot will guide you on how to proceed (you will have to apply to use it - see above).
+- The bot will guide you on how to proceed (you will have to apply to use it).
 - Receive notifications about the available websites which you subscribe to.
 
 #### If you want to start your own instance of this bot:
@@ -30,6 +30,6 @@ Furthermore, this bot is currently invitation-only after application (start the 
 - ```python-telegram-bot``` - for interaction with the bot using Telegram
 - ```psycopg2``` - for interaction with the bot's PostgreSQL database
 - ```requests``` - for requesting and downloading the websites
-- ```html2text``` - for converting HTML to text for processing
-- ```unidecode``` - for stripping special characters for processing
+- ```html2text``` - for converting HTML to text during processing
+- ```unidecode``` - for stripping special characters during processing
 - ```sdnotify``` - for interacting with systemctl (only on Linux)
