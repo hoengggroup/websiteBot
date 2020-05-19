@@ -28,7 +28,7 @@ import vpnService as vpns
 
 
 # MAIN PARAMETERS
-version_code = "5.2"
+version_code = "5.2.1"
 keep_website_history = True
 
 
