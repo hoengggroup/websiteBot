@@ -4,11 +4,14 @@ restart_flag=false
 github_flag=false
 vpn_flag=false
 directory_flag=false
-temp_directory='/home/pi/temp/'
-vpn_directory='/etc/openvpn/'
+temp_directory='/home/bot/temp/'
+vpn_directory='/etc/openvpn/ovpn_tcp/'
 vpn_suffix='.tcp443.ovpn'
-bot_directory='/home/pi/oldShatterhand/oldShatterhand/'
+bot_directory='/home/bot/websitebot/websiteBot/'
 help_text="\
+You probably want to clone the source from GitHub and restart the systemctl service:
+$(basename "$0") -r -g
+
 Usage: $(basename "$0") [-r] [-g] [-v VPN_PATTERN] [-d BOT_DIRECTORY]
   start the bot using python3.8 (primarily for the systemctl service)
 
@@ -55,6 +58,10 @@ sync_github() {
 }
 
 connect_vpn() {
+    printf 'Modifying ip tables to allow incoming connections via non-vpn interface.\n'
+    sudo ip rule add from $(ip route get 1 | grep -Po '(?<=src )(\S+)') table 128
+    sudo ip route add table 128 to $(ip route get 1 | grep -Po '(?<=src )(\S+)')/32 dev $(ip -4 route ls | grep default | grep -Po '(?<=dev )(\S+)')
+    sudo ip route add table 128 default via $(ip -4 route ls | grep default | grep -Po '(?<=via )(\S+)')
     printf 'Connecting to VPN.\n'
     get_ip
     connection_success=false
