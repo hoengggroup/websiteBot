@@ -24,7 +24,7 @@ Options:
   -g                  clone the bot's code from GitHub before (re-)starting
   -v <VPN_PATTERN>    connect to VPN before starting the bot using a configuration matching VPN_PATTERN
   -d <BOT_DIRECTORY>  start the bot from the specified directory
-                      (defaults to '/home/pi/oldShatterhand/oldShatterhand/')
+                      (defaults to '/home/bot/websitebot/websiteBot/')
   -h                  display this help text
 "
 
