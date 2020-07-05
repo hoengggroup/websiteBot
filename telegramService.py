@@ -23,6 +23,8 @@ logger = create_logger("tg")
 # terminating
 def exit_cleanup_tg():
     logger.info("Stopping telegram bot instances.")
+    print("Wait for this process to be completed.")
+    print("DO NOT SEND ANY MORE KILL SIGNALS.")
     updater.stop()
     logger.info("Successfully stopped telegram bot instances.")
 
