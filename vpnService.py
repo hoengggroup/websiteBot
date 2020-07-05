@@ -12,7 +12,7 @@ logger = create_logger("vpn")
 def get_nordvpn_api():
     ip_address_nordvpn_tmp = None
     status_nordvpn_tmp = None
-    response_nordvpn = rqs.get_url(url="https://api.nordvpn.com/vpn/check/full")
+    response_nordvpn = rqs.get_url(url="https://api.nordvpn.com/vpn/check/full", timeout=10)
     if response_nordvpn:
         response_nordvpn_json = response_nordvpn.json()
         ip_address_nordvpn_tmp = response_nordvpn_json["ip"]
@@ -23,7 +23,7 @@ def get_nordvpn_api():
 
 def get_icanhazip_api():
     ip_address_icanhazip_tmp = None
-    response_icanhazip = rqs.get_url(url="https://icanhazip.com/")
+    response_icanhazip = rqs.get_url(url="https://icanhazip.com/", timeout=10)
     if response_icanhazip:
         ip_address_icanhazip_tmp = response_icanhazip.text.strip()
         logger.debug("The IP address according to Icanhazip is " + ip_address_icanhazip_tmp + ".")

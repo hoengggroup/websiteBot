@@ -28,14 +28,14 @@ notify_threshold_permissive = 3
 logger = create_logger("req")
 
 
-def get_url(url, ws_name=None):
+def get_url(url, ws_name=None, timeout=my_timeout):
     global error_states
     if not url in error_states:
         error_states[url] = 0
     response = None
     try:
         logger.debug("Getting " + str(url))
-        response = requests.get(url, timeout=my_timeout, headers=my_headers, verify=my_verify)
+        response = requests.get(url, timeout=timeout, headers=my_headers, verify=my_verify)
         response.raise_for_status()
         error_states[url] = 0
     except requests.exceptions.HTTPError as e:
