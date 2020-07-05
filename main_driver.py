@@ -32,6 +32,10 @@ version_code = "5.2.1"
 keep_website_history = True
 
 
+# Filter list
+filter_list = ['17.509','17.515','13.613','13.615','13.617','13.619','google']
+
+
 # logging
 logger = create_logger("main")
 
@@ -121,7 +125,7 @@ def process_website(logger, current_content, current_ws_name):
         logger.info("Website hashes do not match. Current hash " + str(current_hash) + " vs. previous hash " + str(last_hash) + ".")
         logger.debug("Content equal? " + str(last_content == current_content) + ".")
 
-        # 3.1 determine difference using DP (O(m * n) ^^)
+        # 3.1.1 determine difference using DP (O(m * n) ^^)
         logger.debug("Preprocess 1.")
         old_words_list = preprocess_string(last_content)
         logger.debug("Preprocess 2.")
@@ -145,11 +149,26 @@ def process_website(logger, current_content, current_ws_name):
                 for my_str in change_tupel:
                     msg_to_send += (my_str + " ")
                 msg_to_send += "\n"
+        
+        # 3.1.2 Filter
+        censor = False
+        for flt in filter_list:
+            if flt in msg_to_send:
+                censor = True
+                break
+
 
         # 3.2 notify world about changes
-        user_ids = dbs.db_subscriptions_by_website(ws_name=current_ws_name)
-        for ids in user_ids:
-            tgs.send_general_broadcast(ids, msg_to_send)
+        if(not censor):
+            user_ids = dbs.db_subscriptions_by_website(ws_name=current_ws_name)
+            for ids in user_ids:
+                tgs.send_general_broadcast(ids, msg_to_send)
+        else:
+            # censored content
+            tgs.send_admin_broadcast("CENSORED CONTENT")
+            tgs.send_admin_broadcast(msg_to_send)
+            tgs.send_admin_broadcast("!")
+
 
         # 3.3 update values in website table
         current_time_updated = datetime.now()
@@ -246,7 +265,8 @@ def main():
 
             # sleep until next go-around in loop
             # sleep for a random (out of five choices) prime number of seconds so no regular pattern of web requests develops
-            choice = random.choice([5, 7, 11, 13, 17])
+            # choice = random.choice([5, 7, 11, 13, 17])
+            choice = 1
             logger.debug("Pausing main loop now for " + str(choice) + " seconds.")
             time.sleep(choice)
     except Exception:
