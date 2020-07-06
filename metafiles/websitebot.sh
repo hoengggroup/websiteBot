@@ -58,17 +58,19 @@ sync_github() {
 }
 
 connect_vpn() {
-    printf 'Modifying ip tables to allow incoming connections via non-vpn interface.\n'
+    printf 'Disconnecting any existing VPN connections.\n'
+    sudo pkill openvpn
+    printf 'Modifying IP tables to allow incoming connections via non-VPN interface.\n'
     sudo ip rule add from $(ip route get 1 | grep -Po '(?<=src )(\S+)') table 128
     sudo ip route add table 128 to $(ip route get 1 | grep -Po '(?<=src )(\S+)')/32 dev $(ip -4 route ls | grep default | grep -Po '(?<=dev )(\S+)')
     sudo ip route add table 128 default via $(ip -4 route ls | grep default | grep -Po '(?<=via )(\S+)')
-    printf 'Connecting to VPN.\n'
     get_ip
+    printf 'Connecting to VPN.\n'
     connection_success=false
     for i in $(curl --silent https://api.nordvpn.com/server/stats | jq --slurp --raw-output --arg vpn_pattern "$vpn_pattern" '.[] | to_entries | map(select(.key | contains($vpn_pattern))) | sort_by(.value.percent) | limit(10;.[]) | [.key] | "\(.[0])"'); do
         config="${vpn_directory}${i}${vpn_suffix}"
         if sudo openvpn --config $config --auth-user-pass ${vpn_directory}auth.txt --daemon; then
-            printf "Successfully connected to VPN using config file: ${config}\nWaiting for new IP.\n"
+            printf "Successfully connected to VPN using config file: ${config}\nWaiting to display new IP.\n"
             sleep 15
             get_ip
             connection_success=true
@@ -81,7 +83,7 @@ connect_vpn() {
     if [ "$connection_success" = false ]; then
         for i in $(find ${vpn_directory} -name "$vpn_pattern*" | sort); do
             if sudo openvpn --config $i --auth-user-pass ${vpn_directory}auth.txt --daemon; then
-                printf "Successfully connected to VPN using config file: ${i}\nWaiting for new IP.\n"
+                printf "Successfully connected to VPN using config file: ${i}\nWaiting to display new IP.\n"
                 sleep 15
                 get_ip
                 connection_success=true
@@ -126,7 +128,6 @@ else
         sync_github
     fi
     if [ "$vpn_flag" = true ]; then
-        sudo pkill openvpn
         connect_vpn
     fi
     printf "Starting bot in directory: ${bot_directory}\n"
