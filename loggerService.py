@@ -6,7 +6,7 @@ import textwrap  # for aligning the log message into a column
 
 
 class WrappedFixedIndentingLog(logging.Formatter):
-    def __init__(self, fmt=None, datefmt=None, style='%', width=192, indent=45):
+    def __init__(self, fmt=None, datefmt=None, style='%', width=176, indent=46):
         super().__init__(fmt=fmt, datefmt=datefmt, style=style)
         self.wrapper = textwrap.TextWrapper(width=width, subsequent_indent=' '*indent)
     def format(self, record):
@@ -79,7 +79,7 @@ def create_logger(module):
         logger.addFilter(ModuleFilterGeneric())
 
     # create (custom) formatter and add it to the handlers
-    formatter = WrappedFixedIndentingLog("%(asctime)s - %(levelname)-8s - %(module_tag)-8s %(message)s", width=192, indent=45)
+    formatter = WrappedFixedIndentingLog("%(asctime)s - %(levelname)-8s - %(module_tag)-8s %(message)s", width=176, indent=46)
     fh.setFormatter(formatter)
     fh2.setFormatter(formatter)
     ch.setFormatter(formatter)
