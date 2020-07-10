@@ -19,6 +19,7 @@ import sdnotify  # for the systemctl watchdog
 from unidecode import unidecode  # for stripping Ümläüte
 
 ### our own libraries
+from configService import version_code, keep_website_history, filter_dict
 from loggerService import create_logger
 import dp_edit_distance
 import databaseService as dbs
@@ -27,17 +28,9 @@ import requestsService as rqs
 import vpnService as vpns
 
 
-# MAIN PARAMETERS
-version_code = "5.3"
-keep_website_history = True
-
-
-# Filter list
-filter_list = ['17.509','17.515','13.613','13.615','13.617','13.619','google']
-
-
 # logging
 logger = create_logger("main")
+
 
 #termination handler
 def exit_cleanup(*args):
@@ -111,7 +104,7 @@ def vpn_wait():
 
 def process_website(logger, current_content, current_ws_name):
     # 1. startup
-    logger.debug("Starting processing website.")
+    logger.debug("Started processing website.")
     last_time_updated = dbs.db_websites_get_data(ws_name=current_ws_name, field="last_time_updated")
     last_hash = dbs.db_websites_get_data(ws_name=current_ws_name, field="last_hash")
     last_content = dbs.db_websites_get_content(ws_name=current_ws_name, last_time_updated=last_time_updated, last_hash=last_hash)
@@ -125,7 +118,7 @@ def process_website(logger, current_content, current_ws_name):
         logger.info("Website hashes do not match. Current hash " + str(current_hash) + " vs. previous hash " + str(last_hash) + ".")
         logger.debug("Content equal? " + str(last_content == current_content) + ".")
 
-        # 3.1.1 determine difference using DP (O(m * n) ^^)
+        # 3.1 determine difference using DP (O(m * n) ^^)
         logger.debug("Preprocess 1.")
         old_words_list = preprocess_string(last_content)
         logger.debug("Preprocess 2.")
@@ -139,38 +132,41 @@ def process_website(logger, current_content, current_ws_name):
         logger.info("Website word difference is: " + str(changes))
         for change_tupel in changes:
             if change_tupel[0] == "swap":
-                msg_to_send += "SWAP: <i>" + change_tupel[1] + "</i> TO <b>" + change_tupel[2] + "</b>\n"
+                msg_to_send += "SWAP: <i>" + tgs.convert_less_than_greater_than(change_tupel[1]) + "</i> TO <b>" + tgs.convert_less_than_greater_than(change_tupel[2]) + "</b>\n"
             elif change_tupel[0] == "added":
-                msg_to_send += "ADD: <b>" + change_tupel[1] + "</b>\n"
+                msg_to_send += "ADD: <b>" + tgs.convert_less_than_greater_than(change_tupel[1]) + "</b>\n"
             elif change_tupel[0] == "deleted":
-                msg_to_send += "DEL: <i>" + change_tupel[1] + "</i>\n"
+                msg_to_send += "DEL: <i>" + tgs.convert_less_than_greater_than(change_tupel[1]) + "</i>\n"
             else:
                 msg_to_send += "Unknown OP: "
                 for my_str in change_tupel:
                     msg_to_send += (my_str + " ")
                 msg_to_send += "\n"
         
-        # 3.1.2 Filter
-        censor = False
-        for flt in filter_list:
-            if flt in msg_to_send:
-                censor = True
-                break
+        # 3.2 censor content based on filter list
+        filter_hits = list()
+        filters = filter_dict.get(current_ws_name)
+        if filters:
+            for flt in filters:
+                if flt in msg_to_send:
+                    filter_hits.append(flt)
 
-
-        # 3.2 notify world about changes
-        if(not censor):
-            user_ids = dbs.db_subscriptions_by_website(ws_name=current_ws_name)
+        # 3.3 notify world about changes
+        user_ids = dbs.db_subscriptions_by_website(ws_name=current_ws_name)
+        if not filter_hits:
             for ids in user_ids:
                 tgs.send_general_broadcast(ids, msg_to_send)
         else:
-            # censored content
-            tgs.send_admin_broadcast("CENSORED CONTENT")
-            tgs.send_admin_broadcast(msg_to_send)
-            tgs.send_admin_broadcast("!")
+            # send censored content only to (subscribed) admins
+            subscribed_admin_ids = list(set(user_ids).intersection(tgs.admin_chat_ids))
+            for ids in subscribed_admin_ids:
+                tgs.send_general_broadcast(ids, "[CENSORED CONTENT]")
+                tgs.send_general_broadcast(ids, msg_to_send)
+                tgs.send_general_broadcast(ids, "FILTER HITS:")
+                for hit in filter_hits:
+                    tgs.send_general_broadcast(ids, hit)
 
-
-        # 3.3 update values in website table
+        # 3.4 update values in website table
         current_time_updated = datetime.now()
         dbs.db_websites_set_data(ws_name=current_ws_name, field="last_time_updated", argument=current_time_updated)
         dbs.db_websites_set_data(ws_name=current_ws_name, field="last_hash", argument=current_hash)
@@ -201,33 +197,34 @@ def main():
     else:
         logger.info("Database connected successfully.")
 
-    # 3. detect deployment (check if we are running on rpi)
+    # 3. detect deployment
     dir_path = dirname(realpath(__file__))
-    if([f for f in listdir(dir_path) if (isfile(join(dir_path, f)) and f.endswith('.rpi'))] != []):
-        on_rpi = True
+    if([f for f in listdir(dir_path) if (isfile(join(dir_path, f)) and f.endswith('.websitebot_deployed'))] != []):
+        is_deployed = True
     else:
-        on_rpi = False
-    logger.info("Running on RPI: " + str(on_rpi))
+        is_deployed = False
+    logger.info("Deployment status: " + str(is_deployed))
 
     # 4. initialize telegram service
-    tgs.init(on_rpi)
+    # @websiteBot_bot if deployed, @websiteBotShortTests_bot if not deployed
+    tgs.init(is_deployed)
 
     # 5. initialize vpn service
-    if on_rpi:
-        # @websiteBot_bot
+    if([f for f in listdir(dir_path) if (isfile(join(dir_path, f)) and f.endswith('.websitebot_assert_vpn'))] != []):
         assert_vpn = True
+    else:
+        assert_vpn = False
+    logger.info("Asserting VPN connection: " + str(assert_vpn))
+    if assert_vpn:
         vpn_state = vpns.init()
         if not vpn_state:
             logger.critical("Fatal error: Could not validate connection with VPN. Exiting.")
             exit_cleanup()
         else:
             logger.info("VPN connection validated successfully.")
-    else:
-        # @websiteBotShortTests_bot
-        assert_vpn = False
 
     # 6. inform admins about startup
-    tgs.send_admin_broadcast("Starting up.\nVersion: \t"+version_code+"\nPlatform: \t"+str(platform.system())+"\nAssert VPN: \t"+str(assert_vpn)+"\nDeployed: \t"+str(on_rpi))
+    tgs.send_admin_broadcast("Startup complete.\nVersion: \t"+version_code+"\nPlatform: \t"+str(platform.system())+"\nAsserting VPN: \t"+str(assert_vpn)+"\nDeployed: \t"+str(is_deployed))
 
     # 7. main loop
     try:

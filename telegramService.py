@@ -9,16 +9,17 @@ import sys  # for getting detailed error msg
 ### external libraries
 from telegram import Bot, error, InlineKeyboardButton, InlineKeyboardMarkup, ChatAction
 from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, CallbackQueryHandler, Filters
+from telegram.error import TelegramError
 
 ### our own libraries
+from configService import filter_dict
 from loggerService import create_logger
 import databaseService as dbs
 
 
-from telegram.error import TelegramError
-
 # logging
 logger = create_logger("tg")
+
 
 # terminating
 def exit_cleanup_tg():
@@ -458,12 +459,13 @@ def button_getwebsiteinfo(update, context):
     website_data = dbs.db_websites_get_data(ws_name=callback_website)
     message = ("Website ID: " + str(website_data[0]) + "\n"
                "URL: " + str(website_data[2]) + "\n"
-               "Time sleep: " + str(website_data[3]) + "\n"
+               "Sleep time: " + str(website_data[3]) + "\n"
                "Last time checked: " + str(website_data[4]) + "\n"
                "Last time updated: " + str(website_data[5]) + "\n"
-               "Last error message: " + str(website_data[6]) + "\n"
+               "Last error message: " + convert_less_than_greater_than(str(website_data[6])) + "\n"
                "Last error time: " + str(website_data[7]) + "\n"
-               "Subscriptions: " + str(dbs.db_subscriptions_by_website(ws_name=callback_website)) + "\n")
+               "Subscriptions: " + str(dbs.db_subscriptions_by_website(ws_name=callback_website)) + "\n"
+               "Filters: " + str(filter_dict.get(callback_website)))
     send_general_broadcast(chat_id=callback_chat_id, message="Info for website \""+str(callback_website)+"\":\n"+message)
     bot.answer_callback_query(query["id"])
 
@@ -574,11 +576,11 @@ def truncate_message(message):
 
 # access level: builtin
 def send_command_reply(update, context, message, reply_markup=None):
-    logger.debug("Message to " + str(update.message.chat_id) + ":\n" + message)
-    if not(message):
-        logger.warning("Empty message to " + str(update.message.chat_id) + ". Not sent.")
-        return
     num_this_message = next(num_messages)
+    logger.debug("Message #" + str(num_this_message) + " to " + str(update.message.chat_id) + ":\n" + message)
+    if not(message):
+        logger.warning("Empty message #" + str(num_this_message) + " to " + str(update.message.chat_id) + ". Not sent.")
+        return
     message = truncate_message(message)
     try:
         context.bot.send_message(chat_id=update.message.chat_id, text=message, parse_mode="HTML", reply_markup=reply_markup)
@@ -591,11 +593,11 @@ def send_command_reply(update, context, message, reply_markup=None):
 
 # access level: builtin
 def send_general_broadcast(chat_id, message):
-    logger.debug("Message to " + str(chat_id) + ":\n" + message)
-    if not(message):
-        logger.warning("Empty message to " + str(chat_id) + ". Not sent.")
-        return
     num_this_message = next(num_messages)
+    logger.debug("Message #" + str(num_this_message) + " to " + str(chat_id) + ":\n" + message)
+    if not(message):
+        logger.warning("Empty message #" + str(num_this_message) + " to " + str(chat_id) + ". Not sent.")
+        return
     message = truncate_message(message)
     try:
         bot.send_message(chat_id=chat_id, text=message, parse_mode="HTML")
@@ -627,12 +629,12 @@ def error_callback(update, context):
 
 ### Main function
 # this needs to be called from main_driver to init the telegram service
-def init(on_rpi):
+def init(is_deployed):
     global updater
     global dispatcher
     global bot
 
-    if on_rpi:
+    if is_deployed:
         # @websiteBot_bot
         token = dbs.db_credentials_get_bot_token("websiteBot_bot")
         updater = Updater(token=token, use_context=True)
