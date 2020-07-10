@@ -8,15 +8,8 @@ import psycopg2  # for interacting with PostgreSQL databases
 import psycopg2.errorcodes  # ...its errorcodes module must be imported seperately
 
 ### our own libraries
+from configService import my_database, my_user, my_password, my_host, my_port
 from loggerService import create_logger
-
-
-# DATABASE PARAMETERS
-my_database = "websitebot_db"
-my_user = "websitebot"
-my_password = "webSiteBotPostGresQL"
-my_host = "localhost"
-my_port = "5432"
 
 
 # logging

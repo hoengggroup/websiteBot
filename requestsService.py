@@ -8,24 +8,17 @@ import sys  # for errors
 import requests  # for internet traffic
 
 ### our own libraries
+from configService import my_timeout, my_headers, my_verify, notify_threshold_strict, notify_threshold_permissive
 from loggerService import create_logger
 import databaseService as dbs
 import telegramService as tgs
 
 
-# REQUESTS PARAMETERS
-my_timeout = 3
-my_headers = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:78.0) Gecko/20100101 Firefox/78.0', 'Accept': 'text/html'}
-my_verify = True
-
-
-# prevent sending repeated errors via telegram (on a per-url basis)
-error_states = {}
-notify_threshold_strict = 1
-notify_threshold_permissive = 3
-
 # logging
 logger = create_logger("req")
+
+
+error_states = {}
 
 
 def get_url(url, ws_name=None, timeout=my_timeout):
