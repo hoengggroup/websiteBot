@@ -492,7 +492,7 @@ def addwebsite(update, context):
                                    last_error_time=None,
                                    last_hash=None,
                                    last_content=None):
-                send_command_reply(update, context, message="The website "+str(ws_name)+" has successfully been added to the list.")
+                send_admin_broadcast("The website "+str(ws_name)+" has successfully been added to the database.")
             else:
                 send_command_reply(update, context, message="Error. Addition of website "+str(ws_name)+" failed.\nTry again or check if a website with the same name or url is already in the database with the /subscriptions command.")
         else:
@@ -514,7 +514,7 @@ def removewebsite(update, context):
                 return
             if dbs.db_websites_get_id(ws_name=ws_name):
                 if dbs.db_websites_remove(ws_name=ws_name):
-                    send_command_reply(update, context, message="The website "+str(ws_name)+" has successfully been removed from the database.")
+                    send_admin_broadcast("The website "+str(ws_name)+" has successfully been removed from the database.")
                 else:
                     send_command_reply(update, context, message="Error. Removal of website "+str(ws_name)+" failed.\nTry again or check if this website (with this exact spelling) even exists in the database with the /subscriptions command.")
             else:
