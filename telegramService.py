@@ -78,7 +78,7 @@ def apply_name(update, context):
         send_command_reply(update, context, message="Error while converting your message to a string. It should be impossible to see this error.")
         return ConversationHandler.END
     dbs.db_users_set_data(tg_id=update.message.chat_id, field="apply_name", argument=apply_name)
-    send_command_reply(update, context, message="Ok, "+str(apply_name)+". Please send me your application to use this bot, which I will forward to the admins.")
+    send_command_reply(update, context, message="Ok, " + str(apply_name) + ". Please send me your application to use this bot, which I will forward to the admins.")
     return APPLY_MESSAGE_STATE
 
 
@@ -121,7 +121,7 @@ def pendingusers(update, context):
         buttons = list()
         for ids in chat_ids:
             apply_name = dbs.db_users_get_data(tg_id=ids, field="apply_name")
-            buttons.append(InlineKeyboardButton(str(apply_name) + " (" + str(ids) + ")", callback_data="user-"+str(ids)))
+            buttons.append(InlineKeyboardButton(str(apply_name) + " (" + str(ids) + ")", callback_data="user-" + str(ids)))
         buttons.append(InlineKeyboardButton("Exit menu", callback_data="exit_users"))
         reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
         send_command_reply(update, context, message="Here is a list of users with pending applications:\nClick for details.", reply_markup=reply_markup)
@@ -145,10 +145,10 @@ def button_pendingusers_detail(update, context):
                "Name on application: " + str(user_data[5]) + "\n"
                "Application: " + str(user_data[6]) + "\n"
                "Date of application: " + str(user_data[7]))
-    buttons = [InlineKeyboardButton("Approve", callback_data="usr_approve-"+str(callback_user)), InlineKeyboardButton("Deny", callback_data="usr_deny-"+str(callback_user))]
+    buttons = [InlineKeyboardButton("Approve", callback_data="usr_approve-" + str(callback_user)), InlineKeyboardButton("Deny", callback_data="usr_deny-" + str(callback_user))]
     buttons.append(InlineKeyboardButton("Exit menu", callback_data="exit_users"))
     reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
-    bot.edit_message_text(text=message+"\n\nWhat do you want to do with this user?", chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
+    bot.edit_message_text(text=message + "\n\nWhat do you want to do with this user?", chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
     bot.answer_callback_query(query["id"])
 
 
@@ -161,10 +161,10 @@ def button_pendingusers_approve(update, context):
     callback_user = int(callback_user_unstripped.replace("usr_approve-", ""))
     bot.edit_message_text(text="Reopen this menu at any time with /pendingusers.\nYou can also still use /approveuser and /denyuser.", chat_id=callback_chat_id, message_id=callback_message_id)
     if dbs.db_users_set_data(tg_id=callback_user, field="status", argument=1):
-        send_admin_broadcast("Chat ID "+user_id_linker(callback_user)+" successfully approved (status set to 1).")
+        send_admin_broadcast("Chat ID " + user_id_linker(callback_user) + " successfully approved (status set to 1).")
         send_general_broadcast(chat_id=callback_user, message="Your application to use this bot was granted. You can now display and subscribe to available websites with /subscriptions and see the available commands with /commands.")
     else:
-        send_command_reply(update, context, message="Error. Setting of new status 1 (approved) for chat ID "+user_id_linker(callback_user)+" failed.\nThis user may already be approved.\nOtherwise, please try again.")
+        send_command_reply(update, context, message="Error. Setting of new status 1 (approved) for chat ID " + user_id_linker(callback_user) + " failed.\nThis user may already be approved.\nOtherwise, please try again.")
     bot.answer_callback_query(query["id"])
 
 
@@ -177,10 +177,10 @@ def button_pendingusers_deny(update, context):
     callback_user = int(callback_user_unstripped.replace("usr_deny-", ""))
     bot.edit_message_text(text="Reopen this menu at any time with /pendingusers.\nYou can also still use /approveuser and /denyuser.", chat_id=callback_chat_id, message_id=callback_message_id)
     if dbs.db_users_set_data(tg_id=callback_user, field="status", argument=3):
-        send_admin_broadcast("Chat ID "+user_id_linker(callback_user)+" successfully denied (status set to 3).")
+        send_admin_broadcast("Chat ID " + user_id_linker(callback_user) + " successfully denied (status set to 3).")
         send_general_broadcast(chat_id=callback_user, message="Sorry, you were denied from using this bot. Goodbye.")
     else:
-        send_command_reply(update, context, message="Error. Setting of new status 3 (denied) for chat ID "+user_id_linker(callback_user)+" failed.\nThis user may already be denied.\nOtherwise, please try again.")
+        send_command_reply(update, context, message="Error. Setting of new status 3 (denied) for chat ID " + user_id_linker(callback_user) + " failed.\nThis user may already be denied.\nOtherwise, please try again.")
     bot.answer_callback_query(query["id"])
 
 
@@ -215,12 +215,12 @@ def approve_user_helper(update, context):
         return ConversationHandler.END
     if chat_id_to_approve in dbs.db_users_get_all_ids():
         if dbs.db_users_set_data(tg_id=chat_id_to_approve, field="status", argument=1):
-            send_admin_broadcast("Chat ID "+user_id_linker(chat_id_to_approve)+" successfully approved (status set to 1).")
+            send_admin_broadcast("Chat ID " + user_id_linker(chat_id_to_approve) + " successfully approved (status set to 1).")
             send_general_broadcast(chat_id=chat_id_to_approve, message="Your application to use this bot was granted. You can now display and subscribe to available websites with /subscriptions and see the available commands with /commands.")
         else:
-            send_command_reply(update, context, message="Error. Setting of new status 1 (approved) for chat ID "+user_id_linker(chat_id_to_approve)+" failed.\nThis user may already be approved.\nOtherwise, please try again.")
+            send_command_reply(update, context, message="Error. Setting of new status 1 (approved) for chat ID " + user_id_linker(chat_id_to_approve) + " failed.\nThis user may already be approved.\nOtherwise, please try again.")
     else:
-        send_command_reply(update, context, message="Error. Chat ID "+user_id_linker(chat_id_to_approve)+" does not exist in database.")
+        send_command_reply(update, context, message="Error. Chat ID " + user_id_linker(chat_id_to_approve) + " does not exist in database.")
     return ConversationHandler.END
 
 
@@ -246,12 +246,12 @@ def deny_user_helper(update, context):
         return ConversationHandler.END
     if chat_id_to_deny in dbs.db_users_get_all_ids():
         if dbs.db_users_set_data(tg_id=chat_id_to_deny, field="status", argument=3):
-            send_admin_broadcast("Chat ID "+user_id_linker(chat_id_to_deny)+" successfully denied (status set to 3).")
+            send_admin_broadcast("Chat ID " + user_id_linker(chat_id_to_deny) + " successfully denied (status set to 3).")
             send_general_broadcast(chat_id=chat_id_to_deny, message="Sorry, you were denied from using this bot. Goodbye.")
         else:
-            send_command_reply(update, context, message="Error. Setting of new status 3 (denied) for chat ID "+user_id_linker(chat_id_to_deny)+" failed.\nThis user may already be denied.\nOtherwise, please try again.")
+            send_command_reply(update, context, message="Error. Setting of new status 3 (denied) for chat ID " + user_id_linker(chat_id_to_deny) + " failed.\nThis user may already be denied.\nOtherwise, please try again.")
     else:
-        send_command_reply(update, context, message="Error. Chat ID "+user_id_linker(chat_id_to_deny)+" does not exist in database.")
+        send_command_reply(update, context, message="Error. Chat ID " + user_id_linker(chat_id_to_deny) + " does not exist in database.")
     return ConversationHandler.END
 
 
@@ -317,7 +317,7 @@ def commands(update, context):
                              "/getwebsiteinfo\n- get info about a given website\n"
                              "/addwebsite {name} {url} {t_sleep}\n- add a website to the list of available websites\n"
                              "/removewebsite {name}\n- remove a website from the list of available websites")
-        send_command_reply(update, context, message="The available commands are:\n"+command_list)
+        send_command_reply(update, context, message="The available commands are:\n" + command_list)
     else:
         send_command_reply(update, context, message="This command is only available to approved users. Sorry.")
 
@@ -342,10 +342,10 @@ def button_subscriptions_add(update, context):
     callback_website = callback_website_unstripped.replace("add_subs-", "")
     if dbs.db_subscriptions_subscribe(tg_id=callback_chat_id, ws_name=callback_website):
         reply_markup = build_subscriptions_keyboard(callback_chat_id)
-        bot.edit_message_text(text="You have successfully been subscribed to website: "+str(callback_website), chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
+        bot.edit_message_text(text="You have successfully been subscribed to website: " + str(callback_website), chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
     else:
         reply_markup = build_subscriptions_keyboard(callback_chat_id)
-        bot.edit_message_text(text="Error. Subscription to website "+str(callback_website)+" failed.\nPlease try again.", chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
+        bot.edit_message_text(text="Error. Subscription to website " + str(callback_website) + " failed.\nPlease try again.", chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
     bot.answer_callback_query(query["id"])
 
 
@@ -358,10 +358,10 @@ def button_subscriptions_remove(update, context):
     callback_website = callback_website_unstripped.replace("rem_subs-", "")
     if dbs.db_subscriptions_unsubscribe(tg_id=callback_chat_id, ws_name=callback_website):
         reply_markup = build_subscriptions_keyboard(callback_chat_id)
-        bot.edit_message_text(text="You have successfully been unsubscribed from website: "+str(callback_website), chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
+        bot.edit_message_text(text="You have successfully been unsubscribed from website: " + str(callback_website), chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
     else:
         reply_markup = build_subscriptions_keyboard(callback_chat_id)
-        bot.edit_message_text(text="Error. Unsubscription from website "+str(callback_website)+" failed.\nPlease try again.", chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
+        bot.edit_message_text(text="Error. Unsubscription from website " + str(callback_website) + " failed.\nPlease try again.", chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
     bot.answer_callback_query(query["id"])
 
 
@@ -383,12 +383,12 @@ def build_subscriptions_keyboard(callback_chat_id):
         ws_name = dbs.db_websites_get_name(ids)
         if dbs.db_subscriptions_check(tg_id=callback_chat_id, ws_id=ids):
             subscribed.append("✅")
-            buttons.append(InlineKeyboardButton(ws_name, callback_data="rem_subs-"+ws_name))
-            buttons.append(InlineKeyboardButton(subscribed[i], callback_data="rem_subs-"+ws_name))
+            buttons.append(InlineKeyboardButton(ws_name, callback_data="rem_subs-" + ws_name))
+            buttons.append(InlineKeyboardButton(subscribed[i], callback_data="rem_subs-" + ws_name))
         else:
             subscribed.append("❌")
-            buttons.append(InlineKeyboardButton(ws_name, callback_data="add_subs-"+ws_name))
-            buttons.append(InlineKeyboardButton(subscribed[i], callback_data="add_subs-"+ws_name))
+            buttons.append(InlineKeyboardButton(ws_name, callback_data="add_subs-" + ws_name))
+            buttons.append(InlineKeyboardButton(subscribed[i], callback_data="add_subs-" + ws_name))
     buttons.append(InlineKeyboardButton("Exit menu", callback_data="exit_subs"))
     reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=2))
     return reply_markup
@@ -408,7 +408,7 @@ def stop(update, context):
             active_subs.sort()
             message_list = "\n- "
             message_list += "\n- ".join(active_subs)
-            send_command_reply(update, context, message="Your previous subscriptions were: "+message_list)
+            send_command_reply(update, context, message="Your previous subscriptions were: " + message_list)
         else:
             send_command_reply(update, context, message="You were not subscribed to any websites.")
     else:
@@ -442,7 +442,7 @@ def getwebsiteinfo(update, context):
         buttons = list()
         for ids in websites_ids:
             ws_name = dbs.db_websites_get_name(ids)
-            buttons.append(InlineKeyboardButton(ws_name, callback_data="webpg_info-"+ws_name))
+            buttons.append(InlineKeyboardButton(ws_name, callback_data="webpg_info-" + ws_name))
         reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
         send_command_reply(update, context, message="List of websites:", reply_markup=reply_markup)
     else:
@@ -466,7 +466,7 @@ def button_getwebsiteinfo(update, context):
                "Last error time: " + str(website_data[7]) + "\n"
                "Subscriptions: " + str(dbs.db_subscriptions_by_website(ws_name=callback_website)) + "\n"
                "Filters: " + str(filter_dict.get(callback_website)))
-    send_general_broadcast(chat_id=callback_chat_id, message="Info for website \""+str(callback_website)+"\":\n"+message)
+    send_general_broadcast(chat_id=callback_chat_id, message="Info for website \"" + str(callback_website) + "\":\n" + message)
     bot.answer_callback_query(query["id"])
 
 
@@ -492,9 +492,9 @@ def addwebsite(update, context):
                                    last_error_time=None,
                                    last_hash=None,
                                    last_content=None):
-                send_admin_broadcast("The website "+str(ws_name)+" has successfully been added to the database.")
+                send_admin_broadcast("The website " + str(ws_name) + " has successfully been added to the database.")
             else:
-                send_command_reply(update, context, message="Error. Addition of website "+str(ws_name)+" failed.\nTry again or check if a website with the same name or url is already in the database with the /subscriptions command.")
+                send_command_reply(update, context, message="Error. Addition of website " + str(ws_name) + " failed.\nTry again or check if a website with the same name or url is already in the database with the /subscriptions command.")
         else:
             send_command_reply(update, context, message="Error. You did not provide the correct arguments for this command (format: \"/addwebsite name url t_sleep\").")
     else:
@@ -514,9 +514,9 @@ def removewebsite(update, context):
                 return
             if dbs.db_websites_get_id(ws_name=ws_name):
                 if dbs.db_websites_remove(ws_name=ws_name):
-                    send_admin_broadcast("The website "+str(ws_name)+" has successfully been removed from the database.")
+                    send_admin_broadcast("The website " + str(ws_name) + " has successfully been removed from the database.")
                 else:
-                    send_command_reply(update, context, message="Error. Removal of website "+str(ws_name)+" failed.\nTry again or check if this website (with this exact spelling) even exists in the database with the /subscriptions command.")
+                    send_command_reply(update, context, message="Error. Removal of website " + str(ws_name) + " failed.\nTry again or check if this website (with this exact spelling) even exists in the database with the /subscriptions command.")
             else:
                 send_command_reply(update, context, message="Error. This website does not exist in the database.")
         else:
