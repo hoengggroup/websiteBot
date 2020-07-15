@@ -51,14 +51,14 @@ class ModuleFilterGeneric(logging.Filter):
 
 def create_logger(module):
     # create logger
-    logger = logging.getLogger(str(module)+"_log")
+    logger = logging.getLogger(str(module) + "_log")
     logger.setLevel(logging.DEBUG)
 
     # create file handler and set it to DEBUG level
-    fh = logging.FileHandler(str(module)+"_debug.log")
+    fh = logging.FileHandler(str(module) + "_debug.log")
     fh.setLevel(logging.DEBUG)
     # create file handler and set it to INFO level
-    fh2 = logging.FileHandler(str(module)+"_info.log")
+    fh2 = logging.FileHandler(str(module) + "_info.log")
     fh2.setLevel(logging.INFO)
     # create console handler and set it to DEBUG level
     ch = logging.StreamHandler()
