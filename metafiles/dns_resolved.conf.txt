@@ -11,7 +11,7 @@
 #
 # See resolved.conf(5) for details
 
-# Located in /etc/systemd/resolved.conf
+# Located at /etc/systemd/resolved.conf
 # Afterwards run: sudo service systemd-resolved restart
 
 [Resolve]

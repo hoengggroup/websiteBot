@@ -1,0 +1,11 @@
+# Edit a service:
+sudo systemctl edit --full <service>.service
+
+# List all services:
+systemctl list-units --type=service
+
+# Reset failed-state/restart-counter:
+systemctl reset-failed <service>.service
+
+# Live output of service's logs to console:
+journalctl -f -u <service>.service
