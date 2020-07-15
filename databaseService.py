@@ -127,7 +127,7 @@ def db_credentials_get_bot_token(bot_name):
             conn.commit()
             return token[0]  # returns one item (a string)
         else:
-            logger.warning("API token for bot \""+str(bot_name)+"\" does not exist.")
+            logger.warning("API token for bot \"" + str(bot_name) + "\" does not exist.")
             conn.commit()
             return None  # or None if the bot does not exist
     except Exception as ex:
@@ -147,7 +147,7 @@ def db_users_create(tg_id, status, first_name, last_name, username, apply_name, 
         conn.rollback()
         db_exc_handler(ex, conn)
         return False
-    logger.info("Successfully created user "+str(tg_id)+".")
+    logger.info("Successfully created user " + str(tg_id) + ".")
     conn.commit()
     return True
 
@@ -161,7 +161,7 @@ def db_users_delete(tg_id):
         conn.rollback()
         db_exc_handler(ex, conn)
         return False
-    logger.info("Successfully deleted user "+str(tg_id)+".")
+    logger.info("Successfully deleted user " + str(tg_id) + ".")
     conn.commit()
     return True
 
@@ -225,7 +225,7 @@ def db_users_get_admins():
 # GET USER DATA
 def db_users_get_data(tg_id, field="all_fields"):
     if not db_users_exists(tg_id):
-        logger.debug("users_get_data: User "+str(tg_id)+" does not exist.")
+        logger.debug("users_get_data: User " + str(tg_id) + " does not exist.")
         return None
     # We have to make this clunky if-elif chunk beacuse of protections against SQL injection
     return_list = False
@@ -268,7 +268,7 @@ def db_users_get_data(tg_id, field="all_fields"):
 # SET USER DATA
 def db_users_set_data(tg_id, field, argument):
     if not db_users_exists(tg_id):
-        logger.debug("users_set_data: User "+str(tg_id)+" does not exist.")
+        logger.debug("users_set_data: User " + str(tg_id) + " does not exist.")
         return False
     if field=="status":
         postgres_query = """UPDATE users SET status = %s WHERE tg_id = %s;"""
@@ -285,11 +285,11 @@ def db_users_set_data(tg_id, field, argument):
     elif field=="apply_date":
         postgres_query = """UPDATE users SET apply_date = %s WHERE tg_id = %s;"""
     else:
-        logger.debug("users_set_data: Data field \""+str(field)+"\" does not match any columns. No action taken.")
+        logger.debug("users_set_data: Data field \"" + str(field) + "\" does not match any columns. No action taken.")
         return False
     try:
         cur.execute(postgres_query, (argument, tg_id))
-        logger.info("Successfully changed data field \""+str(field)+"\" in users table to "+str(argument)+".")
+        logger.info("Successfully changed data field \"" + str(field) + "\" in users table to " + str(argument) + ".")
         conn.commit()
         return True
     except Exception as ex:
@@ -309,7 +309,7 @@ def db_websites_get_id(ws_name):
             conn.commit()
             return ws_id[0]  # returns one item (an int)
         else:
-            logger.debug("websites_get_id: Website \""+str(ws_name)+"\" does not exist.")
+            logger.debug("websites_get_id: Website \"" + str(ws_name) + "\" does not exist.")
             conn.commit()
             return None  # or None if website does not exist
     except Exception as ex:
@@ -328,7 +328,7 @@ def db_websites_get_name(ws_id):
             conn.commit()
             return ws_name[0]  # returns one item (a string)
         else:
-            logger.debug("websites_get_name: Website with ID "+str(ws_id)+" does not exist.")
+            logger.debug("websites_get_name: Website with ID " + str(ws_id) + " does not exist.")
             conn.commit()
             return None  # or None if website does not exist
     except Exception as ex:
@@ -372,7 +372,7 @@ def db_websites_add(ws_name, url, time_sleep, last_time_checked, last_time_updat
         db_exc_handler(ex, conn)
         return False
     if ws_id_1 == ws_id_2:
-        logger.info("Successfully created website \""+str(ws_name)+"\".")
+        logger.info("Successfully created website \"" + str(ws_name) + "\".")
         conn.commit()
         return True
     else:
@@ -390,7 +390,7 @@ def db_websites_remove(ws_name):
         conn.rollback()
         db_exc_handler(ex, conn)
         return False
-    logger.info("Successfully deleted website \""+str(ws_name)+"\".")
+    logger.info("Successfully deleted website \"" + str(ws_name) + "\".")
     conn.commit()
     return True
 
@@ -399,7 +399,7 @@ def db_websites_remove(ws_name):
 def db_websites_get_data(ws_name, field="all_fields"):
     ws_id = db_websites_get_id(ws_name)
     if not ws_id:
-        logger.debug("websites_get_data: Website \""+str(ws_name)+"\" does not exist.")
+        logger.debug("websites_get_data: Website \"" + str(ws_name) + "\" does not exist.")
         return None
     # We have to make this clunky if-elif chunk beacuse of protections against SQL injection
     return_list = False
@@ -443,7 +443,7 @@ def db_websites_get_data(ws_name, field="all_fields"):
 def db_websites_get_content(ws_name, last_time_updated, last_hash):
     ws_id = db_websites_get_id(ws_name)
     if not ws_id:
-        logger.debug("websites_get_content: Website \""+str(ws_name)+"\" does not exist.")
+        logger.debug("websites_get_content: Website \"" + str(ws_name) + "\" does not exist.")
         return None
     postgres_query = """SELECT last_content FROM websites_content WHERE ws_id = %s AND last_time_updated = %s AND last_hash = %s;"""
     query_data = (ws_id, last_time_updated, last_hash)
@@ -465,7 +465,7 @@ def db_websites_get_content(ws_name, last_time_updated, last_hash):
 def db_websites_set_data(ws_name, field, argument):
     ws_id = db_websites_get_id(ws_name)
     if not ws_id:
-        logger.debug("websites_set_data: Website \""+str(ws_name)+"\" does not exist.")
+        logger.debug("websites_set_data: Website \"" + str(ws_name) + "\" does not exist.")
         return False
     if field=="ws_name":
         postgres_query = """UPDATE websites SET ws_name = %s WHERE ws_id = %s;"""
@@ -484,11 +484,11 @@ def db_websites_set_data(ws_name, field, argument):
     elif field=="last_hash":
         postgres_query = """UPDATE websites SET last_hash = %s WHERE ws_id = %s;"""
     else:
-        logger.debug("websites_set_data: Data field \""+str(field)+"\" does not match any columns. No action taken.")
+        logger.debug("websites_set_data: Data field \"" + str(field) + "\" does not match any columns. No action taken.")
         return False
     try:
         cur.execute(postgres_query, (argument, ws_id))
-        logger.info("Successfully changed data field \""+str(field)+"\" to "+str(argument)+" for website "+str(ws_name)+".")
+        logger.info("Successfully changed data field \"" + str(field) + "\" to " + str(argument) + " for website " + str(ws_name) + ".")
         conn.commit()
         return True
     except Exception as ex:
@@ -501,13 +501,13 @@ def db_websites_set_data(ws_name, field, argument):
 def db_websites_add_content(ws_name, last_time_updated, last_hash, last_content):
     ws_id = db_websites_get_id(ws_name)
     if not ws_id:
-        logger.debug("websites_add_content: Website \""+str(ws_name)+"\" does not exist.")
+        logger.debug("websites_add_content: Website \"" + str(ws_name) + "\" does not exist.")
         return False
     postgres_query = """INSERT INTO websites_content (ws_id, last_time_updated, last_hash, last_content) VALUES (%s, %s, %s, %s) RETURNING ws_id;"""
     query_data = (ws_id, last_time_updated, last_hash, last_content)
     try:
         cur.execute(postgres_query, query_data)
-        logger.info("Successfully added website content for website "+str(ws_name)+".")
+        logger.info("Successfully added website content for website " + str(ws_name) + ".")
         conn.commit()
         return True
     except Exception as ex:
@@ -520,12 +520,12 @@ def db_websites_add_content(ws_name, last_time_updated, last_hash, last_content)
 def db_websites_delete_content(ws_name):
     ws_id = db_websites_get_id(ws_name)
     if not ws_id:
-        logger.debug("websites_delete_content: Website \""+str(ws_name)+"\" does not exist.")
+        logger.debug("websites_delete_content: Website \"" + str(ws_name) + "\" does not exist.")
         return False
     postgres_query = """DELETE FROM websites_content WHERE ws_id = %s;"""
     try:
         cur.execute(postgres_query, (ws_id,))  # turn ws_id into a tuple to avoid a TypeError
-        logger.info("Successfully removed all previous website content for website "+str(ws_name)+".")
+        logger.info("Successfully removed all previous website content for website " + str(ws_name) + ".")
         conn.commit()
         return True
     except Exception as ex:
@@ -539,7 +539,7 @@ def db_websites_delete_content(ws_name):
 def db_subscriptions_by_website(ws_name):
     ws_id = db_websites_get_id(ws_name)
     if not ws_id:
-        logger.debug("subscriptions_by_website: Website \""+str(ws_name)+"\" does not exist.")
+        logger.debug("subscriptions_by_website: Website \"" + str(ws_name) + "\" does not exist.")
         return None
     try:
         postgres_query = """SELECT tg_id FROM subscriptions WHERE ws_id = %s ORDER BY tg_id;"""
@@ -556,7 +556,7 @@ def db_subscriptions_by_website(ws_name):
 # GET SUBSCRIPTIONS BY USER
 def db_subscriptions_by_user(tg_id):
     if not db_users_exists(tg_id):
-        logger.debug("subscriptions_by_user: User "+str(tg_id)+" does not exist.")
+        logger.debug("subscriptions_by_user: User " + str(tg_id) + " does not exist.")
         return None
     try:
         postgres_query = """SELECT ws_id FROM subscriptions WHERE tg_id = %s ORDER BY ws_id;"""
@@ -585,16 +585,16 @@ def db_subscriptions_check(tg_id, ws_id):
 def db_subscriptions_subscribe(tg_id, ws_name):
     ws_id = db_websites_get_id(ws_name)
     if not ws_id:
-        logger.debug("subscriptions_subscribe: Website \""+str(ws_name)+"\" does not exist.")
+        logger.debug("subscriptions_subscribe: Website \"" + str(ws_name) + "\" does not exist.")
         return False
     if not db_users_exists(tg_id):
-        logger.debug("subscriptions_subscribe: User "+str(tg_id)+" does not exist.")
+        logger.debug("subscriptions_subscribe: User " + str(tg_id) + " does not exist.")
         return False
     if not db_subscriptions_check(tg_id, ws_id):
         try:
             postgres_query = """INSERT INTO subscriptions (ws_id, tg_id) VALUES (%s, %s);"""
             cur.execute(postgres_query, (ws_id, tg_id))
-            logger.info("Successfully subscribed user "+str(tg_id)+" to website \""+str(ws_name)+"\".")
+            logger.info("Successfully subscribed user " + str(tg_id) + " to website \"" + str(ws_name) + "\".")
             conn.commit()
             return True
         except Exception as ex:
@@ -602,7 +602,7 @@ def db_subscriptions_subscribe(tg_id, ws_name):
             db_exc_handler(ex, conn)
             return False
     else:
-        logger.debug("User "+str(tg_id)+" was already subscribed to website \""+str(ws_name)+"\". No action taken.")
+        logger.debug("User " + str(tg_id) + " was already subscribed to website \"" + str(ws_name) + "\". No action taken.")
         return False
 
 
@@ -610,16 +610,16 @@ def db_subscriptions_subscribe(tg_id, ws_name):
 def db_subscriptions_unsubscribe(tg_id, ws_name):
     ws_id = db_websites_get_id(ws_name)
     if not ws_id:
-        logger.debug("subscriptions_unsubscribe: Website \""+str(ws_name)+"\" does not exist.")
+        logger.debug("subscriptions_unsubscribe: Website \"" + str(ws_name) + "\" does not exist.")
         return False
     if not db_users_exists(tg_id):
-        logger.debug("subscriptions_unsubscribe: User "+str(tg_id)+" does not exist.")
+        logger.debug("subscriptions_unsubscribe: User " + str(tg_id) + " does not exist.")
         return False
     if db_subscriptions_check(tg_id, ws_id):
         try:
             postgres_query = """DELETE FROM subscriptions WHERE ws_id = %s AND tg_id = %s;"""
             cur.execute(postgres_query, (ws_id, tg_id))
-            logger.info("Successfully unsubscribed user "+str(tg_id)+" from website \""+str(ws_name)+"\".")
+            logger.info("Successfully unsubscribed user " + str(tg_id) + " from website \"" + str(ws_name) + "\".")
             conn.commit()
             return True
         except Exception as ex:
@@ -627,5 +627,5 @@ def db_subscriptions_unsubscribe(tg_id, ws_name):
             db_exc_handler(ex, conn)
             return False
     else:
-        logger.debug("User "+str(tg_id)+" was already unsubscribed from website \""+str(ws_name)+"\". No action taken.")
+        logger.debug("User " + str(tg_id) + " was already unsubscribed from website \"" + str(ws_name) + "\". No action taken.")
         return False
