@@ -1,8 +1,25 @@
 # -*- coding: utf-8 -*-
 
-# a = ['eins', 'zwei', 'drei', 'vier', 'fünf', 'sechs']
-# b = ['eins', 'zwei', 'drei', 'vier', 'sechs', 'sieben']
-# b = ['eins', 'drei', 'vier', 'fuenf', 'sechs', 'sieben']
+### python builtins
+import re  # for regex
+
+
+def preprocess_content(content):
+    # 1. prepare delimiters
+    delimiters = "\n", ". "  # delimiters where to split string
+    regexPattern = '|'.join(map(re.escape, delimiters))  # auto create regex pattern from delimiter list
+
+    # 2. split string at delimiters
+    content_split = re.split(regexPattern, content)
+
+    # 3. remove empty strings from list as well as string containing only white spaces
+    content_list = []
+    for element in content_split:
+        if element.isspace() or element == '':
+            continue
+        content_list.append(element)
+
+    return content_list
 
 
 def get_edit_distance_changes(text_old, text_new):
@@ -41,11 +58,10 @@ def get_edit_distance_changes(text_old, text_new):
                 delta = 1
             tb[i][j] = min(tb[i-1][j], tb[i][j-1], tb[i-1][j-1]) + delta
 
-    '''
-    for i in range(len(tb)):
-        for j in range(len(tb[i])):
-            print(tb[i][j], end='\t')
-        print()'''
+    #for i in range(len(tb)):
+    #    for j in range(len(tb[i])):
+    #        print(tb[i][j], end='\t')
+    #    print()
 
     reverse_change_stack = []
 
@@ -60,9 +76,7 @@ def get_edit_distance_changes(text_old, text_new):
         min_before = min(tb[i-1][j], tb[i][j-1], tb[i-1][j-1])
         # print("right now @ " + str(i) + " "+str(j) + " min bef:" + str(min_before) + " current:" + str(tb[i][j]))
 
-
-
-        # first choice : added
+        # first choice: added
         if(tb[i-1][j] == min_before and i-1 >= 0):
             if(min_before < tb[i][j]):
                 # print("add")
@@ -75,37 +89,17 @@ def get_edit_distance_changes(text_old, text_new):
                 # swapped:
                 # print("swap")
                 reverse_change_stack.extend([("swap", text_old[j], text_new[i])])
-
             i = i-1
             j = j-1
             continue
-        # else on of them was deleted:
+        # else one of them was deleted:
         elif(tb[i][j-1] == min_before and j-1 >= 0):
             if(min_before < tb[i][j]):
                 # print("del")
                 reverse_change_stack.extend([("deleted", text_old[j])])
-
             j = j-1
             continue
         else:
             pass
 
     return reverse_change_stack[::-1]
-
-
-'''
-a = []
-b = []
-text_old = "eins zwei drei"
-text_new = "ein zwei drei vier"
-for word in text_old.split():
-    a.append(word)
-for word in text_new.split():
-    b.append(word)
-
-
-changes = get_edit_distance_changes(a, b)
-for a in changes:
-    for my_str in a:
-        print(str(my_str), end=' ')
-    print()'''

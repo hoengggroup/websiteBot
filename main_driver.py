@@ -7,14 +7,13 @@ from os import listdir  # for detecting the rpi dummy file
 from os.path import isfile, join, dirname, realpath  # for detecting the rpi dummy file
 import platform  # for checking the system we are running on
 import random  # for deciding how long to sleep for
-import re  # for regex
 from signal import signal, SIGABRT, SIGINT, SIGTERM  # for cleanup on exit/termination
 import sys  # for errors and terminating
 import time  # for sleeping
 import traceback  # for logging the full traceback
 
 ### external libraries
-import html2text  # converting html to text
+import html2text  # for converting html to text
 import sdnotify  # for the systemctl watchdog
 from unidecode import unidecode  # for stripping Ümläüte
 
@@ -49,28 +48,6 @@ for sig in (SIGABRT, SIGINT, SIGTERM):
     signal(sig, exit_cleanup)
 
 
-# process string ready for dp_edit_distance
-def preprocess_string(str_to_convert):
-    # 0. prepare delimiters
-    delimiters = "\n", ". "  # delimiters where to split string
-    regexPattern = '|'.join(map(re.escape, delimiters))  # auto create regex pattern from delimiter list
-
-    # 1. strip all non-ascii characters
-    str_non_unicode = unidecode(str(str_to_convert))
-
-    # 2. split string at delimiters
-    str_split = re.split(regexPattern, str_non_unicode)
-
-    # 3. remove empty strings from list as well as string containing only white spaces
-    str_list_ret = []
-    for element in str_split:
-        if element.isspace() or element == '':
-            continue
-        str_list_ret.append(element)
-
-    return str_list_ret
-
-
 def vpn_wait():
     logger.warning("VPN connection could not be validated. Suspending operations until VPN connection is re-validated.")
     retry_counter = 0
@@ -102,32 +79,27 @@ def vpn_wait():
         retry_counter += 1
 
 
-def process_website(logger, current_content, current_ws_name):
-    # 1. startup
+def process_website(new_content, ws_name, url, last_hash, last_content):
     logger.debug("Started processing website.")
-    last_time_updated = dbs.db_websites_get_data(ws_name=current_ws_name, field="last_time_updated")
-    last_hash = dbs.db_websites_get_data(ws_name=current_ws_name, field="last_hash")
-    last_content = dbs.db_websites_get_content(ws_name=current_ws_name, last_time_updated=last_time_updated, last_hash=last_hash)
 
-    # 2. hash website text
-    current_hash = (hashlib.md5(current_content.encode())).hexdigest()
-    logger.debug("Hashes are (current, last): (" + str(current_hash) + ", " + str(last_hash) + ").")
+    # 1. hash website text
+    new_hash = (hashlib.md5(new_content.encode())).hexdigest()
+    logger.debug("Hashes are (new, last): (" + str(new_hash) + ", " + str(last_hash) + ").")
 
-    # 3. if different
-    if current_hash != last_hash:
-        logger.info("Website hashes do not match. Current hash " + str(current_hash) + " vs. previous hash " + str(last_hash) + ".")
-        logger.debug("Content equal? " + str(last_content == current_content) + ".")
+    # 2. if different
+    if new_hash != last_hash:
+        logger.info("Website hashes do not match. New hash " + str(new_hash) + " vs. last hash " + str(last_hash) + ".")
+        logger.debug("Extra check - is content equal: " + str(last_content == new_content) + ".")
 
-        # 3.1 determine difference using DP (O(m * n) ^^)
-        logger.debug("Preprocess 1.")
-        old_words_list = preprocess_string(last_content)
-        logger.debug("Preprocess 2.")
-        new_words_list = preprocess_string(current_content)
-        link_to_current_ws = dbs.db_websites_get_data(ws_name=current_ws_name, field="url")
-        msg_to_send = "Changes in website <a href=\"" + str(link_to_current_ws) + "\">" + str(current_ws_name) + "</a>:\n\n"
+        # 2.1 determine difference using DP (O(m * n) ^^)
+        logger.debug("dp_edit_distance: Preprocessing #1 - last content.")
+        last_words_list = dp_edit_distance.preprocess_content(str(last_content))
+        logger.debug("dp_edit_distance: Preprocessing #2 - new content.")
+        new_words_list = dp_edit_distance.preprocess_content(str(new_content))
+        msg_to_send = "Changes in website <a href=\"" + str(url) + "\">" + str(ws_name) + "</a>:\n\n"
 
-        logger.debug("Calling dp_edit_distance.")
-        changes = dp_edit_distance.get_edit_distance_changes(old_words_list, new_words_list)
+        logger.debug("dp_edit_distance: Calculating edit distance changes.")
+        changes = dp_edit_distance.get_edit_distance_changes(last_words_list, new_words_list)
 
         logger.info("Website word difference is: " + str(changes))
         for change_tupel in changes:
@@ -143,39 +115,52 @@ def process_website(logger, current_content, current_ws_name):
                     msg_to_send += (my_str + " ")
                 msg_to_send += "\n"
         
-        # 3.2 censor content based on filter list
+        # 2.2 censor content based on filter list
         filter_hits = list()
-        filters = filter_dict.get(current_ws_name)
+        filters = filter_dict.get(ws_name)
         if filters:
             for flt in filters:
                 if flt in msg_to_send:
                     filter_hits.append(flt)
 
-        # 3.3 notify world about changes
-        user_ids = dbs.db_subscriptions_by_website(ws_name=current_ws_name)
-        if not filter_hits:
-            for ids in user_ids:
-                tgs.send_general_broadcast(ids, msg_to_send)
+        # 2.3 notify world about changes
+        user_ids = dbs.db_subscriptions_by_website(ws_name=ws_name)
+        # the above database query may return None if the website is deleted in the meantime, so check this explicitly
+        if user_ids is None:
+            logger.warning("Database query for subscriptions failed for website " + str(ws_name) + ". It was probably deleted from the database since processing started. Aborting processing.")
+            return
         else:
-            # send censored content only to (subscribed) admins
-            subscribed_admin_ids = list(set(user_ids).intersection(tgs.admin_chat_ids))
-            for ids in subscribed_admin_ids:
-                tgs.send_general_broadcast(ids, "[CENSORED CONTENT]")
-                tgs.send_general_broadcast(ids, msg_to_send)
-                tgs.send_general_broadcast(ids, "FILTER HITS:")
-                for hit in filter_hits:
-                    tgs.send_general_broadcast(ids, hit)
+            if not filter_hits:
+                for ids in user_ids:
+                    tgs.send_general_broadcast(ids, msg_to_send)
+            else:
+                # send censored content only to (subscribed) admins
+                subscribed_admin_ids = list(set(user_ids).intersection(tgs.admin_chat_ids))
+                for ids in subscribed_admin_ids:
+                    tgs.send_general_broadcast(ids, "[CENSORED CONTENT]")
+                    tgs.send_general_broadcast(ids, msg_to_send)
+                    tgs.send_general_broadcast(ids, "FILTER HITS:")
+                    for hit in filter_hits:
+                        tgs.send_general_broadcast(ids, hit)
 
-        # 3.4 update values in website table
-        current_time_updated = datetime.now()
-        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_time_updated", argument=current_time_updated)
-        dbs.db_websites_set_data(ws_name=current_ws_name, field="last_hash", argument=current_hash)
+        # 2.4 update values in website table
+        new_time_updated = datetime.now()
         if not keep_website_history:
-            dbs.db_websites_delete_content(ws_name=current_ws_name)
-        dbs.db_websites_add_content(ws_name=current_ws_name, last_time_updated=current_time_updated, last_hash=current_hash, last_content=current_content)
+            dbs.db_websites_delete_content(ws_name=ws_name)
+        content_success = dbs.db_websites_add_content(ws_name=ws_name, last_time_updated=new_time_updated, last_hash=new_hash, last_content=new_content)
+        hash_success = dbs.db_websites_set_data(ws_name=ws_name, field="last_hash", argument=new_hash)
+        time_updated_success = dbs.db_websites_set_data(ws_name=ws_name, field="last_time_updated", argument=new_time_updated)
+        # the above database interactions may happen after a website has already been deleted, so check if they worked correctly
+        if not all([content_success, hash_success, time_updated_success]):
+            logger.warning("One or more database updates failed for the changed website " + str(ws_name) + ". It was probably deleted from the database since processing started. Aborting processing.")
+            return
 
-    # 4. update time last checked
-    dbs.db_websites_set_data(ws_name=current_ws_name, field="last_time_checked", argument=datetime.now())
+    # 3. update time last checked
+    # this database interaction may happen after a website has already been deleted, so check if it worked correctly
+    if not dbs.db_websites_set_data(ws_name=ws_name, field="last_time_checked", argument=datetime.now()):
+        logger.warning("Database update of last_time_checked failed for website " + str(ws_name) + ". It was probably deleted from the database since processing started. Aborting processing.")
+        return
+
     logger.debug("Finished processing website.")
 
 
@@ -224,7 +209,7 @@ def main():
             logger.info("VPN connection validated successfully.")
 
     # 6. inform admins about startup
-    tgs.send_admin_broadcast("Startup complete.\nVersion: \t"+version_code+"\nPlatform: \t"+str(platform.system())+"\nAsserting VPN: \t"+str(assert_vpn)+"\nDeployed: \t"+str(is_deployed))
+    tgs.send_admin_broadcast("Startup complete.\nVersion: \t" + version_code + "\nPlatform: \t" + str(platform.system()) + "\nAsserting VPN: \t" + str(assert_vpn) + "\nDeployed: \t" + str(is_deployed))
 
     # 7. main loop
     try:
@@ -237,25 +222,34 @@ def main():
                 # notify watchdog
                 alive_notifier.notify("WATCHDOG=1")  # send status: alive
 
-                current_ws_name = dbs.db_websites_get_name(ws_id)
-                current_url = dbs.db_websites_get_data(ws_name=current_ws_name, field="url")
+                ws_name = dbs.db_websites_get_name(ws_id)
+                last_time_updated = dbs.db_websites_get_data(ws_name=ws_name, field="last_time_updated")
+                last_hash = dbs.db_websites_get_data(ws_name=ws_name, field="last_hash")
+                last_content = dbs.db_websites_get_content(ws_name=ws_name, last_time_updated=last_time_updated, last_hash=last_hash)
+                url = dbs.db_websites_get_data(ws_name=ws_name, field="url")
+                last_time_checked = dbs.db_websites_get_data(ws_name=ws_name, field="last_time_checked")
+                time_sleep = dbs.db_websites_get_data(ws_name=ws_name, field="time_sleep")
+                # any of the seven database interactions above may happen after a website has already been deleted
+                # if this is the case, all queries being sent after the deletion will return None as handled by the databaseService
+                # so we just need to check if all queries guranteed to be not Null by constraint really returned a value (at least one of the ones we are checking should be the last of the seven of course)
+                if not all([ws_name, last_time_updated, url, last_time_checked, time_sleep]):
+                    logger.warning("One or more database queries failed for website with ID " + str(ws_id) + ". It was probably deleted from the database since starting the loop. Skipping.")
+                    continue
                 current_time = datetime.now()
-                elapsed_time = current_time - dbs.db_websites_get_data(ws_name=current_ws_name, field="last_time_checked")
+                elapsed_time = current_time - last_time_checked
 
-                if elapsed_time.total_seconds() > dbs.db_websites_get_data(ws_name=current_ws_name, field="time_sleep"):
-                    logger.debug("Checking website " + str(current_ws_name) + " with url: " + str(current_url))
+                if elapsed_time.total_seconds() > time_sleep:
+                    logger.debug("Checking website " + str(ws_name) + " with url: " + str(url))
 
                     # get website
-                    response = rqs.get_url(url=current_url, ws_name=current_ws_name)
+                    response = rqs.get_url(url=url, ws_name=ws_name)
 
                     # process website
                     if not response:
-                        logger.warning("Response data is empty for " + str(current_url) + ". Skipping.")
+                        logger.warning("Response data is empty for " + str(url) + ". Skipping.")
                         continue
-
-                    logger.debug("Extracting content from response data.")
-                    current_content = unidecode(html2text.html2text(response.text))
-                    process_website(logger, current_content, current_ws_name)
+                    response_stripped = unidecode(html2text.html2text(response.text))
+                    process_website(response_stripped, ws_name, url, last_hash, last_content)
 
             # notify watchdog
             alive_notifier.notify("WATCHDOG=1")  # send status: alive
