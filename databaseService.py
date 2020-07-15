@@ -353,6 +353,10 @@ def db_websites_get_all_ids():
 
 # ADD WEBSITE
 def db_websites_add(ws_name, url, time_sleep, last_time_checked, last_time_updated, last_error_msg, last_error_time, last_hash, last_content):
+    # sanity check for type conversions: passing a NoneType as website name should produce an empty response in all functions, not a hit on a website named "None"
+    # ...so this name will be reserved just in case
+    if ws_name.lower() == "none":
+        return False
     try:
         postgres_query = """INSERT INTO websites (ws_name, url, time_sleep, last_time_checked, last_time_updated, last_error_msg, last_error_time, last_hash) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING ws_id;"""
         query_data = (ws_name, url, time_sleep, last_time_checked, last_time_updated, last_error_msg, last_error_time, last_hash)
