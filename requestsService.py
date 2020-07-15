@@ -21,6 +21,13 @@ logger = create_logger("req")
 error_states = {}
 
 
+def update_database_with_error(ws_name, error):
+    error_msg_success = dbs.db_websites_set_data(ws_name=ws_name, field="last_error_msg", argument=str(error))
+    error_time_success = dbs.db_websites_set_data(ws_name=ws_name, field="last_error_time", argument=datetime.now())
+    if not all([error_msg_success, error_time_success]):
+        logger.warning("One or more database updates failed for website " + str(ws_name) + ". It was probably deleted from the database in the meantime.")
+
+
 def get_url(url, ws_name=None, timeout=my_timeout):
     global error_states
     if not url in error_states:
@@ -38,8 +45,7 @@ def get_url(url, ws_name=None, timeout=my_timeout):
         if error_states[url] == notify_threshold_strict:
             tgs.send_admin_broadcast("An HTTPError has occured while getting " + str(url))
         if ws_name:
-            dbs.db_websites_set_data(ws_name=ws_name, field="last_error_msg", argument=str(e))
-            dbs.db_websites_set_data(ws_name=ws_name, field="last_error_time", argument=datetime.now())
+            update_database_with_error(ws_name, e)
         pass
     except requests.exceptions.ConnectionError as e:
         logger.error("A ConnectionError has occured while getting " + str(url))
@@ -48,8 +54,7 @@ def get_url(url, ws_name=None, timeout=my_timeout):
         if error_states[url] == notify_threshold_strict:
             tgs.send_admin_broadcast("A ConnectionError has occured while getting " + str(url))
         if ws_name:
-            dbs.db_websites_set_data(ws_name=ws_name, field="last_error_msg", argument=str(e))
-            dbs.db_websites_set_data(ws_name=ws_name, field="last_error_time", argument=datetime.now())
+            update_database_with_error(ws_name, e)
         pass
     except requests.exceptions.Timeout as e:
         logger.error("A timeout has occured while getting " + str(url))
@@ -58,8 +63,7 @@ def get_url(url, ws_name=None, timeout=my_timeout):
         if error_states[url] == notify_threshold_permissive:
             tgs.send_admin_broadcast("A timeout has occured while getting " + str(url))
         if ws_name:
-            dbs.db_websites_set_data(ws_name=ws_name, field="last_error_msg", argument=str(e))
-            dbs.db_websites_set_data(ws_name=ws_name, field="last_error_time", argument=datetime.now())
+            update_database_with_error(ws_name, e)
         pass
     except requests.exceptions.RequestException as e:
         logger.error("An unknown RequestException has occured while getting " + str(url))
@@ -68,8 +72,7 @@ def get_url(url, ws_name=None, timeout=my_timeout):
         if error_states[url] == notify_threshold_strict:
             tgs.send_admin_broadcast("An unknown RequestException has occured while getting " + str(url))
         if ws_name:
-            dbs.db_websites_set_data(ws_name=ws_name, field="last_error_msg", argument=str(e))
-            dbs.db_websites_set_data(ws_name=ws_name, field="last_error_time", argument=datetime.now())
+            update_database_with_error(ws_name, e)
         pass
     except Exception:
         logger.error("An unknown exception has occured while getting " + str(url))
@@ -79,7 +82,6 @@ def get_url(url, ws_name=None, timeout=my_timeout):
         if error_states[url] == notify_threshold_strict:
             tgs.send_admin_broadcast("An unknown exception has occured while getting " + str(url))
         if ws_name:
-            dbs.db_websites_set_data(ws_name=ws_name, field="last_error_msg", argument=error_msg)
-            dbs.db_websites_set_data(ws_name=ws_name, field="last_error_time", argument=datetime.now())
+            update_database_with_error(ws_name, error_msg)
         pass
     return response
