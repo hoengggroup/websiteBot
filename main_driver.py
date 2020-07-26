@@ -32,17 +32,24 @@ logger = create_logger("main")
 
 
 #termination handler
+signal_caught = False
+
 def exit_cleanup(*args):
-    disconnection_state = dbs.db_disconnect()
-    if not disconnection_state:
-        logger.critical("Database did not disconnect successfully.")
+    global signal_caught
+    if not signal_caught:
+        signal_caught = True
+        disconnection_state = dbs.db_disconnect()
+        if not disconnection_state:
+            logger.critical("Database did not disconnect successfully.")
+        else:
+            logger.info("Database disconnected successfully.")
+        tgs.send_admin_broadcast("Shutdown complete.")
+        tgs.exit_cleanup_tg()
+        logger.info("Telegram bot stopped successfully.")
+        logger.warning("Shutdown complete. This is the last line.")
+        sys.exit(1)
     else:
-        logger.info("Database disconnected successfully.")
-    tgs.send_admin_broadcast("Shutdown complete.")
-    tgs.exit_cleanup_tg()
-    logger.info("Telegram bot stopped successfully.")
-    logger.warning("Shutdown complete. This is the last line.")
-    sys.exit(1)
+        print("KILL SIGNAL IGNORED. WAIT FOR COMPLETION OF TERMINATION ROUTINE.")
 
 for sig in (SIGABRT, SIGINT, SIGTERM):
     signal(sig, exit_cleanup)
