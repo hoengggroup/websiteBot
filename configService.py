@@ -1,9 +1,9 @@
 # -*- coding: utf-8 -*-
 
 # MAIN PARAMETERS
-version_code = "5.5"
+version_code = "5.5.1"
 keep_website_history = True
-filter_dict = {'living': ['17.509','17.515','13.613','13.615','13.617','13.619']}
+filter_dict = {'living': ['17.509', '17.515', '13.613', '13.615', '13.617', '13.619']}
 
 
 # DATABASE PARAMETERS

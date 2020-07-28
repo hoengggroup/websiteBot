@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-### python builtins
+# PYTHON BUILTINS
 import logging  # self-explanatory ;)
 import textwrap  # for aligning the log message into a column
 
@@ -9,6 +9,7 @@ class WrappedFixedIndentingLog(logging.Formatter):
     def __init__(self, fmt=None, datefmt=None, style='%', width=176, indent=46):
         super().__init__(fmt=fmt, datefmt=datefmt, style=style)
         self.wrapper = textwrap.TextWrapper(width=width, subsequent_indent=' '*indent)
+
     def format(self, record):
         return self.wrapper.fill(super().format(record))
 

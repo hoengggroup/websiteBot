@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 
-### python builtins
+# PYTHON BUILTINS
 import re  # for regex
 
 
@@ -25,32 +25,32 @@ def preprocess_content(content):
 def get_edit_distance_changes(text_old, text_new):
     tb = [[0 for i in range(len(text_old))] for j in range(len(text_new))]
 
-    if not (len(text_old)>0 and len(text_new)>0):
-        if(len(text_old) == 0) and (len(text_new)==0):
-            return [('empty all','old and','new')]
-        if(len(text_old)==0):
-            return [('added all',str(text_new),'')]
-            
-        if(len(text_new)==0):
-            return [('deleted all',str(text_old),'')]
+    if not (len(text_old) > 0 and len(text_new) > 0):
+        if(len(text_old) == 0) and (len(text_new) == 0):
+            return [('empty all', 'old and', 'new')]
+        if(len(text_old) == 0):
+            return [('added all', str(text_new), '')]
+
+        if(len(text_new) == 0):
+            return [('deleted all', str(text_old), '')]
         raise Exception('This case is mathematically proven to be impossible by boolean logic. For details, see https://en.wikipedia.org/wiki/George_Boole')
 
     # now, we are sure that both text new/old have >= 1 entry
-    ## init
+    # init
     tb[0][0] = 0
-    for i in range (1,len(text_new)):
+    for i in range(1, len(text_new)):
         delta = 0
         if(text_old[0] != text_new[i]):
             delta = 1
         tb[i][0] = tb[i-1][0] + delta
 
-    for j in range (1,len(text_old)):
+    for j in range(1, len(text_old)):
         delta = 0
         if(text_old[j] != text_new[0]):
             delta = 1
         tb[0][j] = tb[0][j-1] + delta
 
-    ## the real dynamic programming part
+    # the real dynamic programming part
     for i in range(1, len(text_new)):
         for j in range(1, len(text_old)):
             delta = 0
@@ -58,7 +58,7 @@ def get_edit_distance_changes(text_old, text_new):
                 delta = 1
             tb[i][j] = min(tb[i-1][j], tb[i][j-1], tb[i-1][j-1]) + delta
 
-    #for i in range(len(tb)):
+    # for i in range(len(tb)):
     #    for j in range(len(tb[i])):
     #        print(tb[i][j], end='\t')
     #    print()

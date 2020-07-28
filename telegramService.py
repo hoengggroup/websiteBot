@@ -1,17 +1,17 @@
 # -*- coding: utf-8 -*-
 
-### python builtins
+# PYTHON BUILTINS
 from datetime import datetime  # for setting timestamps
 from functools import wraps  # for the decorator function sending the typing state
 from itertools import count  # for message numbering
 import sys  # for getting detailed error msg
 
-### external libraries
+# EXTERNAL LIBRARIES
 from telegram import Bot, error, InlineKeyboardButton, InlineKeyboardMarkup, ChatAction
 from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHandler, CallbackQueryHandler, Filters
 from telegram.error import TelegramError
 
-### our own libraries
+# OUR OWN LIBRARIES
 from configService import filter_dict
 from loggerService import create_logger
 import databaseService as dbs
@@ -21,7 +21,7 @@ import databaseService as dbs
 logger = create_logger("tg")
 
 
-# terminating
+# termination handler (called from termination handler in main_driver)
 def exit_cleanup_tg():
     logger.info("Stopping telegram bot instances.")
     print("WAIT FOR THIS PROCESS TO BE COMPLETED.")
@@ -30,7 +30,7 @@ def exit_cleanup_tg():
     logger.info("Successfully stopped telegram bot instances.")
 
 
-# access level: builtin (decorator)
+# decorator for sending typing indicators
 def send_typing_action(func):
     @wraps(func)
     def command_func(update, context, *args, **kwargs):
@@ -39,7 +39,19 @@ def send_typing_action(func):
     return command_func
 
 
-### Telegram user flow: start
+# variable initialization
+updater, dispatcher, bot = [None]*3
+admin_chat_ids = None
+num_messages = count(1)
+APPLY_NAME_STATE, APPLY_MESSAGE_STATE = range(2)
+APPROVE_CHAT_ID_STATE, DENY_CHAT_ID_STATE = range(2)
+WS_NAME_STATE, WS_URL_STATE, WS_TIME_SLEEP_STATE = range(3)
+
+
+##############################################################
+#                 Telegram user flow: start                  #
+##############################################################
+
 # access level: none
 @send_typing_action
 def start(update, context):
@@ -57,7 +69,10 @@ def start(update, context):
         send_command_reply(update, context, message="You already started this service. If you are not yet approved, please continue with /apply. If you are already approved, check out the available actions with /commands. If you have already been denied, I hope you have a nice day anyway :)")
 
 
-### Telegram user flow: apply
+##############################################################
+#                 Telegram user flow: apply                  #
+##############################################################
+
 # access level: none (excluding admins and users)
 @send_typing_action
 def apply(update, context):
@@ -112,7 +127,9 @@ def applycancel(update, context):
     return ConversationHandler.END
 
 
-### Telegram admin flow: approve/deny pending users
+##############################################################
+#      Telegram admin flow: approve/deny pending users       #
+##############################################################
 # access level: admin (0)
 @send_typing_action
 def pendingusers(update, context):
@@ -193,7 +210,10 @@ def button_pendingusers_exit(update, context):
     bot.answer_callback_query(query["id"])
 
 
-### Telegram admin flow: approve users
+##############################################################
+#             Telegram admin flow: approve users             #
+##############################################################
+
 # access level: admin (0)
 @send_typing_action
 def approveuser(update, context):
@@ -224,7 +244,10 @@ def approve_user_helper(update, context):
     return ConversationHandler.END
 
 
-### Telegram admin flow: deny users
+##############################################################
+#              Telegram admin flow: deny users               #
+##############################################################
+
 # access level: admin (0)
 @send_typing_action
 def denyuser(update, context):
@@ -262,7 +285,10 @@ def usercancel(update, context):
     return ConversationHandler.END
 
 
-### Telegram admin flow: list all users
+##############################################################
+#            Telegram admin flow: list all users             #
+##############################################################
+
 # access level: admin (0)
 @send_typing_action
 def listusers(update, context):
@@ -297,7 +323,10 @@ def status_meaning(status):
         return "unknown"
 
 
-### Telegram user flow: list all available commands
+##############################################################
+#      Telegram user flow: list all available commands       #
+##############################################################
+
 # access level: admin (0) and user (1)
 @send_typing_action
 def commands(update, context):
@@ -322,7 +351,10 @@ def commands(update, context):
         send_command_reply(update, context, message="This command is only available to approved users. Sorry.")
 
 
-### Telegram user flow: list all websites and subscriptions
+##############################################################
+#  Telegram user flow: list all websites and subscriptions   #
+##############################################################
+
 # access level: user (1)
 @send_typing_action
 def subscriptions(update, context):
@@ -394,7 +426,10 @@ def build_subscriptions_keyboard(callback_chat_id):
     return reply_markup
 
 
-### Telegram user flow: stop this bot
+##############################################################
+#             Telegram user flow: stop this bot              #
+##############################################################
+
 # access level: user (1) (and none)
 @send_typing_action
 def stop(update, context):
@@ -421,7 +456,10 @@ def stop(update, context):
             send_command_reply(update, context, message="Error. Your chat ID could not be removed from this bot. Please try again.")
 
 
-### Telegram user flow: whoami
+##############################################################
+#                 Telegram user flow: whoami                 #
+##############################################################
+
 # access level: none
 @send_typing_action
 def whoami(update, context):
@@ -433,7 +471,10 @@ def whoami(update, context):
         send_command_reply(update, context, message="guest")
 
 
-### Telegram admin flow: display info about available websites
+##############################################################
+# Telegram admin flow: display info about available websites #
+##############################################################
+
 # access level: admin (0)
 @send_typing_action
 def getwebsiteinfo(update, context):
@@ -470,7 +511,10 @@ def button_getwebsiteinfo(update, context):
     bot.answer_callback_query(query["id"])
 
 
-### Telegram admin flow: add a website to the list
+##############################################################
+#       Telegram admin flow: add a website to the list       #
+##############################################################
+
 # access level: admin (0)
 @send_typing_action
 def addwebsite(update, context):
@@ -501,7 +545,10 @@ def addwebsite(update, context):
         send_command_reply(update, context, message="This command is only available to admins. Sorry.")
 
 
-### Telegram admin flow: remove a website from the list
+##############################################################
+#    Telegram admin flow: remove a website from the list     #
+##############################################################
+
 # access level: admin (0)
 @send_typing_action
 def removewebsite(update, context):
@@ -525,7 +572,10 @@ def removewebsite(update, context):
         send_command_reply(update, context, message="This command is only available to admins. Sorry.")
 
 
-### Universal helper functions / builtins
+##############################################################
+#           Universal helper functions / builtins            #
+##############################################################
+
 # helper function for commands utilizing buttons
 def build_menu(buttons, n_cols, header_buttons=False, footer_buttons=False):
     menu = [buttons[i:i + n_cols] for i in range(0, len(buttons), n_cols)]
@@ -627,7 +677,10 @@ def error_callback(update, context):
         send_admin_broadcast("An exception has occured in the telegram bot: " + convert_less_than_greater_than(str(e)))
 
 
-### Main function
+##############################################################
+#                       Main function                        #
+##############################################################
+
 # this needs to be called from main_driver to init the telegram service
 def init(is_deployed):
     global updater
@@ -650,19 +703,9 @@ def init(is_deployed):
     global admin_chat_ids
     admin_chat_ids = dbs.db_users_get_admins()
 
-    global num_messages
-    num_messages = count(1)
-
-    global APPLY_NAME_STATE, APPLY_MESSAGE_STATE
-    global APPROVE_CHAT_ID_STATE, DENY_CHAT_ID_STATE
-    global WS_NAME_STATE, WS_URL_STATE, WS_TIME_SLEEP_STATE
-    APPLY_NAME_STATE, APPLY_MESSAGE_STATE = range(2)
-    APPROVE_CHAT_ID_STATE, DENY_CHAT_ID_STATE = range(2)
-    WS_NAME_STATE, WS_URL_STATE, WS_TIME_SLEEP_STATE = range(3)
-
     # --- Generally accessible commands (access levels 0 to 3):
     dispatcher.add_handler(CommandHandler("start", start))
-    # Conversation handler ->:
+    # Conversation handler -->
     conversation_handler_apply = ConversationHandler(
         entry_points=[CommandHandler("apply", apply)],
         states={
@@ -672,30 +715,34 @@ def init(is_deployed):
         fallbacks=[CommandHandler("applycancel", applycancel)]
     )
     dispatcher.add_handler(conversation_handler_apply)
+    # <--
     # --- Approved user accessible commands (access levels 0 and 1):
     dispatcher.add_handler(CommandHandler("commands", commands))
     dispatcher.add_handler(CommandHandler("subscriptions", subscriptions))
-    # -> Callback helpers:
+    # Callback helpers -->
     dispatcher.add_handler(CallbackQueryHandler(button_subscriptions_add, pattern="^add_subs-"))
     dispatcher.add_handler(CallbackQueryHandler(button_subscriptions_remove, pattern="^rem_subs-"))
     dispatcher.add_handler(CallbackQueryHandler(button_subscriptions_exit, pattern="exit_subs"))
+    # <--
     dispatcher.add_handler(CommandHandler("stop", stop))
     # --- Privileged admin-only commands (only access level 0):
     # "whoami" is not inherently privileged (anyone can check their status) but we'll not shout it from the rooftops regardless
     dispatcher.add_handler(CommandHandler("whoami", whoami))
     dispatcher.add_handler(CommandHandler("listusers", listusers))
     dispatcher.add_handler(CommandHandler("getwebsiteinfo", getwebsiteinfo))
-    # -> Callback helper:
+    # Callback helper -->
     dispatcher.add_handler(CallbackQueryHandler(button_getwebsiteinfo, pattern="^webpg_info-"))
+    # <--
     dispatcher.add_handler(CommandHandler("addwebsite", addwebsite))
     dispatcher.add_handler(CommandHandler("removewebsite", removewebsite))
     dispatcher.add_handler(CommandHandler("pendingusers", pendingusers))
-    # -> Callback helpers:
+    # Callback helpers -->
     dispatcher.add_handler(CallbackQueryHandler(button_pendingusers_approve, pattern="^usr_approve-"))
     dispatcher.add_handler(CallbackQueryHandler(button_pendingusers_deny, pattern="^usr_deny-"))
     dispatcher.add_handler(CallbackQueryHandler(button_pendingusers_detail, pattern="^user-"))
     dispatcher.add_handler(CallbackQueryHandler(button_pendingusers_exit, pattern="exit_users"))
-    # Conversation handlers ->:
+    # <--
+    # Conversation handlers -->
     conversation_handler_approve_user = ConversationHandler(
         entry_points=[CommandHandler("approveuser", approveuser)],
         states={
@@ -712,6 +759,7 @@ def init(is_deployed):
         fallbacks=[CommandHandler("usercancel", usercancel)]
     )
     dispatcher.add_handler(conversation_handler_deny_user)
+    # <--
     # --- Catch-all for unknown inputs (need to be added last):
     dispatcher.add_handler(MessageHandler(Filters.text & (~ Filters.command), unknown_text))
     dispatcher.add_handler(MessageHandler(Filters.command, unknown_command))

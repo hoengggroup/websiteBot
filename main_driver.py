@@ -1,23 +1,23 @@
 # -*- coding: utf-8 -*-
 
-### python builtins
+# PYTHON BUILTINS
 from datetime import datetime  # for timestamps
 import hashlib  # for hashing website content
 from os import listdir  # for detecting the rpi dummy file
 from os.path import isfile, join, dirname, realpath  # for detecting the rpi dummy file
 import platform  # for checking the system we are running on
-import random  # for deciding how long to sleep for
+# import random  # for deciding how long to sleep for
 from signal import signal, SIGABRT, SIGINT, SIGTERM  # for cleanup on exit/termination
 import sys  # for errors and terminating
 import time  # for sleeping
 import traceback  # for logging the full traceback
 
-### external libraries
+# EXTERNAL LIBRARIES
 import html2text  # for converting html to text
 import sdnotify  # for the systemctl watchdog
 from unidecode import unidecode  # for stripping Ümläüte
 
-### our own libraries
+# OUR OWN LIBRARIES
 from configService import version_code, keep_website_history, filter_dict
 from loggerService import create_logger
 import dp_edit_distance
@@ -31,19 +31,21 @@ import vpnService as vpns
 logger = create_logger("main")
 
 
-#termination handler
+# termination handler
 signal_caught = False
+
 
 def exit_cleanup(*args):
     global signal_caught
     if not signal_caught:
         signal_caught = True
+        logger.warning("Kill signal received. Starting cleanup and shutting down.")
         disconnection_state = dbs.db_disconnect()
         if not disconnection_state:
             logger.critical("Database did not disconnect successfully.")
         else:
             logger.info("Database disconnected successfully.")
-        tgs.send_admin_broadcast("Shutdown complete.")
+        tgs.send_admin_broadcast("Shutdown in progress. This is the last Telegram message.")
         tgs.exit_cleanup_tg()
         logger.info("Telegram bot stopped successfully.")
         logger.warning("Shutdown complete. This is the last line.")
@@ -51,8 +53,18 @@ def exit_cleanup(*args):
     else:
         print("KILL SIGNAL IGNORED. WAIT FOR COMPLETION OF TERMINATION ROUTINE.")
 
+
 for sig in (SIGABRT, SIGINT, SIGTERM):
     signal(sig, exit_cleanup)
+
+
+# systemctl watchdog
+alive_notifier = sdnotify.SystemdNotifier()
+# Set max_watchdog_time in service to max(time_setup, website_loading_timeout + website_process_time, sleep_time) where:
+#     time_setup = time from here to begin of while loop
+#     website_loading_timeout = timeout setting for loading websites
+#     website_process_time = time it takes to process (changes) of websites (incl. telegram communications)
+#     sleep_time = sleep time at end of while loop
 
 
 def vpn_wait():
@@ -121,7 +133,7 @@ def process_website(new_content, ws_name, url, last_hash, last_content):
                 for my_str in change_tupel:
                     msg_to_send += (my_str + " ")
                 msg_to_send += "\n"
-        
+
         # 2.2 censor content based on filter list
         filter_hits = list()
         filters = filter_dict.get(ws_name)
@@ -172,16 +184,7 @@ def process_website(new_content, ws_name, url, last_hash, last_content):
 
 
 def main():
-    # 1. initialize watchdog
-    global alive_notifier
-    alive_notifier = sdnotify.SystemdNotifier()
-    # Set max_watchdog_time in service to max(time_setup, website_loading_timeout + website_process_time, sleep_time) where:
-    #     time_setup = time from here to begin of while loop
-    #     website_loading_timeout = timeout setting for loading websites
-    #     website_process_time = time it takes to process (changes) of websites (incl. telegram communications)
-    #     sleep_time = sleep time at end of while loop
-
-    # 2. initialize database service
+    # 1. initialize database service
     connection_state = dbs.db_connect()
     if not connection_state:
         logger.critical("Fatal error: Could not establish connection with database. Exiting.")
@@ -189,7 +192,7 @@ def main():
     else:
         logger.info("Database connected successfully.")
 
-    # 3. detect deployment
+    # 2. detect deployment
     dir_path = dirname(realpath(__file__))
     if([f for f in listdir(dir_path) if (isfile(join(dir_path, f)) and f.endswith('.websitebot_deployed'))] != []):
         is_deployed = True
@@ -197,11 +200,11 @@ def main():
         is_deployed = False
     logger.info("Deployment status: " + str(is_deployed))
 
-    # 4. initialize telegram service
+    # 3. initialize telegram service
     # @websiteBot_bot if deployed, @websiteBotShortTests_bot if not deployed
     tgs.init(is_deployed)
 
-    # 5. initialize vpn service
+    # 4. initialize vpn service
     if([f for f in listdir(dir_path) if (isfile(join(dir_path, f)) and f.endswith('.websitebot_assert_vpn'))] != []):
         assert_vpn = True
     else:
@@ -215,10 +218,10 @@ def main():
         else:
             logger.info("VPN connection validated successfully.")
 
-    # 6. inform admins about startup
+    # 5. inform admins about startup
     tgs.send_admin_broadcast("Startup complete.\nVersion: \t" + version_code + "\nPlatform: \t" + str(platform.system()) + "\nAsserting VPN: \t" + str(assert_vpn) + "\nDeployed: \t" + str(is_deployed))
 
-    # 7. main loop
+    # 6. main loop
     try:
         while(True):
             # sleep until VPN connection is re-established if VPN connection is down (if assert_vpn==True)

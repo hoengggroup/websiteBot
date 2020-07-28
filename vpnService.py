@@ -1,12 +1,16 @@
 # -*- coding: utf-8 -*-
 
-### our own libraries
+# OUR OWN LIBRARIES
 from loggerService import create_logger
 import requestsService as rqs
 
 
 # logging
 logger = create_logger("vpn")
+
+
+# variable initialization
+ip_address_nordvpn, status_nordvpn, ip_address_icanhazip = [None]*3
 
 
 def get_nordvpn_api():
@@ -23,7 +27,7 @@ def get_nordvpn_api():
 
 def get_icanhazip_api():
     ip_address_icanhazip_tmp = None
-    response_icanhazip = rqs.get_url(url="https://icanhazip.com/", timeout=10)
+    response_icanhazip = rqs.get_url(url="https://ipv4.icanhazip.com/", timeout=10)
     if response_icanhazip:
         ip_address_icanhazip_tmp = response_icanhazip.text.strip()
         logger.debug("The IP address according to Icanhazip is " + ip_address_icanhazip_tmp + ".")
@@ -45,7 +49,7 @@ def is_vpn_active():
 
 
 def init(mode="init"):
-    if mode=="init":
+    if mode == "init":
         global ip_address_nordvpn, status_nordvpn, ip_address_icanhazip
 
     # check both APIs twice to be extra sure
@@ -57,17 +61,17 @@ def init(mode="init"):
     ip_address_icanhazip_2 = get_icanhazip_api()
 
     if ((ip_address_icanhazip_1 == ip_address_icanhazip_2) and (ip_address_nordvpn_1 == ip_address_nordvpn_2) and (ip_address_icanhazip_1 == ip_address_nordvpn_1)
-        and ((status_nordvpn_1 == "Protected") or (status_nordvpn_2 == "Protected"))):
+            and ((status_nordvpn_1 == "Protected") or (status_nordvpn_2 == "Protected"))):
         ip_address_nordvpn = ip_address_nordvpn_1
         status_nordvpn = "Protected"
         ip_address_icanhazip = ip_address_icanhazip_1
-        if mode=="re-establish":
+        if mode == "re-establish":
             logger.info("Successfully validated re-established connection with VPN.")
         else:
             logger.info("Successfully validated connection with VPN.")
         return True
     else:
-        if mode=="re-establish":
+        if mode == "re-establish":
             logger.info("Connection with VPN has (still) not been re-established.")
         else:
             logger.error("Could not validate connection with VPN.")

@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
-### python builtins
+# PYTHON BUILTINS
 from datetime import datetime  # for timestamps
 import sys  # for errors
 
-### external libraries
+# EXTERNAL LIBRARIES
 import requests  # for internet traffic
 
-### our own libraries
+# OUR OWN LIBRARIES
 from configService import my_timeout, my_headers, my_verify, notify_threshold_strict, notify_threshold_permissive
 from loggerService import create_logger
 import databaseService as dbs
@@ -30,7 +30,7 @@ def update_database_with_error(ws_name, error):
 
 def get_url(url, ws_name=None, timeout=my_timeout):
     global error_states
-    if not url in error_states:
+    if url not in error_states:
         error_states[url] = 0
     response = None
     try:

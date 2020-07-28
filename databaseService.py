@@ -1,13 +1,13 @@
 # -*- coding: utf-8 -*-
 
-### python builtins
+# PYTHON BUILTINS
 import inspect  # for getting the calling function's name in the error handler
 
-### external libraries
+# EXTERNAL LIBRARIES
 import psycopg2  # for interacting with PostgreSQL databases
 import psycopg2.errorcodes  # ...its errorcodes module must be imported seperately
 
-### our own libraries
+# OUR OWN LIBRARIES
 from configService import my_database, my_user, my_password, my_host, my_port
 from loggerService import create_logger
 
@@ -16,7 +16,11 @@ from loggerService import create_logger
 logger = create_logger("db")
 
 
-# Amazing (self-created ;)) error handler
+# variable initialization
+conn, cur = [None]*2
+
+
+# amazing (self-created ;)) error handler
 def db_exc_handler(excp, conn):
     logger.error("Database error in function " + str(inspect.stack()[1].function) + "\nError code: " + str(excp.pgcode))
     if (excp.pgcode == psycopg2.errorcodes.CONNECTION_EXCEPTION) or (excp.pgcode == psycopg2.errorcodes.CONNECTION_FAILURE):
@@ -77,7 +81,10 @@ def db_exc_handler(excp, conn):
         logger.error("Unkown error code " + str(excp.pgcode) + ". Lookup: " + psycopg2.errorcodes.lookup(excp.pgcode))
 
 
-### DATABASE MANAGEMENT
+#########################
+#  DATABASE MANAGEMENT  #
+#########################
+
 # CONNECT TO DATABASE
 def db_connect():
     global conn
@@ -116,7 +123,10 @@ def db_disconnect():
     return True
 
 
-### CREDENTIALS TABLE
+#########################
+#   CREDENTIALS TABLE   #
+#########################
+
 # GET BOT TOKEN
 def db_credentials_get_bot_token(bot_name):
     try:
@@ -136,7 +146,10 @@ def db_credentials_get_bot_token(bot_name):
         return None
 
 
-### USERS TABLE
+#########################
+#      USERS TABLE      #
+#########################
+
 # CREATE NEW USER
 def db_users_create(tg_id, status, first_name, last_name, username, apply_name, apply_text, apply_date):
     try:
@@ -229,19 +242,19 @@ def db_users_get_data(tg_id, field="all_fields"):
         return None
     # We have to make this clunky if-elif chunk beacuse of protections against SQL injection
     return_list = False
-    if field=="status":
+    if field == "status":
         postgres_query = """SELECT status FROM users WHERE tg_id = %s;"""
-    elif field=="first_name":
+    elif field == "first_name":
         postgres_query = """SELECT first_name FROM users WHERE tg_id = %s;"""
-    elif field=="last_name":
+    elif field == "last_name":
         postgres_query = """SELECT last_name FROM users WHERE tg_id = %s;"""
-    elif field=="username":
+    elif field == "username":
         postgres_query = """SELECT username FROM users WHERE tg_id = %s;"""
-    elif field=="apply_name":
+    elif field == "apply_name":
         postgres_query = """SELECT apply_name FROM users WHERE tg_id = %s;"""
-    elif field=="apply_text":
+    elif field == "apply_text":
         postgres_query = """SELECT apply_text FROM users WHERE tg_id = %s;"""
-    elif field=="apply_date":
+    elif field == "apply_date":
         postgres_query = """SELECT apply_date FROM users WHERE tg_id = %s;"""
     else:
         postgres_query = """SELECT * FROM users WHERE tg_id = %s;"""
@@ -270,19 +283,19 @@ def db_users_set_data(tg_id, field, argument):
     if not db_users_exists(tg_id):
         logger.debug("users_set_data: User " + str(tg_id) + " does not exist.")
         return False
-    if field=="status":
+    if field == "status":
         postgres_query = """UPDATE users SET status = %s WHERE tg_id = %s;"""
-    elif field=="first_name":
+    elif field == "first_name":
         postgres_query = """UPDATE users SET first_name = %s WHERE tg_id = %s;"""
-    elif field=="last_name":
+    elif field == "last_name":
         postgres_query = """UPDATE users SET last_name = %s WHERE tg_id = %s;"""
-    elif field=="username":
+    elif field == "username":
         postgres_query = """UPDATE users SET username = %s WHERE tg_id = %s;"""
-    elif field=="apply_name":
+    elif field == "apply_name":
         postgres_query = """UPDATE users SET apply_name = %s WHERE tg_id = %s;"""
-    elif field=="apply_text":
+    elif field == "apply_text":
         postgres_query = """UPDATE users SET apply_text = %s WHERE tg_id = %s;"""
-    elif field=="apply_date":
+    elif field == "apply_date":
         postgres_query = """UPDATE users SET apply_date = %s WHERE tg_id = %s;"""
     else:
         logger.debug("users_set_data: Data field \"" + str(field) + "\" does not match any columns. No action taken.")
@@ -298,7 +311,10 @@ def db_users_set_data(tg_id, field, argument):
         return False
 
 
-### WEBSITES TABLE
+#########################
+#    WEBSITES TABLE     #
+#########################
+
 # GET WEBSITE ID
 def db_websites_get_id(ws_name):
     try:
@@ -407,19 +423,19 @@ def db_websites_get_data(ws_name, field="all_fields"):
         return None
     # We have to make this clunky if-elif chunk beacuse of protections against SQL injection
     return_list = False
-    if field=="url":
+    if field == "url":
         postgres_query = """SELECT url FROM websites WHERE ws_id = %s;"""
-    elif field=="time_sleep":
+    elif field == "time_sleep":
         postgres_query = """SELECT time_sleep FROM websites WHERE ws_id = %s;"""
-    elif field=="last_time_checked":
+    elif field == "last_time_checked":
         postgres_query = """SELECT last_time_checked FROM websites WHERE ws_id = %s;"""
-    elif field=="last_time_updated":
+    elif field == "last_time_updated":
         postgres_query = """SELECT last_time_updated FROM websites WHERE ws_id = %s;"""
-    elif field=="last_error_msg":
+    elif field == "last_error_msg":
         postgres_query = """SELECT last_error_msg FROM websites WHERE ws_id = %s;"""
-    elif field=="last_error_time":
+    elif field == "last_error_time":
         postgres_query = """SELECT last_error_time FROM websites WHERE ws_id = %s;"""
-    elif field=="last_hash":
+    elif field == "last_hash":
         postgres_query = """SELECT last_hash FROM websites WHERE ws_id = %s;"""
     else:
         postgres_query = """SELECT * FROM websites WHERE ws_id = %s;"""
@@ -471,21 +487,21 @@ def db_websites_set_data(ws_name, field, argument):
     if not ws_id:
         logger.debug("websites_set_data: Website \"" + str(ws_name) + "\" does not exist.")
         return False
-    if field=="ws_name":
+    if field == "ws_name":
         postgres_query = """UPDATE websites SET ws_name = %s WHERE ws_id = %s;"""
-    elif field=="url":
+    elif field == "url":
         postgres_query = """UPDATE websites SET url = %s WHERE ws_id = %s;"""
-    elif field=="time_sleep":
+    elif field == "time_sleep":
         postgres_query = """UPDATE websites SET time_sleep = %s WHERE ws_id = %s;"""
-    elif field=="last_time_checked":
+    elif field == "last_time_checked":
         postgres_query = """UPDATE websites SET last_time_checked = %s WHERE ws_id = %s;"""
-    elif field=="last_time_updated":
+    elif field == "last_time_updated":
         postgres_query = """UPDATE websites SET last_time_updated = %s WHERE ws_id = %s;"""
-    elif field=="last_error_msg":
+    elif field == "last_error_msg":
         postgres_query = """UPDATE websites SET last_error_msg = %s WHERE ws_id = %s;"""
-    elif field=="last_error_time":
+    elif field == "last_error_time":
         postgres_query = """UPDATE websites SET last_error_time = %s WHERE ws_id = %s;"""
-    elif field=="last_hash":
+    elif field == "last_hash":
         postgres_query = """UPDATE websites SET last_hash = %s WHERE ws_id = %s;"""
     else:
         logger.debug("websites_set_data: Data field \"" + str(field) + "\" does not match any columns. No action taken.")
@@ -538,7 +554,10 @@ def db_websites_delete_content(ws_name):
         return False
 
 
-### SUBSCIRIPTIONS TABLE
+#########################
+# SUBSCIRIPTIONS TABLE  #
+#########################
+
 # GET SUBSCRIPTIONS BY WEBSITE
 def db_subscriptions_by_website(ws_name):
     ws_id = db_websites_get_id(ws_name)
