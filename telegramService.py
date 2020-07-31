@@ -467,9 +467,9 @@ def stop(update, context):
 
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") >= 1:
         if dbs.db_users_delete(tg_id=update.message.chat_id):
-            send_command_reply(update, context, message="Your chat ID was removed from this bot. Goodbye.")
+            send_command_reply(update, context, message="You were removed from this bot. Goodbye.")
         else:
-            send_command_reply(update, context, message="Error. Your chat ID could not be removed from this bot. Please try again.")
+            send_command_reply(update, context, message="Error. You could not be removed from this bot. Please try again.")
 
 
 ##############################################################
