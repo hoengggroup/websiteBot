@@ -151,7 +151,6 @@ def edituser(update, context):
 
 
 # callback helper function for edituser()
-@send_typing_action
 def button_edituser_01_pending(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
@@ -223,7 +222,6 @@ def button_edituser_03_pending_deny(update, context):
 
 
 # callback helper function for edituser()
-@send_typing_action
 def button_edituser_01_non_pending(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]

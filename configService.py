@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # MAIN PARAMETERS
-version_code = "5.6"
+version_code = "5.6.1"
 keep_website_history = True
 filter_dict = {'living': ['17.509', '17.515', '13.613', '13.615', '13.617', '13.619',
                           '17.511', '17.513', '17.503', '17.505', '17.507', '13.605', '13.607', '13.609', '13.611']}
