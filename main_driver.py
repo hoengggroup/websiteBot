@@ -33,25 +33,35 @@ logger = create_logger("main")
 
 # termination handler
 signal_caught = False
+signal_on_exception = False
 
 
 def exit_cleanup(*args):
     global signal_caught
     if not signal_caught:
         signal_caught = True
-        logger.warning("Kill signal received. Starting cleanup and shutting down.")
-        disconnection_state = dbs.db_disconnect()
-        if not disconnection_state:
+        if signal_on_exception:
+            logger.warning("Kill signal received because of an exception. Starting cleanup and shutting down.")
+        else:
+            logger.warning("Kill signal received. Starting cleanup and shutting down.")
+        db_disconnection_state = dbs.db_disconnect()
+        if not db_disconnection_state:
             logger.critical("Database did not disconnect successfully.")
         else:
             logger.info("Database disconnected successfully.")
         tgs.send_admin_broadcast("Shutdown in progress. This is the last Telegram message.")
-        tgs.exit_cleanup_tg()
-        logger.info("Telegram bot stopped successfully.")
+        tg_disconnection_state = tgs.exit_cleanup_tg()
+        if not tg_disconnection_state:
+            logger.critical("Telegram bot did not stop successfully.")
+        else:
+            logger.info("Telegram bot stopped successfully.")
         logger.warning("Shutdown complete. This is the last line.")
-        sys.exit(1)
+        if db_disconnection_state and tg_disconnection_state and not signal_on_exception:
+            sys.exit(0)
+        else:
+            sys.exit(1)
     else:
-        print("KILL SIGNAL IGNORED. WAIT FOR COMPLETION OF TERMINATION ROUTINE.")
+        print("\nKILL SIGNAL IGNORED. WAIT FOR COMPLETION OF TERMINATION ROUTINE.")
 
 
 for sig in (SIGABRT, SIGINT, SIGTERM):
@@ -275,6 +285,8 @@ def main():
         logger.critical("The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
         traceback.print_exc()
         tgs.send_admin_broadcast("Unknown exception in main loop.\nExiting.")
+        global signal_on_exception
+        signal_on_exception = True
         exit_cleanup()
 
 
