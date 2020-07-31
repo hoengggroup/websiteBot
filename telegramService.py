@@ -26,8 +26,13 @@ def exit_cleanup_tg():
     logger.info("Stopping telegram bot instances.")
     print("WAIT FOR THIS PROCESS TO BE COMPLETED.")
     print("SUBSEQUENT KILL SIGNALS WILL BE IGNORED UNTIL TERMINATION ROUTINE HAS FINISHED.")
-    updater.stop()
-    logger.info("Successfully stopped telegram bot instances.")
+    try:
+        updater.stop()
+        logger.info("Successfully stopped telegram bot instances.")
+        return True
+    except Exception:
+        logger.info("Could not stop telegram bot instances.")
+        return False
 
 
 # decorator for sending typing indicators
@@ -44,7 +49,7 @@ updater, dispatcher, bot = [None]*3
 admin_chat_ids = None
 num_messages = count(1)
 APPLY_NAME_STATE, APPLY_MESSAGE_STATE = range(2)
-APPROVE_CHAT_ID_STATE, DENY_CHAT_ID_STATE = range(2)
+STATE_EDITUSER_02_NON_PENDING = range(1)
 WS_NAME_STATE, WS_URL_STATE, WS_TIME_SLEEP_STATE = range(3)
 
 
@@ -110,9 +115,9 @@ def apply_message(update, context):
     dbs.db_users_set_data(tg_id=update.message.chat_id, field="apply_text", argument=apply_message)
     message_to_admins = "Application:\n" + str(apply_message) + "\nSent by: " + str(apply_name) + " (" + user_id_linker(update.message.chat_id) + ")"
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") == 3:
-        message_to_admins += "\n<i>Attention: This user has been denied before and will not be shown in the /pendingusers section. Manual approval needed using /approveuser.</i>"
+        message_to_admins += "\n<i>Attention: This user has been denied before and will not be shown in the pending users section of /edituser. Manual approval would be needed using the approved/denied section of /edituser.</i>"
     else:
-        message_to_admins += "\nApprove or deny with /pendingusers."
+        message_to_admins += "\nApprove or deny with /edituser."
     send_admin_broadcast(message_to_admins)
     send_command_reply(update, context, message="Alright, I have forwarded your message to the admins. You will hear from me when they have approved (or denied) you.")
     return ConversationHandler.END
@@ -128,33 +133,49 @@ def applycancel(update, context):
 
 
 ##############################################################
-#      Telegram admin flow: approve/deny pending users       #
+#          Telegram admin flow: approve/deny users           #
 ##############################################################
+
 # access level: admin (0)
 @send_typing_action
-def pendingusers(update, context):
+def edituser(update, context):
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 0:
-        chat_ids = dbs.db_users_get_pending_ids()
         buttons = list()
-        for ids in chat_ids:
-            apply_name = dbs.db_users_get_data(tg_id=ids, field="apply_name")
-            buttons.append(InlineKeyboardButton(str(apply_name) + " (" + str(ids) + ")", callback_data="user-" + str(ids)))
-        buttons.append(InlineKeyboardButton("Exit menu", callback_data="exit_users"))
+        buttons.append(InlineKeyboardButton("Pending users", callback_data="edituser_01_pending"))
+        buttons.append(InlineKeyboardButton("Approved/Denied users", callback_data="edituser_01_non_pending"))
+        buttons.append(InlineKeyboardButton("Exit menu", callback_data="edituser_exit"))
         reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
-        send_command_reply(update, context, message="Here is a list of users with pending applications:\nClick for details.", reply_markup=reply_markup)
+        send_command_reply(update, context, message="Which kind of user would you like to edit?", reply_markup=reply_markup)
     else:
         send_command_reply(update, context, message="This command is only available to admins. Sorry.")
 
 
-# callback helper function for pendingusers()
-def button_pendingusers_detail(update, context):
+# callback helper function for edituser()
+@send_typing_action
+def button_edituser_01_pending(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
     callback_message_id = query["message"]["message_id"]
-    callback_user_unstripped = str(query["data"])
-    callback_user = int(callback_user_unstripped.replace("user-", ""))
-    user_data = dbs.db_users_get_data(tg_id=callback_user)
-    message = ("User ID: " + str(callback_user) + "\n"
+    chat_ids = dbs.db_users_get_pending_ids()
+    buttons = list()
+    for ids in chat_ids:
+        apply_name = dbs.db_users_get_data(tg_id=ids, field="apply_name")
+        buttons.append(InlineKeyboardButton(str(apply_name) + " (" + str(ids) + ")", callback_data="edituser_02_pending_detail-" + str(ids)))
+    buttons.append(InlineKeyboardButton("Exit menu", callback_data="edituser_exit"))
+    reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
+    send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Here is a list of users with pending applications:\nClick for details.", reply_markup=reply_markup)
+    bot.answer_callback_query(query["id"])
+
+
+# callback helper function for edituser()
+def button_edituser_02_pending_detail(update, context):
+    query = update.callback_query
+    callback_chat_id = query["message"]["chat"]["id"]
+    callback_message_id = query["message"]["message_id"]
+    query_data_unstripped = str(query["data"])
+    query_data = int(query_data_unstripped.replace("edituser_02_pending_detail-", ""))
+    user_data = dbs.db_users_get_data(tg_id=query_data)
+    message = ("User ID: " + str(query_data) + "\n"
                "Status: 2 (pending)\n"
                "First name: " + str(user_data[2]) + "\n"
                "Last name: " + str(user_data[3]) + "\n"
@@ -162,127 +183,129 @@ def button_pendingusers_detail(update, context):
                "Name on application: " + str(user_data[5]) + "\n"
                "Application: " + str(user_data[6]) + "\n"
                "Date of application: " + str(user_data[7]))
-    buttons = [InlineKeyboardButton("Approve", callback_data="usr_approve-" + str(callback_user)), InlineKeyboardButton("Deny", callback_data="usr_deny-" + str(callback_user))]
-    buttons.append(InlineKeyboardButton("Exit menu", callback_data="exit_users"))
+    buttons = [InlineKeyboardButton("Approve", callback_data="edituser_03_pending_approve-" + str(query_data)), InlineKeyboardButton("Deny", callback_data="edituser_03_pending_deny-" + str(query_data))]
+    buttons.append(InlineKeyboardButton("Exit menu", callback_data="edituser_exit"))
     reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
-    bot.edit_message_text(text=message + "\n\nWhat do you want to do with this user?", chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
+    send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message=message + "\n\nWhat do you want to do with this user?", reply_markup=reply_markup)
     bot.answer_callback_query(query["id"])
 
 
-# callback helper function for pendingusers()
-def button_pendingusers_approve(update, context):
+# callback helper function for edituser()
+def button_edituser_03_pending_approve(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
     callback_message_id = query["message"]["message_id"]
-    callback_user_unstripped = str(query["data"])
-    callback_user = int(callback_user_unstripped.replace("usr_approve-", ""))
-    bot.edit_message_text(text="Reopen this menu at any time with /pendingusers.\nYou can also still use /approveuser and /denyuser.", chat_id=callback_chat_id, message_id=callback_message_id)
-    if dbs.db_users_set_data(tg_id=callback_user, field="status", argument=1):
-        send_admin_broadcast("Chat ID " + user_id_linker(callback_user) + " successfully approved (status set to 1).")
-        send_general_broadcast(chat_id=callback_user, message="Your application to use this bot was granted. You can now display and subscribe to available websites with /subscriptions and see the available commands with /commands.")
+    query_data_unstripped = str(query["data"])
+    query_data = int(query_data_unstripped.replace("edituser_03_pending_approve-", ""))
+    send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Reopen this menu at any time with /edituser.")
+    if dbs.db_users_set_data(tg_id=query_data, field="status", argument=1):
+        send_admin_broadcast("Chat ID " + user_id_linker(query_data) + " successfully approved (status set to 1).")
+        send_general_broadcast(chat_id=query_data, message="Your application to use this bot was granted. You can now display and subscribe to available websites with /subscriptions and see the available commands with /commands.")
     else:
-        send_command_reply(update, context, message="Error. Setting of new status 1 (approved) for chat ID " + user_id_linker(callback_user) + " failed.\nThis user may already be approved.\nOtherwise, please try again.")
+        send_command_reply(update, context, message="Error. Setting of new status 1 (approved) for chat ID " + user_id_linker(query_data) + " failed.\nThis user may already be approved.\nOtherwise, please try again.")
     bot.answer_callback_query(query["id"])
 
 
-# callback helper function for pendingusers()
-def button_pendingusers_deny(update, context):
+# callback helper function for edituser()
+def button_edituser_03_pending_deny(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
     callback_message_id = query["message"]["message_id"]
-    callback_user_unstripped = str(query["data"])
-    callback_user = int(callback_user_unstripped.replace("usr_deny-", ""))
-    bot.edit_message_text(text="Reopen this menu at any time with /pendingusers.\nYou can also still use /approveuser and /denyuser.", chat_id=callback_chat_id, message_id=callback_message_id)
-    if dbs.db_users_set_data(tg_id=callback_user, field="status", argument=3):
-        send_admin_broadcast("Chat ID " + user_id_linker(callback_user) + " successfully denied (status set to 3).")
-        send_general_broadcast(chat_id=callback_user, message="Sorry, you were denied from using this bot. Goodbye.")
+    query_data_unstripped = str(query["data"])
+    query_data = int(query_data_unstripped.replace("edituser_03_pending_deny-", ""))
+    send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Reopen this menu at any time with /edituser.")
+    if dbs.db_users_set_data(tg_id=query_data, field="status", argument=3):
+        send_admin_broadcast("Chat ID " + user_id_linker(query_data) + " successfully denied (status set to 3).")
+        send_general_broadcast(chat_id=query_data, message="Sorry, you were denied from using this bot. Goodbye.")
     else:
-        send_command_reply(update, context, message="Error. Setting of new status 3 (denied) for chat ID " + user_id_linker(callback_user) + " failed.\nThis user may already be denied.\nOtherwise, please try again.")
+        send_command_reply(update, context, message="Error. Setting of new status 3 (denied) for chat ID " + user_id_linker(query_data) + " failed.\nThis user may already be denied.\nOtherwise, please try again.")
     bot.answer_callback_query(query["id"])
 
 
-# callback helper function for pendingusers()
-def button_pendingusers_exit(update, context):
-    query = update.callback_query
-    callback_chat_id = query["message"]["chat"]["id"]
-    callback_message_id = query["message"]["message_id"]
-    bot.edit_message_text(text="Reopen this menu at any time with /pendingusers.\nYou can also still use /approveuser and /denyuser.", chat_id=callback_chat_id, message_id=callback_message_id)
-    bot.answer_callback_query(query["id"])
-
-
-##############################################################
-#             Telegram admin flow: approve users             #
-##############################################################
-
-# access level: admin (0)
+# callback helper function for edituser()
 @send_typing_action
-def approveuser(update, context):
-    if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 0:
-        send_command_reply(update, context, message="Which User ID would you like to approve? Otherwise send /usercancel to stop.")
-        return APPROVE_CHAT_ID_STATE
-    else:
-        send_command_reply(update, context, message="This command is only available to admins. Sorry.")
+def button_edituser_01_non_pending(update, context):
+    query = update.callback_query
+    callback_chat_id = query["message"]["chat"]["id"]
+    callback_message_id = query["message"]["message_id"]
+    send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Which user would you like to edit? Otherwise, send /editusercancel to exit.")
+    bot.answer_callback_query(query["id"])
+    return STATE_EDITUSER_02_NON_PENDING
 
 
-# conversation helper function for approveuser()
+# conversation helper function for edituser()
 @send_typing_action
-def approve_user_helper(update, context):
-    chat_id_to_approve = update.message.text
+def helper_edituser_02_non_pending_cancel(update, context):
+    send_command_reply(update, context, message="Ok. Reopen the menu at any time with /edituser.")
+    return ConversationHandler.END
+
+
+# conversation helper function for edituser()
+@send_typing_action
+def helper_edituser_02_non_pending_detail(update, context):
+    chat_id_to_edit = update.message.text
     try:
-        chat_id_to_approve = int(chat_id_to_approve)
+        chat_id_to_edit = int(chat_id_to_edit)
     except ValueError:
         send_command_reply(update, context, message="Error. This is not a valid chat ID.")
         return ConversationHandler.END
-    if chat_id_to_approve in dbs.db_users_get_all_ids():
-        if dbs.db_users_set_data(tg_id=chat_id_to_approve, field="status", argument=1):
-            send_admin_broadcast("Chat ID " + user_id_linker(chat_id_to_approve) + " successfully approved (status set to 1).")
-            send_general_broadcast(chat_id=chat_id_to_approve, message="Your application to use this bot was granted. You can now display and subscribe to available websites with /subscriptions and see the available commands with /commands.")
+    chat_id_to_edit_status = dbs.db_users_get_data(tg_id=chat_id_to_edit, field="status")
+    if chat_id_to_edit in dbs.db_users_get_all_ids() and chat_id_to_edit_status >= 1:
+        buttons = list()
+        if chat_id_to_edit_status == 1:
+            buttons.append(InlineKeyboardButton("Change to status 3 (denied)", callback_data="edituser_03_non_pending_deny-" + str(chat_id_to_edit)))
+        elif chat_id_to_edit_status == 3:
+            buttons.append(InlineKeyboardButton("Change to status 1 (approved)", callback_data="edituser_03_non_pending_approve-" + str(chat_id_to_edit)))
         else:
-            send_command_reply(update, context, message="Error. Setting of new status 1 (approved) for chat ID " + user_id_linker(chat_id_to_approve) + " failed.\nThis user may already be approved.\nOtherwise, please try again.")
+            buttons.append(InlineKeyboardButton("Change to status 1 (approved)", callback_data="edituser_03_non_pending_approve-" + str(chat_id_to_edit)))
+            buttons.append(InlineKeyboardButton("Change to status 3 (denied)", callback_data="edituser_03_non_pending_deny-" + str(chat_id_to_edit)))
+        buttons.append(InlineKeyboardButton("Exit menu", callback_data="edituser_exit"))
+        reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
+        send_command_reply(update, context, message="Current status of this user is: " + str(chat_id_to_edit_status) + " (" + status_meaning(chat_id_to_edit_status) + ")\nWould you like to change the status of this user?", reply_markup=reply_markup)
     else:
-        send_command_reply(update, context, message="Error. Chat ID " + user_id_linker(chat_id_to_approve) + " does not exist in database.")
+        send_command_reply(update, context, message="Error. Chat ID " + user_id_linker(chat_id_to_edit) + " does not exist in database or is an admin.")
     return ConversationHandler.END
 
 
-##############################################################
-#              Telegram admin flow: deny users               #
-##############################################################
-
-# access level: admin (0)
-@send_typing_action
-def denyuser(update, context):
-    if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 0:
-        send_command_reply(update, context, message="Which User ID would you like to deny? Otherwise send /usercancel to stop.")
-        return DENY_CHAT_ID_STATE
+# callback helper function for edituser()
+def button_edituser_03_non_pending_approve(update, context):
+    query = update.callback_query
+    callback_chat_id = query["message"]["chat"]["id"]
+    callback_message_id = query["message"]["message_id"]
+    query_data_unstripped = str(query["data"])
+    query_data = int(query_data_unstripped.replace("edituser_03_non_pending_approve-", ""))
+    send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Reopen this menu at any time with /edituser.")
+    if dbs.db_users_set_data(tg_id=query_data, field="status", argument=1):
+        send_admin_broadcast("Chat ID " + user_id_linker(query_data) + " successfully approved (status set to 1).")
+        send_general_broadcast(chat_id=query_data, message="Your application to use this bot was granted. You can now display and subscribe to available websites with /subscriptions and see the available commands with /commands.")
     else:
-        send_command_reply(update, context, message="This command is only available to admins. Sorry.")
+        send_command_reply(update, context, message="Error. Setting of new status 1 (approved) for chat ID " + user_id_linker(query_data) + " failed.\nPlease try again.")
+    bot.answer_callback_query(query["id"])
 
 
-# conversation helper function for denyuser()
-@send_typing_action
-def deny_user_helper(update, context):
-    chat_id_to_deny = update.message.text
-    try:
-        chat_id_to_deny = int(chat_id_to_deny)
-    except ValueError:
-        send_command_reply(update, context, message="Error. This is not a valid chat ID.")
-        return ConversationHandler.END
-    if chat_id_to_deny in dbs.db_users_get_all_ids():
-        if dbs.db_users_set_data(tg_id=chat_id_to_deny, field="status", argument=3):
-            send_admin_broadcast("Chat ID " + user_id_linker(chat_id_to_deny) + " successfully denied (status set to 3).")
-            send_general_broadcast(chat_id=chat_id_to_deny, message="Sorry, you were denied from using this bot. Goodbye.")
-        else:
-            send_command_reply(update, context, message="Error. Setting of new status 3 (denied) for chat ID " + user_id_linker(chat_id_to_deny) + " failed.\nThis user may already be denied.\nOtherwise, please try again.")
+# callback helper function for edituser()
+def button_edituser_03_non_pending_deny(update, context):
+    query = update.callback_query
+    callback_chat_id = query["message"]["chat"]["id"]
+    callback_message_id = query["message"]["message_id"]
+    query_data_unstripped = str(query["data"])
+    query_data = int(query_data_unstripped.replace("edituser_03_non_pending_deny-", ""))
+    send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Reopen this menu at any time with /edituser.")
+    if dbs.db_users_set_data(tg_id=query_data, field="status", argument=3):
+        send_admin_broadcast("Chat ID " + user_id_linker(query_data) + " successfully denied (status set to 3).")
+        send_general_broadcast(chat_id=query_data, message="Sorry, you were denied from using this bot. Goodbye.")
     else:
-        send_command_reply(update, context, message="Error. Chat ID " + user_id_linker(chat_id_to_deny) + " does not exist in database.")
-    return ConversationHandler.END
+        send_command_reply(update, context, message="Error. Setting of new status 3 (denied) for chat ID " + user_id_linker(query_data) + " failed.\nPlease try again.")
+    bot.answer_callback_query(query["id"])
 
 
-# conversation helper function for approveuser() and denyuser()
-@send_typing_action
-def usercancel(update, context):
-    send_command_reply(update, context, message="Ok. You can approve or deny users at any point with /approveuser or /denyuser.")
-    return ConversationHandler.END
+# callback helper function for edituser()
+def button_edituser_exit(update, context):
+    query = update.callback_query
+    callback_chat_id = query["message"]["chat"]["id"]
+    callback_message_id = query["message"]["message_id"]
+    send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Reopen this menu at any time with /edituser.")
+    bot.answer_callback_query(query["id"])
 
 
 ##############################################################
@@ -309,20 +332,6 @@ def listusers(update, context):
         send_command_reply(update, context, message="This command is only available to admins. Sorry.")
 
 
-# helper function for listusers()
-def status_meaning(status):
-    if status == 0:
-        return "admin"
-    elif status == 1:
-        return "user"
-    elif status == 2:
-        return "pending"
-    elif status == 3:
-        return "denied"
-    else:
-        return "unknown"
-
-
 ##############################################################
 #      Telegram user flow: list all available commands       #
 ##############################################################
@@ -332,21 +341,18 @@ def status_meaning(status):
 def commands(update, context):
     command_list = ""
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 1:
-        command_list += ("/start\n- display welcome message and lists of available websites and commands\n"
-                         "/commands\n- display this list of available commands\n"
-                         "/subscriptions\n- check your active subscriptions and (un-)subscribe to/from notifications about websites\n"
-                         "/stop\n- unsubscribe from all websites and remove your user ID from this bot")
+        command_list += ("/commands -- display this list of available commands\n"
+                         "/subscriptions -- manage for which websites you want to receive notifications when they are updated\n"
+                         "/stop -- unsubscribe from all websites and remove yourself from this bot")
         if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 0:
-            command_list += ("\n\nThe available admin-only commands are:\n"
-                             "/whoami\n- check admin status (not an inherently privileged command, anyone can check their status)\n"
-                             "/pendingusers\n- approve or deny pending users who applied to use this bot\n"
-                             "/approveuser\n- approve any user\n"
-                             "/denyuser\n- deny any user\n"
-                             "/listusers\n- get info about all users who are using this bot\n"
-                             "/getwebsiteinfo\n- get info about a given website\n"
-                             "/addwebsite {name} {url} {t_sleep}\n- add a website to the list of available websites\n"
-                             "/removewebsite {name}\n- remove a website from the list of available websites")
-        send_command_reply(update, context, message="The available commands are:\n" + command_list)
+            command_list += ("\n\n<b>The available admin-only commands are:</b>\n"
+                             "/whoami -- check access status (not admin-only, but hidden)\n"
+                             "/edituser -- approve/deny both pending and current users\n"
+                             "/listusers -- display information about all users\n"
+                             "/getwebsiteinfo -- display information about the available websites\n"
+                             "/addwebsite {name} {url} {t_sleep} -- add a website to the list of available websites\n"
+                             "/removewebsite {name} -- remove a website from the list of available websites")
+        send_command_reply(update, context, message="<b>The available commands are:</b>\n" + command_list)
     else:
         send_command_reply(update, context, message="This command is only available to approved users. Sorry.")
 
@@ -370,14 +376,20 @@ def button_subscriptions_add(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
     callback_message_id = query["message"]["message_id"]
-    callback_website_unstripped = str(query["data"])
-    callback_website = callback_website_unstripped.replace("add_subs-", "")
-    if dbs.db_subscriptions_subscribe(tg_id=callback_chat_id, ws_name=callback_website):
+    query_data_unstripped = str(query["data"])
+    query_data = query_data_unstripped.replace("add_subs-", "")
+    if dbs.db_subscriptions_subscribe(tg_id=callback_chat_id, ws_name=query_data):
         reply_markup = build_subscriptions_keyboard(callback_chat_id)
-        bot.edit_message_text(text="You have successfully been subscribed to website: " + str(callback_website), chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
+        if reply_markup:
+            send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="You have successfully been subscribed to website: " + str(query_data), reply_markup=reply_markup)
+        else:
+            send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Something went wrong while getting your subscriptions. Please open the menu again with /subscriptions.")
     else:
         reply_markup = build_subscriptions_keyboard(callback_chat_id)
-        bot.edit_message_text(text="Error. Subscription to website " + str(callback_website) + " failed.\nPlease try again.", chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
+        if reply_markup:
+            send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Error. Subscription to website " + str(query_data) + " failed.\nThis may be due to duplicate button presses; so you might already be subscribed.\nPlease close and reopen this menu or perform another action to verify your settings.", reply_markup=reply_markup)
+        else:
+            send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Something went wrong while getting your subscriptions. Please open the menu again with /subscriptions.")
     bot.answer_callback_query(query["id"])
 
 
@@ -386,14 +398,20 @@ def button_subscriptions_remove(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
     callback_message_id = query["message"]["message_id"]
-    callback_website_unstripped = str(query["data"])
-    callback_website = callback_website_unstripped.replace("rem_subs-", "")
-    if dbs.db_subscriptions_unsubscribe(tg_id=callback_chat_id, ws_name=callback_website):
+    query_data_unstripped = str(query["data"])
+    query_data = query_data_unstripped.replace("rem_subs-", "")
+    if dbs.db_subscriptions_unsubscribe(tg_id=callback_chat_id, ws_name=query_data):
         reply_markup = build_subscriptions_keyboard(callback_chat_id)
-        bot.edit_message_text(text="You have successfully been unsubscribed from website: " + str(callback_website), chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
+        if reply_markup:
+            send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="You have successfully been unsubscribed from website: " + str(query_data), reply_markup=reply_markup)
+        else:
+            send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Something went wrong while getting your subscriptions. Please open the menu again with /subscriptions.")
     else:
         reply_markup = build_subscriptions_keyboard(callback_chat_id)
-        bot.edit_message_text(text="Error. Unsubscription from website " + str(callback_website) + " failed.\nPlease try again.", chat_id=callback_chat_id, message_id=callback_message_id, reply_markup=reply_markup)
+        if reply_markup:
+            send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Error. Unsubscription from website " + str(query_data) + " failed.\nThis may be due to duplicate button presses; so you might already be unsubscribed.\nPlease close and reopen this menu or perform another action to verify your settings.", reply_markup=reply_markup)
+        else:
+            send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Something went wrong while getting your subscriptions. Please open the menu again with /subscriptions.")
     bot.answer_callback_query(query["id"])
 
 
@@ -402,25 +420,25 @@ def button_subscriptions_exit(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
     callback_message_id = query["message"]["message_id"]
-    bot.edit_message_text(text="Reopen this menu at any time with /subscriptions.", chat_id=callback_chat_id, message_id=callback_message_id)
+    send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Reopen this menu at any time with /subscriptions.")
     bot.answer_callback_query(query["id"])
 
 
 # helper function for callback helpers for subscriptions()
 def build_subscriptions_keyboard(callback_chat_id):
-    subscribed = list()
     buttons = list()
     website_ids = dbs.db_websites_get_all_ids()
-    for i, ids in enumerate(website_ids):
+    for ids in website_ids:
         ws_name = dbs.db_websites_get_name(ids)
+        # in case a database query goes wrong, scrap the whole keyboard altogether and let the other functions display an error
+        if not ws_name:
+            return None
         if dbs.db_subscriptions_check(tg_id=callback_chat_id, ws_id=ids):
-            subscribed.append("✅")
             buttons.append(InlineKeyboardButton(ws_name, callback_data="rem_subs-" + ws_name))
-            buttons.append(InlineKeyboardButton(subscribed[i], callback_data="rem_subs-" + ws_name))
+            buttons.append(InlineKeyboardButton("✅", callback_data="rem_subs-" + ws_name))
         else:
-            subscribed.append("❌")
             buttons.append(InlineKeyboardButton(ws_name, callback_data="add_subs-" + ws_name))
-            buttons.append(InlineKeyboardButton(subscribed[i], callback_data="add_subs-" + ws_name))
+            buttons.append(InlineKeyboardButton("❌", callback_data="add_subs-" + ws_name))
     buttons.append(InlineKeyboardButton("Exit menu", callback_data="exit_subs"))
     reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=2))
     return reply_markup
@@ -605,6 +623,20 @@ def convert_less_than_greater_than(unstripped_string):
 
 
 # access level: builtin
+def status_meaning(status):
+    if status == 0:
+        return "admin"
+    elif status == 1:
+        return "user"
+    elif status == 2:
+        return "pending"
+    elif status == 3:
+        return "denied"
+    else:
+        return "unknown"
+
+
+# access level: builtin
 def user_id_linker(chat_id):
     # this only works for users who have set an @username for themselves, otherwise the link url is discarded by the telegram api
     # the link text will not be affected in any case, so we might as well try sending with the link url attached
@@ -622,6 +654,23 @@ def truncate_message(message):
         message += warning
         logger.debug("New, truncated message: " + message)
     return message
+
+
+# access level: builtin
+def send_message_edit(chat_id, message_id, message, reply_markup=None):
+    num_this_message = next(num_messages)
+    logger.debug("Message #" + str(num_this_message) + " (edit of message with ID " + str(message_id) + ") to " + str(chat_id) + ":\n" + message)
+    if not(message):
+        logger.warning("Empty message #" + str(num_this_message) + " (edit of message with ID " + str(message_id) + ") to " + str(chat_id) + ". Not sent.")
+        return
+    message = truncate_message(message)
+    try:
+        bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=message, parse_mode="HTML", reply_markup=reply_markup)
+        logger.debug("Message #" + str(num_this_message) + " (edit of message with ID " + str(message_id) + ") to " + str(chat_id) + " was sent successfully.")
+    except error.NetworkError as e:
+        logger.error("Network error when sending message #" + str(num_this_message) + " (edit of message with ID " + str(message_id) + ") to " + str(chat_id) + ". Details: " + str(e))
+    except Exception:
+        logger.error("Unknown error when trying to send message #" + str(num_this_message) + " (edit of message with ID " + str(message_id) + ") to " + str(chat_id) + ". The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
 
 
 # access level: builtin
@@ -728,6 +777,26 @@ def init(is_deployed):
     # --- Privileged admin-only commands (only access level 0):
     # "whoami" is not inherently privileged (anyone can check their status) but we'll not shout it from the rooftops regardless
     dispatcher.add_handler(CommandHandler("whoami", whoami))
+    dispatcher.add_handler(CommandHandler("edituser", edituser))
+    # Callback helpers -->
+    dispatcher.add_handler(CallbackQueryHandler(button_edituser_01_pending, pattern="edituser_01_pending"))
+    dispatcher.add_handler(CallbackQueryHandler(button_edituser_02_pending_detail, pattern="^edituser_02_pending_detail-"))
+    dispatcher.add_handler(CallbackQueryHandler(button_edituser_03_pending_approve, pattern="^edituser_03_pending_approve-"))
+    dispatcher.add_handler(CallbackQueryHandler(button_edituser_03_pending_deny, pattern="^edituser_03_pending_deny-"))
+    # Conversation handler -->
+    conversation_handler_edituser_non_pending = ConversationHandler(
+        entry_points=[CallbackQueryHandler(button_edituser_01_non_pending, pattern="edituser_01_non_pending")],
+        states={
+            STATE_EDITUSER_02_NON_PENDING: [MessageHandler(Filters.text & (~ Filters.command), helper_edituser_02_non_pending_detail)],
+        },
+        fallbacks=[CommandHandler("editusercancel", helper_edituser_02_non_pending_cancel)]
+    )
+    dispatcher.add_handler(conversation_handler_edituser_non_pending)
+    # <--
+    dispatcher.add_handler(CallbackQueryHandler(button_edituser_03_non_pending_approve, pattern="^edituser_03_non_pending_approve-"))
+    dispatcher.add_handler(CallbackQueryHandler(button_edituser_03_non_pending_deny, pattern="^edituser_03_non_pending_deny-"))
+    dispatcher.add_handler(CallbackQueryHandler(button_edituser_exit, pattern="edituser_exit"))
+    # <--
     dispatcher.add_handler(CommandHandler("listusers", listusers))
     dispatcher.add_handler(CommandHandler("getwebsiteinfo", getwebsiteinfo))
     # Callback helper -->
@@ -735,31 +804,6 @@ def init(is_deployed):
     # <--
     dispatcher.add_handler(CommandHandler("addwebsite", addwebsite))
     dispatcher.add_handler(CommandHandler("removewebsite", removewebsite))
-    dispatcher.add_handler(CommandHandler("pendingusers", pendingusers))
-    # Callback helpers -->
-    dispatcher.add_handler(CallbackQueryHandler(button_pendingusers_approve, pattern="^usr_approve-"))
-    dispatcher.add_handler(CallbackQueryHandler(button_pendingusers_deny, pattern="^usr_deny-"))
-    dispatcher.add_handler(CallbackQueryHandler(button_pendingusers_detail, pattern="^user-"))
-    dispatcher.add_handler(CallbackQueryHandler(button_pendingusers_exit, pattern="exit_users"))
-    # <--
-    # Conversation handlers -->
-    conversation_handler_approve_user = ConversationHandler(
-        entry_points=[CommandHandler("approveuser", approveuser)],
-        states={
-            APPROVE_CHAT_ID_STATE: [MessageHandler(Filters.text & (~ Filters.command), approve_user_helper)],
-        },
-        fallbacks=[CommandHandler("usercancel", usercancel)]
-    )
-    dispatcher.add_handler(conversation_handler_approve_user)
-    conversation_handler_deny_user = ConversationHandler(
-        entry_points=[CommandHandler("denyuser", denyuser)],
-        states={
-            DENY_CHAT_ID_STATE: [MessageHandler(Filters.text & (~ Filters.command), deny_user_helper)],
-        },
-        fallbacks=[CommandHandler("usercancel", usercancel)]
-    )
-    dispatcher.add_handler(conversation_handler_deny_user)
-    # <--
     # --- Catch-all for unknown inputs (need to be added last):
     dispatcher.add_handler(MessageHandler(Filters.text & (~ Filters.command), unknown_text))
     dispatcher.add_handler(MessageHandler(Filters.command, unknown_command))
