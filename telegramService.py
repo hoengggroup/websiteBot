@@ -44,6 +44,18 @@ def send_typing_action(func):
     return command_func
 
 
+# error handling
+def error_callback(update, context):
+    try:
+        raise context.error
+    except TelegramError as e:
+        logger.error("A Telegram-specific error has occured in the telegram bot: " + str(e))
+        send_admin_broadcast("A Telegram-specific error has occured in the telegram bot: " + convert_less_than_greater_than(str(e)))
+    except Exception as e:
+        logger.error("An exception has occured in the telegram bot: " + str(e))
+        send_admin_broadcast("An exception has occured in the telegram bot: " + convert_less_than_greater_than(str(e)))
+
+
 # variable initialization
 updater, dispatcher, bot = [None]*3
 admin_chat_ids = None
@@ -140,14 +152,23 @@ def applycancel(update, context):
 @send_typing_action
 def edituser(update, context):
     if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 0:
-        buttons = list()
-        buttons.append(InlineKeyboardButton("Pending users", callback_data="edituser_01_pending"))
-        buttons.append(InlineKeyboardButton("Approved/Denied users", callback_data="edituser_01_non_pending"))
-        buttons.append(InlineKeyboardButton("Exit menu", callback_data="edituser_exit"))
+        buttons = [InlineKeyboardButton("Pending users", callback_data="edituser_01_pending"), InlineKeyboardButton("Approved/Denied users", callback_data="edituser_01_non_pending"), InlineKeyboardButton("Exit menu", callback_data="edituser_exit")]
         reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
         send_command_reply(update, context, message="Which kind of user would you like to edit?", reply_markup=reply_markup)
     else:
         send_command_reply(update, context, message="This command is only available to admins. Sorry.")
+
+
+# callback helper function for edituser()
+# does functionally the same thing as the edituser command but we need to (almost) duplicate it like this to be able to handle the callback data and edit the message
+def button_edituser_back_to_00(update, context):
+    query = update.callback_query
+    callback_chat_id = query["message"]["chat"]["id"]
+    callback_message_id = query["message"]["message_id"]
+    buttons = [InlineKeyboardButton("Pending users", callback_data="edituser_01_pending"), InlineKeyboardButton("Approved/Denied users", callback_data="edituser_01_non_pending"), InlineKeyboardButton("Exit menu", callback_data="edituser_exit")]
+    reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
+    send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Which kind of user would you like to edit?", reply_markup=reply_markup)
+    bot.answer_callback_query(query["id"])
 
 
 # callback helper function for edituser()
@@ -160,8 +181,8 @@ def button_edituser_01_pending(update, context):
     for ids in chat_ids:
         apply_name = dbs.db_users_get_data(tg_id=ids, field="apply_name")
         buttons.append(InlineKeyboardButton(str(apply_name) + " (" + str(ids) + ")", callback_data="edituser_02_pending_detail-" + str(ids)))
-    buttons.append(InlineKeyboardButton("Exit menu", callback_data="edituser_exit"))
-    reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
+    footer_buttons = [InlineKeyboardButton("« Back", callback_data="edituser_back_to_00"), InlineKeyboardButton("Exit menu", callback_data="edituser_exit")]
+    reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1, footer_buttons=footer_buttons))
     send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Here is a list of users with pending applications:\nClick for details.", reply_markup=reply_markup)
     bot.answer_callback_query(query["id"])
 
@@ -183,8 +204,8 @@ def button_edituser_02_pending_detail(update, context):
                "Application: " + str(user_data[6]) + "\n"
                "Date of application: " + str(user_data[7]))
     buttons = [InlineKeyboardButton("Approve", callback_data="edituser_03_pending_approve-" + str(query_data)), InlineKeyboardButton("Deny", callback_data="edituser_03_pending_deny-" + str(query_data))]
-    buttons.append(InlineKeyboardButton("Exit menu", callback_data="edituser_exit"))
-    reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
+    footer_buttons = [InlineKeyboardButton("« Back", callback_data="edituser_back_to_01_pending"), InlineKeyboardButton("Exit menu", callback_data="edituser_exit")]
+    reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=2, footer_buttons=footer_buttons))
     send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message=message + "\n\nWhat do you want to do with this user?", reply_markup=reply_markup)
     bot.answer_callback_query(query["id"])
 
@@ -226,15 +247,18 @@ def button_edituser_01_non_pending(update, context):
     query = update.callback_query
     callback_chat_id = query["message"]["chat"]["id"]
     callback_message_id = query["message"]["message_id"]
-    send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Which user would you like to edit? Otherwise, send /editusercancel to exit.")
+    send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Which user would you like to edit? Otherwise, send /editusercancel to go back to the menu.")
     bot.answer_callback_query(query["id"])
     return STATE_EDITUSER_02_NON_PENDING
 
 
 # conversation helper function for edituser()
+# does functionally the same thing as the edituser command but we need to (almost) duplicate it like this to be able to handle the conversation state correctly
 @send_typing_action
-def helper_edituser_02_non_pending_cancel(update, context):
-    send_command_reply(update, context, message="Ok. Reopen the menu at any time with /edituser.")
+def helper_edituser_back_to_00(update, context):
+    buttons = [InlineKeyboardButton("Pending users", callback_data="edituser_01_pending"), InlineKeyboardButton("Approved/Denied users", callback_data="edituser_01_non_pending"), InlineKeyboardButton("Exit menu", callback_data="edituser_exit")]
+    reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
+    send_command_reply(update, context, message="Which kind of user would you like to edit?", reply_markup=reply_markup)
     return ConversationHandler.END
 
 
@@ -257,8 +281,8 @@ def helper_edituser_02_non_pending_detail(update, context):
         else:
             buttons.append(InlineKeyboardButton("Change to status 1 (approved)", callback_data="edituser_03_non_pending_approve-" + str(chat_id_to_edit)))
             buttons.append(InlineKeyboardButton("Change to status 3 (denied)", callback_data="edituser_03_non_pending_deny-" + str(chat_id_to_edit)))
-        buttons.append(InlineKeyboardButton("Exit menu", callback_data="edituser_exit"))
-        reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1))
+        footer_buttons = [InlineKeyboardButton("« Back", callback_data="edituser_back_to_00"), InlineKeyboardButton("Exit menu", callback_data="edituser_exit")]
+        reply_markup = InlineKeyboardMarkup(build_menu(buttons, n_cols=1, footer_buttons=footer_buttons))
         send_command_reply(update, context, message="Current status of this user is: " + str(chat_id_to_edit_status) + " (" + status_meaning(chat_id_to_edit_status) + ")\nWould you like to change the status of this user?", reply_markup=reply_markup)
     else:
         send_command_reply(update, context, message="Error. Chat ID " + user_id_linker(chat_id_to_edit) + " does not exist in database or is an admin.")
@@ -589,18 +613,8 @@ def removewebsite(update, context):
 
 
 ##############################################################
-#           Universal helper functions / builtins            #
+#      Telegram user flow: unrecognized message content      #
 ##############################################################
-
-# helper function for commands utilizing buttons
-def build_menu(buttons, n_cols, header_buttons=False, footer_buttons=False):
-    menu = [buttons[i:i + n_cols] for i in range(0, len(buttons), n_cols)]
-    if header_buttons:
-        menu.insert(0, header_buttons)
-    if footer_buttons:
-        menu.append(footer_buttons)
-    return menu
-
 
 # access level: generic
 @send_typing_action
@@ -614,13 +628,27 @@ def unknown_command(update, context):
     send_command_reply(update, context, message="Sorry, I did not understand that command. Check the spelling or get a list of the available commands with /commands.")
 
 
-# access level: builtin
+##############################################################
+#                 Universal helper functions                 #
+##############################################################
+
+# helper for functions utilizing buttons
+def build_menu(buttons, n_cols, header_buttons=False, footer_buttons=False):
+    menu = [buttons[i:i + n_cols] for i in range(0, len(buttons), n_cols)]
+    if header_buttons:
+        menu.insert(0, header_buttons)
+    if footer_buttons:
+        menu.append(footer_buttons)
+    return menu
+
+
+# helper for escaping '<' and '>' because we set message parse_mode to HTML
 def convert_less_than_greater_than(unstripped_string):
     stripped_string = unstripped_string.replace("<", "&lt;").replace(">", "&gt;")
     return stripped_string
 
 
-# access level: builtin
+# helper for converting a user status value to its meaning
 def status_meaning(status):
     if status == 0:
         return "admin"
@@ -634,27 +662,18 @@ def status_meaning(status):
         return "unknown"
 
 
-# access level: builtin
+# helper for making user IDs clickable in messages (if available)
 def user_id_linker(chat_id):
     # this only works for users who have set an @username for themselves, otherwise the link url is discarded by the telegram api
     # the link text will not be affected in any case, so we might as well try sending with the link url attached
     return "<a href=\"tg://user?id=" + str(chat_id) + "\">" + str(chat_id) + "</a>"
 
 
-# access level: builtin
-def truncate_message(message):
-    limit = 4096
-    warning = "\n... [truncated]"
-    if len(message) > limit:
-        message = message[:(limit - len(warning))]  # first truncate to limit...
-        message = message[:message.rfind("\n")]  # ...and then truncate to last newline
-        logger.warning("Message too long. Sending only the first " + str(len(message)) + " characters and a [truncated] warning (" + str(len(message) + len(warning)) + " characters in total).")
-        message += warning
-        logger.debug("New, truncated message: " + message)
-    return message
+##############################################################
+#             Message-sending wrapper functions              #
+##############################################################
 
-
-# access level: builtin
+# edit previously sent message
 def send_message_edit(chat_id, message_id, message, reply_markup=None):
     num_this_message = next(num_messages)
     logger.debug("Message #" + str(num_this_message) + " (edit of message with ID " + str(message_id) + ") to " + str(chat_id) + ":\n" + message)
@@ -671,7 +690,7 @@ def send_message_edit(chat_id, message_id, message, reply_markup=None):
         logger.error("Unknown error when trying to send message #" + str(num_this_message) + " (edit of message with ID " + str(message_id) + ") to " + str(chat_id) + ". The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
 
 
-# access level: builtin
+# reply to a command/input from the user
 def send_command_reply(update, context, message, reply_markup=None):
     num_this_message = next(num_messages)
     logger.debug("Message #" + str(num_this_message) + " to " + str(update.message.chat_id) + ":\n" + message)
@@ -688,7 +707,7 @@ def send_command_reply(update, context, message, reply_markup=None):
         logger.error("Unknown error when trying to send message #" + str(num_this_message) + " to " + str(update.message.chat_id) + ". The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
 
 
-# access level: builtin
+# send a message (not in reply to input)
 def send_general_broadcast(chat_id, message):
     num_this_message = next(num_messages)
     logger.debug("Message #" + str(num_this_message) + " to " + str(chat_id) + ":\n" + message)
@@ -705,23 +724,24 @@ def send_general_broadcast(chat_id, message):
         logger.error("Unknown error when trying to send message #" + str(num_this_message) + " to " + str(chat_id) + ". The error is: Arg 0: " + str(sys.exc_info()[0]) + " Arg 1: " + str(sys.exc_info()[1]) + " Arg 2: " + str(sys.exc_info()[2]))
 
 
-# access level: builtin
+# send a message (not in reply to input) only to admins
 def send_admin_broadcast(message):
     admin_message = "[ADMIN BROADCAST]\n" + message
     for adm_chat_id in admin_chat_ids:
         send_general_broadcast(chat_id=adm_chat_id, message=admin_message)
 
 
-# access level: builtin
-def error_callback(update, context):
-    try:
-        raise context.error
-    except TelegramError as e:
-        logger.error("A Telegram-specific error has occured in the telegram bot: " + str(e))
-        send_admin_broadcast("A Telegram-specific error has occured in the telegram bot: " + convert_less_than_greater_than(str(e)))
-    except Exception as e:
-        logger.error("An exception has occured in the telegram bot: " + str(e))
-        send_admin_broadcast("An exception has occured in the telegram bot: " + convert_less_than_greater_than(str(e)))
+# helper for cleanly truncating message bodies that are too long
+def truncate_message(message):
+    limit = 4096
+    warning = "\n... [truncated]"
+    if len(message) > limit:
+        message = message[:(limit - len(warning))]  # first truncate to limit...
+        message = message[:message.rfind("\n")]  # ...and then truncate to last newline
+        logger.warning("Message too long. Sending only the first " + str(len(message)) + " characters and a [truncated] warning (" + str(len(message) + len(warning)) + " characters in total).")
+        message += warning
+        logger.debug("New, truncated message: " + message)
+    return message
 
 
 ##############################################################
@@ -787,12 +807,14 @@ def init(is_deployed):
         states={
             STATE_EDITUSER_02_NON_PENDING: [MessageHandler(Filters.text & (~ Filters.command), helper_edituser_02_non_pending_detail)],
         },
-        fallbacks=[CommandHandler("editusercancel", helper_edituser_02_non_pending_cancel)]
+        fallbacks=[CommandHandler("editusercancel", helper_edituser_back_to_00)]
     )
     dispatcher.add_handler(conversation_handler_edituser_non_pending)
     # <--
     dispatcher.add_handler(CallbackQueryHandler(button_edituser_03_non_pending_approve, pattern="^edituser_03_non_pending_approve-"))
     dispatcher.add_handler(CallbackQueryHandler(button_edituser_03_non_pending_deny, pattern="^edituser_03_non_pending_deny-"))
+    dispatcher.add_handler(CallbackQueryHandler(button_edituser_back_to_00, pattern="edituser_back_to_00"))
+    dispatcher.add_handler(CallbackQueryHandler(button_edituser_01_pending, pattern="edituser_back_to_01_pending"))
     dispatcher.add_handler(CallbackQueryHandler(button_edituser_exit, pattern="edituser_exit"))
     # <--
     dispatcher.add_handler(CommandHandler("listusers", listusers))
