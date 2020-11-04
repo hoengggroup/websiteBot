@@ -1,0 +1,9 @@
+### Database ###
+# various database folders
+postgresql_database/
+db/
+db_data/
+
+### websiteBot ###
+.websitebot_deployed
+.websitebot_assert_vpn
