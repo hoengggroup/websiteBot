@@ -3,6 +3,7 @@
 # PYTHON BUILTINS
 import logging  # self-explanatory ;)
 import textwrap  # for aligning the log message into a column
+import traceback  # for detailed error handling
 
 
 class WrappedFixedIndentingLog(logging.Formatter):
@@ -17,6 +18,12 @@ class WrappedFixedIndentingLog(logging.Formatter):
 class ModuleFilterMain(logging.Filter):
     def filter(self, record):
         record.module_tag = "[MAIN]:"
+        return True
+
+
+class ModuleFilterDRV(logging.Filter):
+    def filter(self, record):
+        record.module_tag = "[DRV]:"
         return True
 
 
@@ -73,6 +80,8 @@ def create_logger(module):
         logger.addFilter(ModuleFilterMain())
     elif module == "db":
         logger.addFilter(ModuleFilterDB())
+    elif module == "drv":
+        logger.addFilter(ModuleFilterDRV())
     elif module == "req":
         logger.addFilter(ModuleFilterREQ())
     elif module == "tg":
@@ -96,3 +105,9 @@ def create_logger(module):
     logger.addHandler(ch)
 
     return logger
+
+
+def exception_printing(exc):
+    exctype = type(exc).__name__
+    tb = "\n".join(traceback.format_tb(exc.__traceback__))
+    return exctype, str(exc), str(tb)
