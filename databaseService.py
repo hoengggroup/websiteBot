@@ -4,11 +4,10 @@
 import inspect  # for getting the calling function's name in the error handler
 
 # EXTERNAL LIBRARIES
-import psycopg2  # for interacting with PostgreSQL databases
-import psycopg2.errorcodes  # ...its errorcodes module must be imported seperately
+import psycopg  # for interacting with PostgreSQL databases
 
 # OUR OWN LIBRARIES
-from configService import my_database, my_user, my_password, my_host, my_port
+from configService import pg_string
 from loggerService import create_logger
 
 
@@ -20,65 +19,14 @@ logger = create_logger("db")
 conn = None
 
 
-# amazing (self-created ;)) error handler
-def db_exc_handler(excp, conn):
-    logger.error("Database error in function " + str(inspect.stack()[1].function) + ". Error code: " + str(excp.pgcode))
-    if (excp.pgcode == psycopg2.errorcodes.CONNECTION_EXCEPTION) or (excp.pgcode == psycopg2.errorcodes.CONNECTION_FAILURE):
-        logger.error("Connection error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.DATA_CORRUPTED:
-        logger.error("Data corruption error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.DATA_EXCEPTION:
-        logger.error("Data error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.DATATYPE_MISMATCH:
-        logger.error("Datatype mismatch error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.DATETIME_FIELD_OVERFLOW:
-        logger.error("Datetime overflow error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.IN_FAILED_SQL_TRANSACTION:
-        logger.error("In failed transaction error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.INTERNAL_ERROR:
-        logger.error("Internal error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.IO_ERROR:
-        logger.error("IO error. Details: " + str(excp))
-    elif (excp.pgcode == psycopg2.errorcodes.NO_DATA) or (excp.pgcode == psycopg2.errorcodes.NO_DATA_FOUND):
-        logger.error("No data error. Details: " + str(excp))
-    elif (excp.pgcode == psycopg2.errorcodes.NOT_NULL_VIOLATION) or (excp.pgcode == psycopg2.errorcodes.NULL_VALUE_NOT_ALLOWED):
-        logger.error("Not null error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.PROHIBITED_SQL_STATEMENT_ATTEMPTED:
-        logger.error("Prohibited statement error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.PROTOCOL_VIOLATION:
-        logger.error("Protocol violation error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.RAISE_EXCEPTION:
-        logger.error("Raise exception error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.RESERVED_NAME:
-        logger.error("Reserved name error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.SQL_ROUTINE_EXCEPTION:
-        logger.error("Routine exception error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.SQL_STATEMENT_NOT_YET_COMPLETE:
-        logger.error("Statement not yet complete error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.SYNTAX_ERROR:
-        logger.error("Syntax error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.SYSTEM_ERROR:
-        logger.error("System error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.TOO_MANY_ARGUMENTS:
-        logger.error("Too many arguments error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.TOO_MANY_COLUMNS:
-        logger.error("Too many columns error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.TOO_MANY_ROWS:
-        logger.error("Too many rows error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.UNDEFINED_COLUMN:
-        logger.error("Undefined column error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.UNDEFINED_OBJECT:
-        logger.error("Undefined object error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.UNDEFINED_TABLE:
-        logger.error("Undefined table error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.UNIQUE_VIOLATION:
-        logger.error("Unique violation error / Key error. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.WARNING:
-        logger.error("Warning. Details: " + str(excp))
-    elif excp.pgcode == psycopg2.errorcodes.WRONG_OBJECT_TYPE:
-        logger.error("Wrong object type error. Details: " + str(excp))
-    else:
-        logger.error("Unkown error code " + str(excp.pgcode) + ". Lookup: " + psycopg2.errorcodes.lookup(excp.pgcode))
+# error handler
+def db_exc_handler(excp):
+    exccode = excp.diag.sqlstate
+    exctype = psycopg.errors.lookup(exccode).__name__
+    excmsg = excp.diag.message_primary
+    excdetail = excp.diag.message_detail
+    excfunc = inspect.stack()[1].function
+    logger.error("A psycopg {} error has occured in the database module in function {}.\nError code: {}\nError message: {}\nDetails: {}".format(exctype, excfunc, exccode, excmsg, excdetail))
 
 
 #########################
@@ -89,13 +37,11 @@ def db_exc_handler(excp, conn):
 def db_connect():
     global conn
     try:
-        conn = psycopg2.connect(database=my_database, user=my_user, password=my_password, host=my_host, port=my_port)
-        conn.set_client_encoding('UNICODE')
-        conn.autocommit = False
+        conn = psycopg.connect(pg_string, autocommit=False)
         logger.info("Successfully connected to database.")
         return True
     except Exception as ex:
-        logger.error("Could not connect to database. Error: '%s'" % str(ex))
+        logger.error("Could not connect to database. Error: {}".format(ex))
         return False
 
 
@@ -106,7 +52,7 @@ def db_disconnect():
         logger.info("Successfully disconnected from database.")
         return True
     except Exception as ex:
-        logger.error("Could not disconnect from database. Error: '%s'" % str(ex))
+        logger.error("Could not disconnect from database. Error: {}".format(ex))
         return False
 
 
@@ -125,12 +71,12 @@ def db_credentials_get_bot_token(bot_name):
                 conn.commit()
                 return token[0]  # returns one item (a string)
             else:
-                logger.warning("API token for bot \"" + str(bot_name) + "\" does not exist.")
+                logger.warning("API token for bot {} does not exist.".format(bot_name))
                 conn.commit()
                 return None  # or None if the bot does not exist
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return None
 
 
@@ -139,17 +85,17 @@ def db_credentials_get_bot_token(bot_name):
 #########################
 
 # CREATE NEW USER
-def db_users_create(tg_id, status, first_name, last_name, username, apply_name, apply_text, apply_date):
+def db_users_create(tg_id, status, first_name, last_name, username, apply_name, apply_text, start_time):
     with conn.cursor() as cur:
         try:
-            postgres_query = """INSERT INTO users (tg_id, status, first_name, last_name, username, apply_name, apply_text, apply_date) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);"""
-            query_data = (tg_id, status, first_name, last_name, username, apply_name, apply_text, apply_date)
+            postgres_query = """INSERT INTO users (tg_id, status, first_name, last_name, username, apply_name, apply_text, start_time) VALUES (%s, %s, %s, %s, %s, %s, %s, %s);"""
+            query_data = (tg_id, status, first_name, last_name, username, apply_name, apply_text, start_time)
             cur.execute(postgres_query, query_data)
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return False
-        logger.info("Successfully created user " + str(tg_id) + ".")
+        logger.info("users_create: Successfully created user {}.".format(tg_id))
         conn.commit()
         return True
 
@@ -160,11 +106,11 @@ def db_users_delete(tg_id):
         try:
             postgres_query = """DELETE FROM users WHERE tg_id = %s;"""
             cur.execute(postgres_query, (tg_id,))  # turn tg_id into a tuple to avoid a TypeError
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return False
-        logger.info("Successfully deleted user " + str(tg_id) + ".")
+        logger.info("users_delete: Successfully deleted user {}.".format(tg_id))
         conn.commit()
         return True
 
@@ -178,9 +124,9 @@ def db_users_exists(tg_id):
             exists = cur.fetchone()
             conn.commit()
             return exists[0]  # returns one item (a boolean)
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return None
 
 
@@ -188,29 +134,29 @@ def db_users_exists(tg_id):
 def db_users_get_all_ids():
     with conn.cursor() as cur:
         try:
-            postgres_query = """SELECT tg_id FROM users WHERE apply_text IS NOT NULL ORDER BY status, apply_date;"""
+            postgres_query = """SELECT tg_id FROM users WHERE apply_text IS NOT NULL ORDER BY status, start_time;"""
             cur.execute(postgres_query)
             ids = cur.fetchall()
             conn.commit()
             return [item for t in ids for item in t]  # returns a list
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return None
 
 
 # GET LIST OF PENDING USER IDS
-def db_users_get_pending_ids():
+def db_users_get_all_ids_with_status(status):
     with conn.cursor() as cur:
         try:
-            postgres_query = """SELECT tg_id FROM users WHERE apply_text IS NOT NULL AND status = 2 ORDER BY apply_date;"""
-            cur.execute(postgres_query)
+            postgres_query = """SELECT tg_id FROM users WHERE apply_text IS NOT NULL AND status = %s ORDER BY start_time;"""
+            cur.execute(postgres_query, (status,))  # turn status into a tuple to avoid a TypeError
             ids = cur.fetchall()
             conn.commit()
             return [item for t in ids for item in t]  # returns a list
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return None
 
 
@@ -223,9 +169,9 @@ def db_users_get_admins():
             ids = cur.fetchall()
             conn.commit()
             return [item for t in ids for item in t]  # returns a list
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return None
 
 
@@ -233,7 +179,7 @@ def db_users_get_admins():
 def db_users_get_data(tg_id, field="all_fields"):
     with conn.cursor() as cur:
         if not db_users_exists(tg_id):
-            logger.debug("users_get_data: User " + str(tg_id) + " does not exist.")
+            logger.debug("users_get_data: User {} does not exist.".format(tg_id))
             return None
         # We have to make this clunky if-elif chunk beacuse of protections against SQL injection
         # This is because SQL statements have to be hardcoded (except for the %s parameters) in order to be protected by psycopg2's escape functions
@@ -251,8 +197,8 @@ def db_users_get_data(tg_id, field="all_fields"):
             postgres_query = """SELECT apply_name FROM users WHERE tg_id = %s;"""
         elif field == "apply_text":
             postgres_query = """SELECT apply_text FROM users WHERE tg_id = %s;"""
-        elif field == "apply_date":
-            postgres_query = """SELECT apply_date FROM users WHERE tg_id = %s;"""
+        elif field == "start_time":
+            postgres_query = """SELECT start_time FROM users WHERE tg_id = %s;"""
         else:
             postgres_query = """SELECT * FROM users WHERE tg_id = %s;"""
             return_list = True
@@ -269,9 +215,9 @@ def db_users_get_data(tg_id, field="all_fields"):
                     return user_data[0]  # returns one item
                 else:
                     return None  # or None if the data does not exist
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return None
 
 
@@ -279,7 +225,7 @@ def db_users_get_data(tg_id, field="all_fields"):
 def db_users_set_data(tg_id, field, argument):
     with conn.cursor() as cur:
         if not db_users_exists(tg_id):
-            logger.debug("users_set_data: User " + str(tg_id) + " does not exist.")
+            logger.debug("users_set_data: User {} does not exist.".format(tg_id))
             return False
         if field == "status":
             postgres_query = """UPDATE users SET status = %s WHERE tg_id = %s;"""
@@ -293,19 +239,19 @@ def db_users_set_data(tg_id, field, argument):
             postgres_query = """UPDATE users SET apply_name = %s WHERE tg_id = %s;"""
         elif field == "apply_text":
             postgres_query = """UPDATE users SET apply_text = %s WHERE tg_id = %s;"""
-        elif field == "apply_date":
-            postgres_query = """UPDATE users SET apply_date = %s WHERE tg_id = %s;"""
+        elif field == "start_time":
+            postgres_query = """UPDATE users SET start_time = %s WHERE tg_id = %s;"""
         else:
-            logger.debug("users_set_data: Data field \"" + str(field) + "\" does not match any columns. No action taken.")
+            logger.debug("users_set_data: Data field {} does not match any columns. No action taken.".format(field))
             return False
         try:
             cur.execute(postgres_query, (argument, tg_id))
-            logger.info("Successfully changed data field \"" + str(field) + "\" in users table to " + str(argument) + ".")
+            logger.info("users_set_data: Successfully changed data field {} in users table to {} for user {}.".format(field, argument, tg_id))
             conn.commit()
             return True
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return False
 
 
@@ -324,12 +270,12 @@ def db_websites_get_id(ws_name):
                 conn.commit()
                 return ws_id[0]  # returns one item (an int)
             else:
-                logger.debug("websites_get_id: Website \"" + str(ws_name) + "\" does not exist.")
+                logger.debug("websites_get_id: Website {} does not exist.".format(ws_name))
                 conn.commit()
                 return None  # or None if website does not exist
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return None
 
 
@@ -344,12 +290,12 @@ def db_websites_get_name(ws_id):
                 conn.commit()
                 return ws_name[0]  # returns one item (a string)
             else:
-                logger.debug("websites_get_name: Website with ID " + str(ws_id) + " does not exist.")
+                logger.debug("websites_get_name: Website with ID {} does not exist.".format(ws_id))
                 conn.commit()
                 return None  # or None if website does not exist
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return None
 
 
@@ -362,39 +308,39 @@ def db_websites_get_all_ids():
             ids = cur.fetchall()
             conn.commit()
             return [item for t in ids for item in t]  # returns a list
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return None
 
 
 # ADD WEBSITE
-def db_websites_add(ws_name, url, time_sleep, last_time_checked, last_time_updated, last_error_msg, last_error_time, last_hash, last_content):
+def db_websites_add(ws_name, url, time_sleep, last_time_checked, last_time_updated, last_error_msg, last_error_time, last_hash, last_content, filters):
     with conn.cursor() as cur:
         # sanity check for type conversions: passing a NoneType as website name should produce an empty response in all functions, not a hit on a website named "None"
         # ...so this name will be reserved just in case
         if ws_name.lower() == "none":
             return False
         try:
-            postgres_query = """INSERT INTO websites (ws_name, url, time_sleep, last_time_checked, last_time_updated, last_error_msg, last_error_time, last_hash) VALUES (%s, %s, %s, %s, %s, %s, %s, %s) RETURNING ws_id;"""
-            query_data = (ws_name, url, time_sleep, last_time_checked, last_time_updated, last_error_msg, last_error_time, last_hash)
+            postgres_query = """INSERT INTO websites (ws_name, url, time_sleep, last_time_checked, last_time_updated, last_error_msg, last_error_time, last_hash, filters) VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s) RETURNING ws_id;"""
+            query_data = (ws_name, url, time_sleep, last_time_checked, last_time_updated, last_error_msg, last_error_time, last_hash, filters)
             cur.execute(postgres_query, query_data)
             ws_id_1 = cur.fetchone()[0]
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return False
         try:
             postgres_query = """INSERT INTO websites_content (ws_id, last_time_updated, last_hash, last_content) VALUES (%s, %s, %s, %s) RETURNING ws_id;"""
             query_data = (ws_id_1, last_time_updated, last_hash, last_content)
             cur.execute(postgres_query, query_data)
             ws_id_2 = cur.fetchone()[0]
-        except Exception as ex:
+        except psycopg.Error as ex:
             cur.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return False
         if ws_id_1 == ws_id_2:
-            logger.info("Successfully created website \"" + str(ws_name) + "\".")
+            logger.info("websites_add: Successfully created website {}.".format(ws_name))
             conn.commit()
             return True
         else:
@@ -406,14 +352,17 @@ def db_websites_add(ws_name, url, time_sleep, last_time_checked, last_time_updat
 def db_websites_remove(ws_name):
     with conn.cursor() as cur:
         ws_id = db_websites_get_id(ws_name)
+        if not ws_id:
+            logger.debug("websites_remove: Website {} does not exist.".format(ws_name))
+            return False
         try:
             postgres_query = """DELETE FROM websites WHERE ws_id = %s;"""
             cur.execute(postgres_query, (ws_id,))  # turn ws_id into a tuple to avoid a TypeError
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return False
-        logger.info("Successfully deleted website \"" + str(ws_name) + "\".")
+        logger.info("websites_remove: Successfully deleted website {}.".format(ws_name))
         conn.commit()
         return True
 
@@ -423,7 +372,7 @@ def db_websites_get_data(ws_name, field="all_fields"):
     with conn.cursor() as cur:
         ws_id = db_websites_get_id(ws_name)
         if not ws_id:
-            logger.debug("websites_get_data: Website \"" + str(ws_name) + "\" does not exist.")
+            logger.debug("websites_get_data: Website {} does not exist.".format(ws_name))
             return None
         # We have to make this clunky if-elif chunk beacuse of protections against SQL injection
         # This is because SQL statements have to be hardcoded (except for the %s parameters) in order to be protected by psycopg2's escape functions
@@ -443,6 +392,8 @@ def db_websites_get_data(ws_name, field="all_fields"):
             postgres_query = """SELECT last_error_time FROM websites WHERE ws_id = %s;"""
         elif field == "last_hash":
             postgres_query = """SELECT last_hash FROM websites WHERE ws_id = %s;"""
+        elif field == "filters":
+            postgres_query = """SELECT filters FROM websites WHERE ws_id = %s;"""
         else:
             postgres_query = """SELECT * FROM websites WHERE ws_id = %s;"""
             return_list = True
@@ -459,9 +410,9 @@ def db_websites_get_data(ws_name, field="all_fields"):
                     return website_data[0]  # returns one item
                 else:
                     return None  # or None if the data does not exist
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return None
 
 
@@ -470,7 +421,7 @@ def db_websites_get_content(ws_name, last_time_updated, last_hash):
     with conn.cursor() as cur:
         ws_id = db_websites_get_id(ws_name)
         if not ws_id:
-            logger.debug("websites_get_content: Website \"" + str(ws_name) + "\" does not exist.")
+            logger.debug("websites_get_content: Website {} does not exist.".format(ws_name))
             return None
         postgres_query = """SELECT last_content FROM websites_content WHERE ws_id = %s AND last_time_updated = %s AND last_hash = %s;"""
         query_data = (ws_id, last_time_updated, last_hash)
@@ -482,9 +433,9 @@ def db_websites_get_content(ws_name, last_time_updated, last_hash):
                 return website_content[0]  # returns one item
             else:
                 return None  # or None if the data does not exist
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return None
 
 
@@ -493,7 +444,7 @@ def db_websites_set_data(ws_name, field, argument):
     with conn.cursor() as cur:
         ws_id = db_websites_get_id(ws_name)
         if not ws_id:
-            logger.debug("websites_set_data: Website \"" + str(ws_name) + "\" does not exist.")
+            logger.debug("websites_set_data: Website {} does not exist.".format(ws_name))
             return False
         if field == "ws_name":
             postgres_query = """UPDATE websites SET ws_name = %s WHERE ws_id = %s;"""
@@ -511,17 +462,19 @@ def db_websites_set_data(ws_name, field, argument):
             postgres_query = """UPDATE websites SET last_error_time = %s WHERE ws_id = %s;"""
         elif field == "last_hash":
             postgres_query = """UPDATE websites SET last_hash = %s WHERE ws_id = %s;"""
+        elif field == "filters":
+            postgres_query = """UPDATE websites SET filters = %s WHERE ws_id = %s;"""
         else:
-            logger.debug("websites_set_data: Data field \"" + str(field) + "\" does not match any columns. No action taken.")
+            logger.debug("websites_set_data: Data field {} does not match any columns. No action taken.".format(field))
             return False
         try:
             cur.execute(postgres_query, (argument, ws_id))
-            logger.info("Successfully changed data field \"" + str(field) + "\" to " + str(argument) + " for website " + str(ws_name) + ".")
+            logger.info("websites_set_data: Successfully changed data field {} in websites table to {} for website {}.".format(field, argument, ws_name))
             conn.commit()
             return True
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return False
 
 
@@ -530,18 +483,18 @@ def db_websites_add_content(ws_name, last_time_updated, last_hash, last_content)
     with conn.cursor() as cur:
         ws_id = db_websites_get_id(ws_name)
         if not ws_id:
-            logger.debug("websites_add_content: Website \"" + str(ws_name) + "\" does not exist.")
+            logger.debug("websites_add_content: Website {} does not exist.".format(ws_name))
             return False
         postgres_query = """INSERT INTO websites_content (ws_id, last_time_updated, last_hash, last_content) VALUES (%s, %s, %s, %s) RETURNING ws_id;"""
         query_data = (ws_id, last_time_updated, last_hash, last_content)
         try:
             cur.execute(postgres_query, query_data)
-            logger.info("Successfully added website content for website " + str(ws_name) + ".")
+            logger.info("websites_add_content: Successfully added website content for website {}.".format(ws_name))
             conn.commit()
             return True
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return False
 
 
@@ -550,17 +503,17 @@ def db_websites_delete_content(ws_name):
     with conn.cursor() as cur:
         ws_id = db_websites_get_id(ws_name)
         if not ws_id:
-            logger.debug("websites_delete_content: Website \"" + str(ws_name) + "\" does not exist.")
+            logger.debug("websites_delete_content: Website {} does not exist.".format(ws_name))
             return False
         postgres_query = """DELETE FROM websites_content WHERE ws_id = %s;"""
         try:
             cur.execute(postgres_query, (ws_id,))  # turn ws_id into a tuple to avoid a TypeError
-            logger.info("Successfully removed all previous website content for website " + str(ws_name) + ".")
+            logger.info("websites_delete_content: Successfully removed all previous website content for website {}.".format(ws_name))
             conn.commit()
             return True
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return False
 
 
@@ -573,7 +526,7 @@ def db_subscriptions_by_website(ws_name):
     with conn.cursor() as cur:
         ws_id = db_websites_get_id(ws_name)
         if not ws_id:
-            logger.debug("subscriptions_by_website: Website \"" + str(ws_name) + "\" does not exist.")
+            logger.debug("subscriptions_by_website: Website {} does not exist.".format(ws_name))
             return None
         try:
             postgres_query = """SELECT tg_id FROM subscriptions WHERE ws_id = %s ORDER BY tg_id;"""
@@ -581,9 +534,9 @@ def db_subscriptions_by_website(ws_name):
             subscribers = cur.fetchall()
             conn.commit()
             return [item for t in subscribers for item in t]  # returns a list
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return None
 
 
@@ -591,7 +544,7 @@ def db_subscriptions_by_website(ws_name):
 def db_subscriptions_by_user(tg_id):
     with conn.cursor() as cur:
         if not db_users_exists(tg_id):
-            logger.debug("subscriptions_by_user: User " + str(tg_id) + " does not exist.")
+            logger.debug("subscriptions_by_user: User {} does not exist.".format(tg_id))
             return None
         try:
             postgres_query = """SELECT ws_id FROM subscriptions WHERE tg_id = %s ORDER BY ws_id;"""
@@ -599,9 +552,9 @@ def db_subscriptions_by_user(tg_id):
             websites_ids = cur.fetchall()
             conn.commit()
             return [item for t in websites_ids for item in t]  # returns a list
-        except Exception as ex:
+        except psycopg.Error as ex:
             conn.rollback()
-            db_exc_handler(ex, conn)
+            db_exc_handler(ex)
             return None
 
 
@@ -621,24 +574,24 @@ def db_subscriptions_subscribe(tg_id, ws_name):
     with conn.cursor() as cur:
         ws_id = db_websites_get_id(ws_name)
         if not ws_id:
-            logger.debug("subscriptions_subscribe: Website \"" + str(ws_name) + "\" does not exist.")
+            logger.debug("subscriptions_subscribe: Website {} does not exist.".format(ws_name))
             return False
         if not db_users_exists(tg_id):
-            logger.debug("subscriptions_subscribe: User " + str(tg_id) + " does not exist.")
+            logger.debug("subscriptions_subscribe: User {} does not exist.".format(tg_id))
             return False
         if not db_subscriptions_check(tg_id, ws_id):
             try:
                 postgres_query = """INSERT INTO subscriptions (ws_id, tg_id) VALUES (%s, %s);"""
                 cur.execute(postgres_query, (ws_id, tg_id))
-                logger.info("Successfully subscribed user " + str(tg_id) + " to website \"" + str(ws_name) + "\".")
+                logger.info("subscriptions_subscribe: Successfully subscribed user {} to website {}.".format(tg_id, ws_name))
                 conn.commit()
                 return True
-            except Exception as ex:
+            except psycopg.Error as ex:
                 conn.rollback()
-                db_exc_handler(ex, conn)
+                db_exc_handler(ex)
                 return False
         else:
-            logger.debug("User " + str(tg_id) + " was already subscribed to website \"" + str(ws_name) + "\". No action taken.")
+            logger.debug("subscriptions_subscribe: User {} was already subscribed to website {}. No action taken.".format(tg_id, ws_name))
             return False
 
 
@@ -647,22 +600,22 @@ def db_subscriptions_unsubscribe(tg_id, ws_name):
     with conn.cursor() as cur:
         ws_id = db_websites_get_id(ws_name)
         if not ws_id:
-            logger.debug("subscriptions_unsubscribe: Website \"" + str(ws_name) + "\" does not exist.")
+            logger.debug("subscriptions_unsubscribe: Website {} does not exist.".format(ws_name))
             return False
         if not db_users_exists(tg_id):
-            logger.debug("subscriptions_unsubscribe: User " + str(tg_id) + " does not exist.")
+            logger.debug("subscriptions_unsubscribe: User {} does not exist.".format(tg_id))
             return False
         if db_subscriptions_check(tg_id, ws_id):
             try:
                 postgres_query = """DELETE FROM subscriptions WHERE ws_id = %s AND tg_id = %s;"""
                 cur.execute(postgres_query, (ws_id, tg_id))
-                logger.info("Successfully unsubscribed user " + str(tg_id) + " from website \"" + str(ws_name) + "\".")
+                logger.info("subscriptions_unsubscribe: Successfully unsubscribed user {} from website {}.".format(tg_id, ws_name))
                 conn.commit()
                 return True
-            except Exception as ex:
+            except psycopg.Error as ex:
                 conn.rollback()
-                db_exc_handler(ex, conn)
+                db_exc_handler(ex)
                 return False
         else:
-            logger.debug("User " + str(tg_id) + " was already unsubscribed from website \"" + str(ws_name) + "\". No action taken.")
+            logger.debug("subscriptions_unsubscribe: User {} was already unsubscribed from website {}. No action taken.".format(tg_id, ws_name))
             return False
