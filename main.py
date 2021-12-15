@@ -12,12 +12,12 @@ import traceback  # for logging the full traceback
 import sdnotify  # for the systemctl watchdog
 
 # OUR OWN LIBRARIES
-from configService import version_code
-from loggerService import create_logger
+from module_config import version_code
+from module_logging import create_logger
 import module_driver as drv
-import databaseService as dbs
-import telegramService as tgs
-import vpnService as vpns
+import module_database as dbs
+import module_telegram as tgs
+import module_vpn as vpns
 
 
 # logging

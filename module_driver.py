@@ -11,13 +11,13 @@ import html2text  # for converting html to text
 from unidecode import unidecode  # for stripping Ümläüte
 
 # OUR OWN LIBRARIES
-from configService import keep_website_history
-from loggerService import create_logger
+from module_config import keep_website_history
+from module_logging import create_logger
 import dp_edit_distance
-import databaseService as dbs
-import telegramService as tgs
-import requestsService as rqs
-import vpnService as vpns
+import module_database as dbs
+import module_telegram as tgs
+import module_requests as rqs
+import module_vpn as vpns
 
 
 # logging

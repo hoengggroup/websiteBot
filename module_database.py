@@ -7,8 +7,8 @@ import inspect  # for getting the calling function's name in the error handler
 import psycopg  # for interacting with PostgreSQL databases
 
 # OUR OWN LIBRARIES
-from configService import pg_string
-from loggerService import create_logger
+from module_config import pg_string
+from module_logging import create_logger
 
 
 # logging

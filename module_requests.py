@@ -7,10 +7,10 @@ from datetime import datetime  # for timestamps
 import requests  # for internet traffic
 
 # OUR OWN LIBRARIES
-from configService import my_timeout, my_headers, my_verify, notify_threshold_strict, notify_threshold_permissive
-from loggerService import create_logger, exception_printing
-import databaseService as dbs
-import telegramService as tgs
+from module_config import my_timeout, my_headers, my_verify, notify_threshold_strict, notify_threshold_permissive
+from module_logging import create_logger, exception_printing
+import module_database as dbs
+import module_telegram as tgs
 
 
 # logging

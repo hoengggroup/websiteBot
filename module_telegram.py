@@ -13,8 +13,8 @@ from telegram.ext import Updater, CommandHandler, MessageHandler, ConversationHa
 from telegram.error import TelegramError
 
 # OUR OWN LIBRARIES
-from loggerService import create_logger, exception_printing
-import databaseService as dbs
+from module_logging import create_logger, exception_printing
+import module_database as dbs
 
 
 # logging

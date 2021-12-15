@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 
 # OUR OWN LIBRARIES
-from loggerService import create_logger
-import requestsService as rqs
+from module_logging import create_logger
+import module_requests as rqs
 
 
 # logging
