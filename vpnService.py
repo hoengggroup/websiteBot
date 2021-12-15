@@ -21,7 +21,7 @@ def get_nordvpn_api():
         response_nordvpn_json = response_nordvpn.json()
         ip_address_nordvpn_tmp = response_nordvpn_json["ip"]
         status_nordvpn_tmp = response_nordvpn_json["status"]
-        logger.debug("The IP address according to NordVPN is " + ip_address_nordvpn_tmp + " and the status is \"" + status_nordvpn_tmp + "\".")
+        logger.debug("The IP address according to NordVPN is {} and the status is {}.".format(ip_address_nordvpn_tmp, status_nordvpn_tmp))
     return ip_address_nordvpn_tmp, status_nordvpn_tmp  # returns None if request fails
 
 
@@ -30,7 +30,7 @@ def get_icanhazip_api():
     response_icanhazip = rqs.get_url(url="https://ipv4.icanhazip.com/", timeout=10)
     if response_icanhazip:
         ip_address_icanhazip_tmp = response_icanhazip.text.strip()
-        logger.debug("The IP address according to Icanhazip is " + ip_address_icanhazip_tmp + ".")
+        logger.debug("The IP address according to Icanhazip is {}.".format(ip_address_icanhazip_tmp))
     return ip_address_icanhazip_tmp  # returns None if request fails
 
 
