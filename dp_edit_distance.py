@@ -7,7 +7,7 @@ import re  # for regex
 def preprocess_content(content):
     # 1. prepare delimiters
     delimiters = "\n", ". "  # delimiters where to split string
-    regexPattern = '|'.join(map(re.escape, delimiters))  # auto create regex pattern from delimiter list
+    regexPattern = "|".join(map(re.escape, delimiters))  # auto create regex pattern from delimiter list
 
     # 2. split string at delimiters
     content_split = re.split(regexPattern, content)
@@ -15,7 +15,7 @@ def preprocess_content(content):
     # 3. remove empty strings from list as well as string containing only white spaces
     content_list = []
     for element in content_split:
-        if element.isspace() or element == '':
+        if element.isspace() or element == "":
             continue
         content_list.append(element)
 
@@ -27,13 +27,12 @@ def get_edit_distance_changes(text_old, text_new):
 
     if not (len(text_old) > 0 and len(text_new) > 0):
         if(len(text_old) == 0) and (len(text_new) == 0):
-            return [('empty all', 'old and', 'new')]
+            return [("empty all", "old and", "new")]
         if(len(text_old) == 0):
-            return [('added all', str(text_new), '')]
-
+            return [("added all", str(text_new), "")]
         if(len(text_new) == 0):
-            return [('deleted all', str(text_old), '')]
-        raise Exception('This case is mathematically proven to be impossible by boolean logic. For details, see https://en.wikipedia.org/wiki/George_Boole')
+            return [("deleted all", str(text_old), "")]
+        raise Exception("This case is mathematically proven to be impossible by boolean logic. For details, see https://en.wikipedia.org/wiki/George_Boole")
 
     # now, we are sure that both text new/old have >= 1 entry
     # init
@@ -60,7 +59,7 @@ def get_edit_distance_changes(text_old, text_new):
 
     # for i in range(len(tb)):
     #    for j in range(len(tb[i])):
-    #        print(tb[i][j], end='\t')
+    #        print(tb[i][j], end="\t")
     #    print()
 
     reverse_change_stack = []
@@ -86,7 +85,6 @@ def get_edit_distance_changes(text_old, text_new):
         # else (pref:) diagonal up, i.e. swap
         elif(tb[i-1][j-1] == min_before and i-1 >= 0 and j-1 >= 0):
             if(min_before < tb[i][j]):
-                # swapped:
                 # print("swap")
                 reverse_change_stack.extend([("swap", text_old[j], text_new[i])])
             i = i-1
