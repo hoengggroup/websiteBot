@@ -160,5 +160,5 @@ else
     printf "Starting bot in directory: ${bot_directory}\n"
     get_ip
     cd $bot_directory
-    python3.8 main_driver.py
+    python3.8 main.py
 fi
