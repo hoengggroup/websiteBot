@@ -907,6 +907,11 @@ def generate_website_data_text(website_data, sanitize=False):
         str_last_error_time = str(website_data[7].isoformat(' ', 'seconds'))
     else:
         str_last_error_time = "None"
+    subscription_list = dbs.db_subscriptions_by_website(ws_name=website_data[1])
+    if subscription_list:
+        str_subscription_list = str(subscription_list)
+    else:
+        str_subscription_list = "None"
     if sanitize:
         message = ("Name: " + str(website_data[1]) + "\n"
                    "URL: " + str(website_data[2]) + "\n"
@@ -921,7 +926,7 @@ def generate_website_data_text(website_data, sanitize=False):
                    "Last successful update (UTC): " + str_last_time_updated + "\n"
                    "Last error message: " + convert_less_than_greater_than(str(website_data[6])) + "\n"
                    "Last error time (UTC): " + str_last_error_time + "\n"
-                   "Subscriptions: " + str(dbs.db_subscriptions_by_website(ws_name=website_data[1])) + "\n"
+                   "Subscriptions: " + str_subscription_list + "\n"
                    "Filters: " + str(unpack_filters(website_data[9])))
     return message
 
