@@ -742,7 +742,10 @@ def button_user_exit(update, context):
 # access level: none (admins will not be deleted but can reset subscriptions)
 @send_typing_action
 def stop(update, context):
-    if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") <= 1:
+    user_status = dbs.db_users_get_data(tg_id=update.message.chat_id, field="status")
+    if user_status == 0:
+        send_command_reply(update, context, message="I'm afraid I can't let you do that Dave.")
+    elif user_status == 1:
         message_list = generate_user_subscriptions_list(update.message.chat_id)
         if message_list:
             send_command_reply(update, context, message="Your previous subscriptions were: {}".format(message_list))
@@ -751,7 +754,7 @@ def stop(update, context):
     else:
         send_command_reply(update, context, message="You were not subscribed to any websites because you were not an approved user.")
 
-    if dbs.db_users_get_data(tg_id=update.message.chat_id, field="status") >= 1:
+    if user_status >= 1:
         if dbs.db_users_delete(tg_id=update.message.chat_id):
             send_command_reply(update, context, message="You were removed from this bot. Goodbye.\nStart using this bot again at any time by sending /start.")
         else:
