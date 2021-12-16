@@ -29,7 +29,7 @@ Furthermore, this bot is currently invitation-only after application (start the 
 
 ## Dependencies
 - ```python-telegram-bot``` - for interaction with the bot using Telegram
-- ```psycopg2``` - for interaction with the bot's PostgreSQL database
+- ```psycopg``` - for interaction with the bot's PostgreSQL database
 - ```requests``` - for requesting and downloading the websites
 - ```html2text``` - for converting HTML to text during processing
 - ```unidecode``` - for stripping special characters during processing
