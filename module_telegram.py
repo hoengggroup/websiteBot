@@ -910,17 +910,17 @@ def generate_website_data_text(website_data, sanitize=False):
     if sanitize:
         message = ("Name: " + str(website_data[1]) + "\n"
                    "URL: " + str(website_data[2]) + "\n"
-                   "Last successful check: " + str_last_time_checked + "\n"
-                   "Last successful update: " + str_last_time_updated)
+                   "Last successful check (UTC): " + str_last_time_checked + "\n"
+                   "Last successful update (UTC): " + str_last_time_updated)
     else:
         message = ("Name: " + str(website_data[1]) + "\n"
                    "Website ID: " + str(website_data[0]) + "\n"
                    "URL: " + str(website_data[2]) + "\n"
                    "Sleep time: " + str(website_data[3]) + "\n"
-                   "Last successful check: " + str_last_time_checked + "\n"
-                   "Last successful update: " + str_last_time_updated + "\n"
+                   "Last successful check (UTC): " + str_last_time_checked + "\n"
+                   "Last successful update (UTC): " + str_last_time_updated + "\n"
                    "Last error message: " + convert_less_than_greater_than(str(website_data[6])) + "\n"
-                   "Last error time: " + str_last_error_time + "\n"
+                   "Last error time (UTC): " + str_last_error_time + "\n"
                    "Subscriptions: " + str(dbs.db_subscriptions_by_website(ws_name=website_data[1])) + "\n"
                    "Filters: " + str(unpack_filters(website_data[9])))
     return message
