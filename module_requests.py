@@ -37,13 +37,20 @@ def get_url(url, ws_name=None, timeout=my_timeout):
         response = requests.get(url, timeout=timeout, headers=my_headers, verify=my_verify)
         response.raise_for_status()
         error_states[url] = 0
+    except requests.exceptions.Timeout as e:
+        exctype, exc, tb = exception_printing(e)
+        logger.error("A requests.{} has occured in the requests module while getting {}\nError message: {}\nTraceback:\n{}".format(exctype, url, exc, tb))
+        error_states[url] += 1
+        if error_states[url] == notify_threshold_permissive:
+            tgs.send_admin_broadcast("A requests.{} has occured in the requests module while getting {}\nError message: {}\nTraceback:\n{}".format(exctype, url, tgs.convert_less_than_greater_than(exc), tgs.convert_less_than_greater_than(tb)))
+        if ws_name:
+            update_database_with_error(ws_name, "{}: {}".format(exctype, exc))
+        pass
     except requests.exceptions.RequestException as e:
         exctype, exc, tb = exception_printing(e)
         logger.error("A requests.{} has occured in the requests module while getting {}\nError message: {}\nTraceback:\n{}".format(exctype, url, exc, tb))
         error_states[url] += 1
-        if error_states[url] == notify_threshold_strict and exctype != "Timeout":
-            tgs.send_admin_broadcast("A requests.{} has occured in the requests module while getting {}\nError message: {}\nTraceback:\n{}".format(exctype, url, tgs.convert_less_than_greater_than(exc), tgs.convert_less_than_greater_than(tb)))
-        elif error_states[url] == notify_threshold_permissive and exctype == "Timeout":
+        if error_states[url] == notify_threshold_strict:
             tgs.send_admin_broadcast("A requests.{} has occured in the requests module while getting {}\nError message: {}\nTraceback:\n{}".format(exctype, url, tgs.convert_less_than_greater_than(exc), tgs.convert_less_than_greater_than(tb)))
         if ws_name:
             update_database_with_error(ws_name, "{}: {}".format(exctype, exc))
