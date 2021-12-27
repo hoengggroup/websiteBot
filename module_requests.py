@@ -42,7 +42,7 @@ def get_url(url, ws_name=None, timeout=my_timeout):
         logger.error("A requests.{} has occured in the requests module while getting {}\nError message: {}\nTraceback:\n{}".format(exctype, url, exc, tb))
         error_states[url] += 1
         if error_states[url] == notify_threshold_permissive:
-            tgs.send_admin_broadcast("A requests.{} has occured in the requests module while getting {}\nError message: {}\nTraceback:\n{}".format(exctype, url, tgs.convert_less_than_greater_than(exc), tgs.convert_less_than_greater_than(tb)))
+            tgs.send_admin_broadcast("A requests.{} has occured in the requests module while getting {}\nError message: {}".format(exctype, url, tgs.convert_less_than_greater_than(exc)))
         if ws_name:
             update_database_with_error(ws_name, "{}: {}".format(exctype, exc))
         pass
