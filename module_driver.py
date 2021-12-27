@@ -152,7 +152,7 @@ def driver_loop(alive_notifier, assert_vpn):
         ws_name = dbs.db_websites_get_name(ws_id)
 
         if not dbs.db_subscriptions_by_website(ws_name):
-            logger.info("No active subscriptions for website {} with url: {}. Skipping.".format(ws_name, url))
+            logger.info("No active subscriptions for website {}. Skipping.".format(ws_name))
             continue
 
         last_time_updated = dbs.db_websites_get_data(ws_name=ws_name, field="last_time_updated")
