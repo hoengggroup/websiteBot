@@ -150,6 +150,11 @@ def driver_loop(alive_notifier, assert_vpn):
         alive_notifier.notify("WATCHDOG=1")  # send status: alive
 
         ws_name = dbs.db_websites_get_name(ws_id)
+
+        if not dbs.db_subscriptions_by_website(ws_name):
+            logger.info("No active subscriptions for website {} with url: {}. Skipping.".format(ws_name, url))
+            continue
+
         last_time_updated = dbs.db_websites_get_data(ws_name=ws_name, field="last_time_updated")
         last_hash = dbs.db_websites_get_data(ws_name=ws_name, field="last_hash")
         last_content = dbs.db_websites_get_content(ws_name=ws_name, last_time_updated=last_time_updated, last_hash=last_hash)
