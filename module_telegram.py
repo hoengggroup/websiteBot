@@ -178,7 +178,7 @@ def commands(update, context):
                              "/websites -- add, remove, or change websites\n"
                              "/user -- view and change the status of users\n\n"
                              "<b>Available admin-only commands are:</b>\n"
-                             "servicenotification -- any text after this command will be sent to all users (except status 3)")
+                             "servicenotification -- any text after this command (leading slash omitted here to avoid misclicks) will be sent to all users (except status 3)")
         send_command_reply(update, context, message="<b>The available commands are:</b>\n" + command_list)
     else:
         send_command_reply(update, context, message="This command is only available to approved users. Sorry.")
