@@ -29,4 +29,4 @@ root    ALL=(ALL:ALL) ALL
 
 #includedir /etc/sudoers.d
 
-bot ALL = NOPASSWD: /usr/bin/pkill, /usr/bin/systemctl, /usr/sbin/ip, /usr/sbin/openvpn
+bot ALL = NOPASSWD: /usr/bin/systemctl, /usr/bin/rm, /usr/bin/wget, /usr/bin/unzip, /usr/bin/pkill, /usr/sbin/ip, /usr/sbin/openvpn
