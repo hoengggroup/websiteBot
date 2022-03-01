@@ -560,10 +560,10 @@ def button_websites_submenu_04_change_attribute_filters(update, context):
         context.user_data.clear()
         state = ConversationHandler.END
     elif query_type == "exp":
-        send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Which filters do you want to add? (Use comma separation without spaces.)\nSend /cancel (or any other command) to stop this interaction.")
+        send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Which filters do you want to add? (Use comma separation without spaces. Use § prepended to the filter to denote keywords which have to be present or no message is sent in order to reduce spam.)\nSend /cancel (or any other command) to stop this interaction.")
         state = STATE_WEBSITES_05_CHANGE_ATTRIBUTE_FILTERS_EXPAND
     elif query_type == "ove":
-        send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Which should be the new filters? (Use comma separation without spaces.)\nSend /cancel (or any other command) to stop this interaction.")
+        send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Which should be the new filters? (Use comma separation without spaces. Use § prepended to the filter to denote keywords which have to be present or no message is sent in order to reduce spam.)\nSend /cancel (or any other command) to stop this interaction.")
         state = STATE_WEBSITES_05_CHANGE_ATTRIBUTE_FILTERS_OVERWRITE
     else:
         send_message_edit(chat_id=callback_chat_id, message_id=callback_message_id, message="Invalid attribute. Please try again.")

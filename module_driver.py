@@ -91,13 +91,20 @@ def process_website(new_content, ws_name, url, last_hash, last_content):
                     msg_to_send += (my_str + " ")
                 msg_to_send += "\n"
 
-        # 2.2 censor content based on filter list
+        # 2.2 prune/censor content based on filter list
         filter_hits = list()
+        filter_dict = dict()
         filters = tgs.unpack_filters(dbs.db_websites_get_data(ws_name=ws_name, field="filters"))
         if filters:
             for flt in filters:
+                if flt.startswith("§"):
+                    filter_dict[flt[1:]] = True
+                else:
+                    filter_dict[flt] = False
                 if flt in msg_to_send:
                     filter_hits.append(flt)
+        filter_true = {k: v for k, v in filter_dict.items() if v is True}
+        filter_false = {k: v for k, v in filter_dict.items() if v is False}
 
         # 2.3 notify world about changes
         user_ids = dbs.db_subscriptions_by_website(ws_name=ws_name)
@@ -106,11 +113,16 @@ def process_website(new_content, ws_name, url, last_hash, last_content):
             logger.warning("Database query for subscriptions failed for website {}. It was probably deleted from the database since processing started. Aborting processing.".format(ws_name))
             return
         else:
-            if not filter_hits:
-                for ids in user_ids:
-                    tgs.send_general_broadcast(ids, msg_to_send)
-            else:
-                # send censored content only to (subscribed) admins
+            no_message = False
+            admin_message = False
+            if filters:
+                if len(set(filter_hits).intersection(filter_true.keys())) != len(filter_true.keys()):
+                    no_message = True
+                elif len(set(filter_hits).intersection(filter_false.keys())) > 0:
+                    admin_message = True
+            if no_message:
+                logger.debug("Whitelist keywords not found in changes for website {}. No messages sent in order to reduce spam.".format(ws_name))
+            elif admin_message:
                 subscribed_admin_ids = list(set(user_ids).intersection(tgs.admin_chat_ids))
                 for ids in subscribed_admin_ids:
                     tgs.send_general_broadcast(ids, "[CENSORED CONTENT]")
@@ -118,6 +130,9 @@ def process_website(new_content, ws_name, url, last_hash, last_content):
                     tgs.send_general_broadcast(ids, "FILTER HITS:")
                     for hit in filter_hits:
                         tgs.send_general_broadcast(ids, hit)
+            else:
+                for ids in user_ids:
+                    tgs.send_general_broadcast(ids, msg_to_send)
 
         # 2.4 update values in website table
         new_time_updated = datetime.now()
