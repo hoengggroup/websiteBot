@@ -16,7 +16,7 @@ ip_address_nordvpn, status_nordvpn, ip_address_icanhazip = [None]*3
 def get_nordvpn_api():
     ip_address_nordvpn_tmp = None
     status_nordvpn_tmp = None
-    response_nordvpn = rqs.get_url(url="https://api.nordvpn.com/vpn/check/full", timeout=10)
+    response_nordvpn = rqs.get_url(url="https://nordvpn.com/wp-admin/admin-ajax.php?action=get_user_info_data", timeout=10)
     if response_nordvpn:
         response_nordvpn_json = response_nordvpn.json()
         ip_address_nordvpn_tmp = response_nordvpn_json["ip"]
@@ -53,17 +53,17 @@ def init(mode="init"):
         global ip_address_nordvpn, status_nordvpn, ip_address_icanhazip
 
     # check both APIs twice to be extra sure
-    # ...also because the "status" (protected or unprotected) field in the NordVPN API is still not 100% reliable
-    # ...that is why only one of the status_nordvpn variables need to equal "Protected" to validate the VPN connection
+    # ...also because the "status" (true or false) field in the NordVPN API may still not be 100% reliable
+    # ...that is why only one of the status_nordvpn variables need to equal True to validate the VPN connection
     ip_address_nordvpn_1, status_nordvpn_1 = get_nordvpn_api()
     ip_address_icanhazip_1 = get_icanhazip_api()
     ip_address_nordvpn_2, status_nordvpn_2 = get_nordvpn_api()
     ip_address_icanhazip_2 = get_icanhazip_api()
 
     if ((ip_address_icanhazip_1 == ip_address_icanhazip_2) and (ip_address_nordvpn_1 == ip_address_nordvpn_2) and (ip_address_icanhazip_1 == ip_address_nordvpn_1)
-            and ((status_nordvpn_1 == "Protected") or (status_nordvpn_2 == "Protected"))):
+            and ((status_nordvpn_1 is True) or (status_nordvpn_2 is True))):
         ip_address_nordvpn = ip_address_nordvpn_1
-        status_nordvpn = "Protected"
+        status_nordvpn = True
         ip_address_icanhazip = ip_address_icanhazip_1
         if mode == "re-establish":
             logger.info("Successfully validated re-established connection with VPN.")
