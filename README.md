@@ -1,7 +1,7 @@
 # websiteBot
 
 ## Introduction
-This is a bot written in Python3 which monitors a given website for changes using an efficient <img src="https://render.githubusercontent.com/render/math?math=O(n^2)"> from-scratch implementation of a ```diff```-like difference tracker.
+This is a bot written in Python3 which monitors a given website for changes using an efficient 𝒪(𝒏²) from-scratch implementation of a ```diff```-like difference tracker.
 Upon detecting changes, it sends a message via the Telegram bot ```@websiteBot_bot``` to any people who subscribed to the pertinent websites.
 
 ## Caveats
