@@ -1,3 +1,7 @@
+### Secrets ###
+# credentials storage
+secrets/
+
 ### Database ###
 # various database folders
 postgresql_database/
