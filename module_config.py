@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # MAIN PARAMETERS
-version_code = "6.1"
+version_code = "6.2"
 keep_website_history = True
 
 
