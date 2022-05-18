@@ -21,9 +21,9 @@ Furthermore, this bot is currently invitation-only after application (start the 
 - Make sure you have PostgreSQL and Azure Data Studio (technically optional but recommended) installed on your system.
 - The bot can monitor whether a VPN connection is active (only to NordVPN) if you want to hide your IP address while running this bot. For this you will need the NordVPN app or Openvpn client.
 - Make a bot using the official Telegram bot ```@BotFather```. The name of your bot obviously needs to be different from this one.
-- Insert the token you received from this bot and your own Telegram user id number into the relevant code cells of the ```db_setup.ipynb``` file (preferably using Azure Data Studio).
+- Insert the token you received from ```@BotFather``` and your own Telegram user id number into the relevant code cells of the ```db_setup.ipynb``` file (preferably using Azure Data Studio).
 - Follow the instructions in the ```db_setup.ipynb``` file to to create the bot's database (preferably using Azure Data Studio).
-- Either execute ```main_driver.py``` directly using Python3 or add the ```websiteBot.sh``` script as a service (only on Linux) and start a chat with your bot on Telegram.
+- Either execute ```main_driver.py``` directly using Python3 or add the ```websiteBot.sh``` script as a service (only on Linux; familiarize yourself with its contents first!) and start a chat with your bot on Telegram.
 - The bot will guide you on how to proceed (you should see a lot more options as you are now the admin of the bot).
 - Receive notifications about the websites which you subscribe to and maintain the bot.
 
@@ -34,3 +34,11 @@ Furthermore, this bot is currently invitation-only after application (start the 
 - ```html2text``` - for converting HTML to text during processing
 - ```unidecode``` - for stripping special characters during processing
 - ```sdnotify``` - for interacting with systemctl (only on Linux)
+
+## Contributors
+
+[Tassilo Schwarz](https://github.com/blackTay) - responsible for the "backend" (dp_edit_distance.py)
+
+[Niklas Bogensperger](https://github.com/niklasbogensperger) - responsible for the "frontend" (module_telegram.py)
+
+All other parts of the project are developed together.
