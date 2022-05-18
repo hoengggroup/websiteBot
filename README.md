@@ -6,8 +6,11 @@ Upon detecting changes, it sends a message via the Telegram bot ```@websiteBot_b
 
 ## Caveats
 This bot can only track websites that do not need a login and it cannot interact with the websites in any way.
+
 Your mileage may also vary with non-English (especially non-Latin-script) websites, as the difference tracker was only designed for this character set.
+
 Due to the nature of what this bot does, only the admins have the capability to add new websites to the tracking list.
+
 Furthermore, this bot is currently invitation-only after application (start the bot and let it guide you - see below under "use").
 
 ## Use / Installation
@@ -42,3 +45,4 @@ Furthermore, this bot is currently invitation-only after application (start the 
 [Niklas Bogensperger](https://github.com/niklasbogensperger) - responsible for the "frontend" (module_telegram.py)
 
 All other parts of the project are developed together.
+
