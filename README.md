@@ -44,5 +44,5 @@ Furthermore, this bot is currently invitation-only after application (start the 
 
 [Niklas Bogensperger](https://github.com/niklasbogensperger) - responsible for the "frontend" (module_telegram.py)
 
-All other parts of the project are developed together.
+All other parts of the project are developed together, and the repo is owned by our shared GitHub account [hoengggroup](https://github.com/hoengggroup).
 
