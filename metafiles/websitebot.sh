@@ -11,7 +11,7 @@ udp_directory='/etc/openvpn/ovpn_udp/'
 vpn_suffix='.tcp443.ovpn'
 home_directory='/home/bot/'
 temp_directory='/home/bot/temp/'
-bot_directory='/home/bot/websitebot/websiteBot/'
+bot_directory='/home/bot/websiteBot/'
 help_text="\
 You probably want to fetch the newest NordVPN configs, clone the source from GitHub, and restart the systemctl service:
 $(basename "$0") -r -n -g
@@ -29,7 +29,7 @@ Options:
   -g                  clone the bot's code from GitHub before (re-)starting
   -v <VPN_PATTERN>    connect to VPN before starting the bot using a configuration matching VPN_PATTERN
   -d <BOT_DIRECTORY>  start the bot from the specified directory
-                      (defaults to '/home/bot/websitebot/websiteBot/')
+                      (defaults to '/home/bot/websiteBot/')
   -h                  display this help text
 "
 
