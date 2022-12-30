@@ -9,9 +9,10 @@ ovpn_directory='/etc/openvpn/'
 tcp_directory='/etc/openvpn/ovpn_tcp/'
 udp_directory='/etc/openvpn/ovpn_udp/'
 vpn_suffix='.tcp443.ovpn'
-home_directory='/home/bot/'
-temp_directory='/home/bot/temp/'
-bot_directory='/home/bot/websiteBot/'
+home_directory='/home/websitebot/'
+temp_directory='/home/websitebot/temp/'
+bot_directory='/home/websitebot/websiteBot/'
+secrets_directory='/home/websitebot/websiteBot/secrets/'
 help_text="\
 You probably want to fetch the newest NordVPN configs, clone the source from GitHub, and restart the systemctl service:
 $(basename "$0") -r -n -g
@@ -29,7 +30,7 @@ Options:
   -g                  clone the bot's code from GitHub before (re-)starting
   -v <VPN_PATTERN>    connect to VPN before starting the bot using a configuration matching VPN_PATTERN
   -d <BOT_DIRECTORY>  start the bot from the specified directory
-                      (defaults to '/home/bot/websiteBot/')
+                      (defaults to '/home/websitebot/websiteBot/')
   -h                  display this help text
 "
 
@@ -92,7 +93,7 @@ connect_vpn() {
     connection_success=false
     for i in $(curl --silent https://api.nordvpn.com/server/stats | jq --slurp --raw-output --arg vpn_pattern "$vpn_pattern" '.[] | to_entries | map(select(.key | contains($vpn_pattern))) | sort_by(.value.percent) | limit(10;.[]) | [.key] | "\(.[0])"'); do
         config="${tcp_directory}${i}${vpn_suffix}"
-        if sudo openvpn --config $config --auth-user-pass ${home_directory}auth.txt --daemon; then
+        if sudo openvpn --config $config --auth-user-pass ${secrets_directory}nordvpn_auth.txt --daemon; then
             printf "Successfully connected to VPN using config file: ${config}\nWaiting to display new IP.\n"
             sleep 15
             get_ip
@@ -105,7 +106,7 @@ connect_vpn() {
     done
     if [ "$connection_success" = false ]; then
         for i in $(find ${tcp_directory} -name "$vpn_pattern*" | sort); do
-            if sudo openvpn --config $i --auth-user-pass ${home_directory}auth.txt --daemon; then
+            if sudo openvpn --config $i --auth-user-pass ${secrets_directory}nordvpn_auth.txt --daemon; then
                 printf "Successfully connected to VPN using config file: ${i}\nWaiting to display new IP.\n"
                 sleep 15
                 get_ip
