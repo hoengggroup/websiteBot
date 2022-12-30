@@ -1,5 +1,9 @@
 # -*- coding: utf-8 -*-
 
+# PYTHON BUILTINS
+from pathlib import Path
+
+
 # MAIN PARAMETERS
 version_code = "6.2"
 keep_website_history = False
@@ -7,7 +11,7 @@ keep_website_history = False
 
 # DATABASE PARAMETERS
 # url schema: postgresql://user:password@netloc:port/dbname
-pg_string = "postgresql://websitebot:webSiteBotPostGresQL@localhost:5432/websitebot_db"
+pg_string = Path('./secrets/pg_string.txt').read_text()
 
 
 # REQUESTS PARAMETERS
