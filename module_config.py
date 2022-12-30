@@ -2,7 +2,7 @@
 
 # MAIN PARAMETERS
 version_code = "6.2"
-keep_website_history = True
+keep_website_history = False
 
 
 # DATABASE PARAMETERS
