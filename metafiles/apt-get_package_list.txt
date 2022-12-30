@@ -1,9 +1,0 @@
-inetutils-traceroute
-jq
-net-tools
-nnn
-openvpn
-postgresql
-postgresql-contrib
-resolvconf
-unzip
