@@ -11,7 +11,7 @@ keep_website_history = False
 
 # DATABASE PARAMETERS
 # url schema: postgresql://user:password@netloc:port/dbname
-pg_string = Path('./secrets/pg_string.txt').read_text()
+pg_string = Path('./secrets/pg_string.txt').read_text().strip()
 
 
 # REQUESTS PARAMETERS
