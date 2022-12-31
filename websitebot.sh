@@ -178,7 +178,7 @@ else
         sync_github
     fi
     if [ "$bootstrap_flag" = true ]; then
-        printf "Successfully bootstrapped the bot's working environment. Proceed by adding and starting the systemd service (see server setup guide)."
+        printf "Successfully bootstrapped the bot's working environment. Proceed by adding and starting the systemd service (see server setup guide).\n"
     else
         if [ "$vpn_flag" = true ]; then
             connect_vpn
