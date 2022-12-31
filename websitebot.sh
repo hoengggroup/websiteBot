@@ -139,7 +139,7 @@ connect_vpn() {
     fi
 }
 
-while getopts 'rngv:d:h' flag; do
+while getopts 'rngbv:d:h' flag; do
     case "${flag}" in
         r) restart_flag=true ;;
         n) nordvpn_flag=true ;;
