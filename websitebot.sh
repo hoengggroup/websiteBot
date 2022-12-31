@@ -3,16 +3,31 @@
 restart_flag=false
 nordvpn_flag=false
 github_flag=false
+bootstrap_flag=false
 vpn_flag=false
 directory_flag=false
+
+vpn_dl_path='https://downloads.nordcdn.com/configs/archives/servers/'
+vpn_dl_file='ovpn.zip'
 ovpn_directory='/etc/openvpn/'
 tcp_directory='/etc/openvpn/ovpn_tcp/'
 udp_directory='/etc/openvpn/ovpn_udp/'
 vpn_suffix='.tcp443.ovpn'
+ip_checker='https://icanhazip.com/'
+
 home_directory='/home/websitebot/'
 temp_directory='/home/websitebot/temp/'
 bot_directory='/home/websitebot/websiteBot/'
 secrets_directory='/home/websitebot/websiteBot/secrets/'
+nordvpn_auth='nordvpn_auth.txt'
+
+# SSH syntax (keys need to be added to the GitHub account), needed for private repos:
+repo_ssh='git@github.com:hoengggroup/websiteBot.git'
+# HTTPS syntax (no further config needed), available for public repos:
+repo_https='https://github.com/hoengggroup/websiteBot.git'
+
+service_name='websitebot.service'
+
 help_text="\
 You probably want to fetch the newest NordVPN configs, clone the source from GitHub, and restart the systemctl service:
 $(basename "$0") -r -n -g
@@ -28,6 +43,7 @@ Options:
                       (primarily for manual intervention)
   -n                  fetch the newest NordVPN configs before (re-)starting
   -g                  clone the bot's code from GitHub before (re-)starting
+  -b                  bootstrap: fetch NordVPN configs and clone the code from GitHub without doing anything else
   -v <VPN_PATTERN>    connect to VPN before starting the bot using a configuration matching VPN_PATTERN
   -d <BOT_DIRECTORY>  start the bot from the specified directory
                       (defaults to '/home/websitebot/websiteBot/')
@@ -39,12 +55,12 @@ print_usage() {
 }
 
 get_ip() {
-    printf "The current IP address is: $(curl --silent https://icanhazip.com/)\n"
+    printf "The current IP address is: $(curl --silent ${ip_checker})\n"
 }
 
 restart_bot() {
     printf 'Stopping websitebot service...\n'
-    sudo systemctl stop websitebot.service
+    sudo systemctl stop $service_name
     printf 'websitebot service stopped.\n'
     if [ "$nordvpn_flag" = true ]; then
         fetch_nordvpn
@@ -53,9 +69,9 @@ restart_bot() {
         sync_github
     fi
     printf 'Restarting websitebot service. Wait for output of service status.\n'
-    sudo systemctl start websitebot.service
+    sudo systemctl start $service_name
     sleep 2
-    systemctl status websitebot.service
+    systemctl status $service_name
 }
 
 fetch_nordvpn() {
@@ -66,16 +82,16 @@ fetch_nordvpn() {
     sudo rm -rf $tcp_directory
     sudo rm -rf $udp_directory
     printf 'Downloading and extracting new configs.\n'
-    sudo wget https://downloads.nordcdn.com/configs/archives/servers/ovpn.zip
-    sudo unzip ovpn.zip
-    sudo rm ovpn.zip
+    sudo wget ${vpn_dl_path}$vpn_dl_file
+    sudo unzip $vpn_dl_file
+    sudo rm $vpn_dl_file
     cd $current_dir
     printf 'Successfully updated NordVPN configs.\n'
 }
 
 sync_github() {
     printf 'Cloning from GitHub.\n'
-    git clone git@github.com:hoengggroup/websiteBot.git $temp_directory
+    git clone $repo_https $temp_directory
     rsync -av $temp_directory $bot_directory
     rm -rf $temp_directory
     printf 'Successfully cloned from GitHub.\n'
@@ -93,7 +109,7 @@ connect_vpn() {
     connection_success=false
     for i in $(curl --silent https://api.nordvpn.com/server/stats | jq --slurp --raw-output --arg vpn_pattern "$vpn_pattern" '.[] | to_entries | map(select(.key | contains($vpn_pattern))) | sort_by(.value.percent) | limit(10;.[]) | [.key] | "\(.[0])"'); do
         config="${tcp_directory}${i}${vpn_suffix}"
-        if sudo openvpn --config $config --auth-user-pass ${secrets_directory}nordvpn_auth.txt --daemon; then
+        if sudo openvpn --config $config --auth-user-pass ${secrets_directory}$nordvpn_auth --daemon; then
             printf "Successfully connected to VPN using config file: ${config}\nWaiting to display new IP.\n"
             sleep 15
             get_ip
@@ -106,7 +122,7 @@ connect_vpn() {
     done
     if [ "$connection_success" = false ]; then
         for i in $(find ${tcp_directory} -name "$vpn_pattern*" | sort); do
-            if sudo openvpn --config $i --auth-user-pass ${secrets_directory}nordvpn_auth.txt --daemon; then
+            if sudo openvpn --config $i --auth-user-pass ${secrets_directory}$nordvpn_auth --daemon; then
                 printf "Successfully connected to VPN using config file: ${i}\nWaiting to display new IP.\n"
                 sleep 15
                 get_ip
@@ -128,6 +144,9 @@ while getopts 'rngv:d:h' flag; do
         r) restart_flag=true ;;
         n) nordvpn_flag=true ;;
         g) github_flag=true ;;
+        b) bootstrap_flag=true
+           nordvpn_flag=true
+           github_flag=true ;;
         v) vpn_flag=true
            vpn_pattern="${OPTARG}" ;;
         d) directory_flag=true
@@ -140,6 +159,9 @@ while getopts 'rngv:d:h' flag; do
 done
 
 if [ "$restart_flag" = true ]; then
+    if [ "$bootstrap_flag" = true ]; then
+        printf 'Warning: Disregarding -b option. Please do not use -b when restarting with -r, as the bot is not meant to be (re-)started when bootstrapping.\n'
+    fi
     if [ "$vpn_flag" = true ]; then
         printf 'Warning: Disregarding -v option. Please do not use -v when restarting with -r, as the VPN is handled by the service when it is restarted.\n'
     fi
@@ -155,11 +177,15 @@ else
     if [ "$github_flag" = true ]; then
         sync_github
     fi
-    if [ "$vpn_flag" = true ]; then
-        connect_vpn
+    if [ "$bootstrap_flag" = true ]; then
+        printf "Successfully bootstrapped the bot's working environment. Proceed by adding and starting the systemd service (see server setup guide)."
+    else
+        if [ "$vpn_flag" = true ]; then
+            connect_vpn
+        fi
+        printf "Starting bot in directory: ${bot_directory}\n"
+        get_ip
+        cd $bot_directory
+        python3.10 main.py
     fi
-    printf "Starting bot in directory: ${bot_directory}\n"
-    get_ip
-    cd $bot_directory
-    python3.8 main.py
 fi
