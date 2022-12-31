@@ -157,9 +157,35 @@ See `setup_db_linux.md` for further instructions.
 
 ## 4. Running `websiteBot`
 
-1. Copy/clone the project files to the server via your preferred method, e.g. `git clone` or `scp` (see below).
+1. Copy/clone the project files to the server via your preferred method, e.g. `git clone` or `scp` (for the latter, see below).
 
-2. Create a `systemd` service by creating a file in `/etc/systemd/system/`, e.g. named `websitebot.service`, with the following contents:
+2. Copy the setup script (`websitebot.sh` in this case) to a folder outside the project folder, and run any bootstrapping routines available in the script (e.g. sync with GitHub again or install config files). Always keep that copy updated.
+
+3. Copy to/create in the project tree any untracked files/folders needed; in the case of `websiteBot` for example:
+
+   ```shell
+   ${REPO_HOME}/secrets/nordvpn_auth.txt (copy from remote)
+   ${REPO_HOME}/secrets/pg_string.txt (copy from remote)
+   ${REPO_HOME}/.websitebot_assert_vpn (create empty file)
+   ${REPO_HOME}/.websitebot_deployed (create empty file)
+   ```
+
+4. Install the Python packages required by the project:
+
+   ```shell
+   pip3 install --user
+   ```
+
+   ```
+   html2text
+   psycopg
+   python-telegram-bot
+   requests
+   sdnotify
+   unidecode
+   ```
+
+5. Create a `systemd` service by creating a file in `/etc/systemd/system/`, e.g. named `websitebot.service`, with the following contents:
 
    ```
    [Unit]
@@ -181,7 +207,7 @@ See `setup_db_linux.md` for further instructions.
    WantedBy=multi-user.target
    ```
 
-3. Reload the available services using:
+6. Reload the available services using:
 
    ```shell
    sudo systemctl daemon-reload
@@ -193,25 +219,25 @@ See `setup_db_linux.md` for further instructions.
    systemctl list-units --type=service
    ```
 
-4. Use `systemctl` to interact with the previously created service:
+7. Use `systemctl` to interact with the previously created service:
 
    ```shell
    sudo systemctl <action; e.g. start, stop, restart, status> <service name>.service
    ```
 
-5. To edit the service file contents, run:
+8. To edit the service file contents, run:
 
    ```shell
    sudo systemctl edit --full <service name>.service
    ```
 
-6. In case the service failed too many times in short succession, e.g. due to an error that was introduced with an update, the system will block a start/restart even if the error was fixed in the meantime. In that case, the failed-state counter has to be reset first:
+9. In case the service failed too many times in short succession, e.g. due to an error that was introduced with an update, the system will block a start/restart even if the error was fixed in the meantime. In that case, the failed-state counter has to be reset first:
 
    ```shell
    sudo systemctl reset-failed <service name>.service
    ```
 
-7. To see a live output of the service's log entries to the terminal, run:
+10. To see a live output of the service's log entries to the terminal, run:
 
    ```shell
    journalctl -f -u <service name>.service
@@ -221,7 +247,19 @@ See `setup_db_linux.md` for further instructions.
 
 ## 5. Keeping the server maintained
 
-### Updating packages
+### Updating project files
+
+1. Ensure that the newest version of the startup script is copied outside the project folder.
+
+2. Run its updating mechanism; for `websitebot.sh`:
+
+   ```shell
+   websitebot.sh -r -n -g
+   ```
+
+### Updating system packages
+
+Be careful about whether your code needs to be updated to work with new package versions.
 
 1. Gather and list new updates:
 
@@ -233,6 +271,22 @@ See `setup_db_linux.md` for further instructions.
 
    ```shell
    sudo apt upgrade
+   ```
+
+### Updating Python packages
+
+Be careful about whether your code needs to be updated to work with new package versions.
+
+1. Gather and list new updates:
+
+   ```shell
+   pip3 list --outdated
+   ```
+
+2. Upgrade the packages:
+
+   ```shell
+   pip3 install --upgrade --user
    ```
 
 ### Downloading files from the server
