@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 # MAIN PARAMETERS
-version_code = "6.2"
+version_code = "6.3"
 keep_website_history = False
 
 
