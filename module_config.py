@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 # PYTHON BUILTINS
-from pathlib import Path
+from pathlib import Path  # for interacting with the filesystem
 
 
 # MAIN PARAMETERS
