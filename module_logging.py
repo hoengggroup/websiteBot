@@ -63,13 +63,13 @@ def create_logger(module):
     logger.setLevel(logging.DEBUG)
 
     # create file handler and set it to DEBUG level
-    # fh1 = logging.FileHandler(str(module) + "_debug.log")
+    # fh1 = logging.FileHandler("_logs/" + str(module) + "_debug.log")
     # fh1.setLevel(logging.DEBUG)
     # create file handler and set it to INFO level
-    fh2 = logging.FileHandler(str(module) + "_info.log")
+    fh2 = logging.FileHandler("_logs/" + str(module) + "_info.log")
     fh2.setLevel(logging.INFO)
     # create file handler and set it to WARNING level
-    fh3 = logging.FileHandler(str(module) + "_warning.log")
+    fh3 = logging.FileHandler("_logs/" + str(module) + "_warning.log")
     fh3.setLevel(logging.WARNING)
     # create console handler and set it to DEBUG level
     ch = logging.StreamHandler()
