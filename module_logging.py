@@ -2,6 +2,7 @@
 
 # PYTHON BUILTINS
 import logging  # self-explanatory ;)
+from pathlib import Path  # for interacting with the filesystem
 import textwrap  # for aligning the log message into a column
 import traceback  # for detailed error handling
 
@@ -62,6 +63,8 @@ def create_logger(module):
     logger = logging.getLogger(str(module) + "_log")
     logger.setLevel(logging.DEBUG)
 
+    # create logs folder in project tree if folder does not already exist
+    Path("./_logs").mkdir(parents=True, exist_ok=True)
     # create file handler and set it to DEBUG level
     # fh1 = logging.FileHandler("_logs/" + str(module) + "_debug.log")
     # fh1.setLevel(logging.DEBUG)
