@@ -239,9 +239,9 @@ See `setup_db_linux.md` for further instructions.
 
 10. To see a live output of the service's log entries to the terminal, run:
 
-   ```shell
-   journalctl -f -u <service name>.service
-   ```
+    ```shell
+    journalctl -f -u <service name>.service
+    ```
 
 
 
