@@ -5,7 +5,7 @@ from pathlib import Path  # for interacting with the filesystem
 
 
 # MAIN PARAMETERS
-version_code = "6.3"
+version_code = "6.4"
 keep_website_history = False
 
 
