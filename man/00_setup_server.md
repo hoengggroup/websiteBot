@@ -20,7 +20,7 @@ This setup guide assumes a (fresh) Ubuntu Linux installation on your personal de
 
    Follow the prompts to set a password and the name of the user (other details being asked are e.g. phone number; this is a holdover from the Unix days and can be skipped by pressing enter).
 
-3. Give the newly created user `sudo` privileges.
+3. Give the newly created user `sudo` privileges (by adding them to the group `sudo`).
 
    ```shell
    sudo usermod -aG sudo <username>
@@ -44,7 +44,7 @@ This setup guide assumes a (fresh) Ubuntu Linux installation on your personal de
    <username> ALL=(ALL) NOPASSWD: /usr/bin/systemctl, /usr/bin/rm, /usr/bin/wget, /usr/bin/unzip, /usr/bin/pkill, /usr/sbin/ip, /usr/sbin/openvpn
    ```
 
-   This allows for a non-sudo execution of the startup script, which uses these commands.
+   This allows for execution of the startup script without authentication for sudo use of the above utilities.
 
 5. Install software packages (some needed for operation of the project, some for QoL):
 
@@ -219,25 +219,33 @@ See `setup_db_linux.md` for further instructions.
    systemctl list-units --type=service
    ```
 
-7. Use `systemctl` to interact with the previously created service:
+7. Enable the service in order to have it run at startup automatically:
+
+   ```shell
+   sudo systemctl enable <service name>.service
+   ```
+
+   You can add the `--now` flag to this command to `enable` & `start` (see next item) the service in one command. The same flag works analogously for `disable` and `stop`.
+
+8. Use `systemctl` to interact with the previously created service:
 
    ```shell
    sudo systemctl <action; e.g. start, stop, restart, status> <service name>.service
    ```
 
-8. To edit the service file contents, run:
+9. To edit the service file contents, run:
 
    ```shell
    sudo systemctl edit --full <service name>.service
    ```
 
-9. In case the service failed too many times in short succession, e.g. due to an error that was introduced with an update, the system will block a start/restart even if the error was fixed in the meantime. In that case, the failed-state counter has to be reset first:
+10. In case the service failed too many times in short succession, e.g. due to an error that was introduced with an update, the system will block a start/restart even if the error was fixed in the meantime. In that case, the failed-state counter has to be reset first:
 
    ```shell
    sudo systemctl reset-failed <service name>.service
    ```
 
-10. To see a live output of the service's log entries to the terminal, run:
+11. To see a live output of the service's log entries to the terminal, run:
 
     ```shell
     journalctl -f -u <service name>.service
