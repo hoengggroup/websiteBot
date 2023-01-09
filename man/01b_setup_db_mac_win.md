@@ -65,7 +65,16 @@ Assumptions of this guide:
 
 ### Azure Data Studio
 
-Connect to the database using the Connections menu. Be sure to fill out the field "active database" with `<database name>`.
+Connect to the database using the "Connections" menu.
+
+```
+Connection type: PostgreSQL
+Server name: localhost
+Authentication type: Password
+User name: <psql user>
+Password: <psql user password>
+Database name: <database name; e.g. websitebot_db>
+```
 
 ### `psql` shell
 
@@ -78,18 +87,24 @@ psql <database name> [-U <username>]
 Or with the long-form command:
 
 ```shell
-psql "postgresql://<username>[:<password>]@<database server location>[:<port>]/<database name>"
+psql "postgresql://<username>[:<password>]@<database server hostname>[:<port>]/<database name>"
 ```
 
 If the login does not work (cannot `su` or `-U` to user that owns the database, no prompt for password appears, connection fails due to unsuccessful peer authentication, login to a remote server, etc.) use the long-form command, which should mitigate any issues.
 
-Note: `<database name>` is not the `<path to cluster folder/cluster name>` but the name of the database created in the last section, e.g. `websitebot_db`.
+Explanation of the keywords:
 
-Note: `<database server location>` is not the `<path to cluster folder/cluster name>` but the actual network location where PostgreSQL listens for connections, e.g. `localhost`.
-
-Note:  `<password>` may be omitted depending on whether a password is set for the user on the database.
-
-Note: `<port>` may be omitted unless the port for the database was manually specified.
+```
+<username>: <psql user>
+<password>: <password;
+             may be omitted depending on whether a password is set for the user on the database;
+             if the password contains special characters, escape them using the % syntax for URLs>
+<database server hostname>: <hostname of the server where PostgreSQL listens for connections, e.g. 'localhost' or the server hostname specified in server certificate;
+                             not the path to cluster folder/cluster name>
+<port>: <port; e.g. 5432; may be omitted unless set to non-default value>
+<database name>: <name of the database created in a previous section, e.g. 'websitebot_db';
+                  not the path to cluster folder/cluster name>
+```
 
 ##### Useful commands in the `psql` shell:
 
